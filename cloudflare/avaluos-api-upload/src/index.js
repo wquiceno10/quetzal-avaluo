@@ -2,6 +2,7 @@
  * avaluos-api-upload
  * Cloudflare Worker para upload de archivos a Supabase Storage
  */
+console.log("Deploy test - " + new Date().toISOString());
 
 export default {
     async fetch(request, env) {

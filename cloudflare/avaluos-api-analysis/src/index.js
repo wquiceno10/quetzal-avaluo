@@ -2,6 +2,7 @@
  * avaluos-api-analysis
  * Cloudflare Worker para análisis de mercado con Perplexity + DeepSeek
  */
+console.log("Deploy test - " + new Date().toISOString());
 
 export default {
     async fetch(request, env) {

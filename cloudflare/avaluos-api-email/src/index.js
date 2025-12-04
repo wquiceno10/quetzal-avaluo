@@ -2,6 +2,7 @@
  * avaluos-api-email
  * Cloudflare Worker para envío de emails con Resend
  */
+console.log("Deploy test - " + new Date().toISOString());
 
 export default {
     async fetch(request, env) {
