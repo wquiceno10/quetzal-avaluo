@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Search, AlertCircle } from 'lucide-react';
-import { api } from '@/api/client';
+// import { api } from '@/api/client'; // Removed legacy import
 import { useMutation } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -10,19 +10,27 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
 
   const searchMutation = useMutation({
     mutationFn: async (data) => {
-      // 1. Llamada al Backend
-      const response = await api.functions.invoke('perplexityAnalysis', { formData: data });
+      // 1. Llamada al Backend (Cloudflare Worker)
+      const response = await fetch(import.meta.env.VITE_WORKER_ANALYSIS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ formData: data })
+      });
 
-      if (response.data?.error) {
-        throw new Error(response.data.error + (response.data.details ? `: ${response.data.details}` : ''));
+      const responseData = await response.json();
+
+      if (!response.ok || responseData.error) {
+        throw new Error(responseData.error || (responseData.details ? `: ${responseData.details}` : 'Error desconocido del servidor'));
       }
 
       // Validar que la respuesta tenga la estructura esperada
-      if (!response.data || !response.data.comparables) {
+      if (!responseData || !responseData.comparables) {
         throw new Error('La respuesta del servidor no contiene datos válidos.');
       }
 
-      return response.data;
+      return responseData;
     },
     onSuccess: (data) => {
       // 2. Guardar datos y AVANZAR AUTOMÁTICAMENTE

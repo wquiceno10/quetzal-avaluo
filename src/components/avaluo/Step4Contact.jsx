@@ -5,9 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, Phone, CheckCircle, RefreshCw, MessageCircle } from 'lucide-react';
-import { api } from '@/api/client';
+// import { api } from '@/api/client'; // Removed legacy import
 import { useMutation } from '@tanstack/react-query';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 
 export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
   const [contactData, setContactData] = useState({
@@ -271,14 +271,22 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
 </html>
       `;
 
-      const response = await api.functions.invoke('sendReportEmail', {
-        to: data.email,
-        subject: `Reporte de Avalúo - ${data.codigo_avaluo}${data.barrio ? ` - ${data.barrio}, ${data.municipio}` : ''}`,
-        htmlBody: emailBody
+      const response = await fetch(import.meta.env.VITE_WORKER_EMAIL_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: data.email,
+          subject: `Reporte de Avalúo - ${data.codigo_avaluo}${data.barrio ? ` - ${data.barrio}, ${data.municipio}` : ''}`,
+          htmlBody: emailBody
+        })
       });
 
-      if (response.data?.error) {
-        throw new Error(response.data.error);
+      const responseData = await response.json();
+
+      if (!response.ok || responseData.error) {
+        throw new Error(responseData.error || 'Error enviando el reporte por correo.');
       }
 
       return { success: true };
@@ -304,9 +312,11 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
 
     // Create avaluo record in Supabase
     try {
-      const { data: supabaseConfig } = await api.functions.invoke('supabaseAuth', { action: 'getConfig' });
-      if (supabaseConfig?.supabaseUrl && supabaseConfig?.supabaseAnonKey) {
-        const supabase = createClient(supabaseConfig.supabaseUrl, supabaseConfig.supabaseAnonKey);
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      if (supabaseUrl && supabaseAnonKey) {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
         const { error } = await supabase.from('avaluos').insert([completeData]);
         if (error) {
           console.error('Error creating avaluo in Supabase:', error);
