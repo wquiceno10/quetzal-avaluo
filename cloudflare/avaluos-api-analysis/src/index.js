@@ -453,21 +453,14 @@ REGLA IMPORTANTE:
                     messages: [
                         {
                             role: 'system',
-                            content: 'Eres un asistente experto en análisis y extracción de datos estructurados de textos de avalúos inmobiliarios.'
+                            content: 'Eres un asistente experto en análisis y extracción de datos estructurados de textos de avalúos inmobiliarios. TU SALIDA DEBE SER ÚNICAMENTE UN JSON VÁLIDO QUE SIGA EL ESQUEMA SOLICITADO. NO incluyas bloques de código markdown (```json), solo el JSON puro.'
                         },
                         {
                             role: 'user',
                             content: extractionPrompt
                         }
                     ],
-                    response_format: {
-                        type: 'json_schema',
-                        json_schema: {
-                            name: 'property_analysis',
-                            strict: true,
-                            schema: jsonSchema
-                        }
-                    },
+                    // response_format removed as it causes 400 error
                     temperature: 0.1
                 })
             });
@@ -486,7 +479,12 @@ REGLA IMPORTANTE:
             }
 
             const deepseekData = await deepseekResponse.json();
-            const extractedData = JSON.parse(deepseekData.choices[0].message.content);
+            let content = deepseekData.choices[0].message.content;
+
+            // Limpiar bloques de código si DeepSeek los incluye
+            content = content.replace(/```json\n?|```/g, '').trim();
+
+            const extractedData = JSON.parse(content);
 
             console.log(
                 'DeepSeek Extracted Data (first part):',
