@@ -36,6 +36,49 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
       const rangoMax = comparablesData.rango_valor_max || 0;
       const precioM2Final = comparablesData.precio_m2_usado || 0;
 
+      // Helper para formatear moneda
+      const formatCurrency = (val) => {
+        if (!val && val !== 0) return '—';
+        return '$ ' + Math.round(val).toLocaleString('es-CO');
+      };
+
+      // Helper para generar filas de comparables
+      const generarFilasComparables = (comparables) => {
+        if (!comparables || comparables.length === 0) return '<tr><td colspan="5" style="text-align:center; padding: 10px;">No hay comparables detallados disponibles.</td></tr>';
+
+        return comparables.slice(0, 10).map(c => `
+          <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px;">${c.titulo || 'Inmueble'}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px;">${c.barrio || '—'}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; text-align: center;">${c.area_m2 ? c.area_m2 + ' m²' : '—'}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; text-align: right;">${formatCurrency(c.precio_cop)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; text-align: right;">${formatCurrency(c.precio_m2)}/m²</td>
+          </tr>
+        `).join('');
+      };
+
+      // Helper para convertir markdown básico a HTML
+      const markdownToHtml = (text) => {
+        if (!text) return '';
+        let html = text
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negritas
+          .replace(/^#+\s*(.*?)$/gm, '<h3 style="color: #2C3D37; margin-top: 15px; margin-bottom: 10px; font-size: 16px;">$1</h3>') // Títulos
+          .replace(/^\s*[-*]\s+(.*?)$/gm, '<li style="margin-bottom: 5px;">$1</li>'); // Listas
+
+        // Envolver listas
+        if (html.includes('<li>')) {
+          html = html.replace(/((<li.*?>.*?<\/li>\s*)+)/s, '<ul style="padding-left: 20px; margin-bottom: 15px;">$1</ul>');
+        }
+
+        // Párrafos (saltos de línea dobles)
+        html = html.replace(/\n\n/g, '<br><br>');
+
+        return html;
+      };
+
+      const comparablesList = data.comparables_data?.comparables || [];
+      const analisisTexto = data.comparables_data?.perplexity_full_text || '';
+
       const emailBody = `
 <!DOCTYPE html>
 <html lang="es">
@@ -44,129 +87,175 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reporte de Avalúo - ${data.codigo_avaluo}</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap');
+    
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Arial', 'Helvetica', sans-serif;
+      font-family: 'Raleway', 'Arial', sans-serif;
       line-height: 1.6;
-      color: #2C3D37;
+      color: #4F5B55;
       background-color: #F5F4F0;
       padding: 20px;
     }
     .container {
-      max-width: 700px;
+      max-width: 800px;
       margin: 0 auto;
       background: white;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
-    .header {
+    
+    /* HERO SECTION */
+    .hero {
       background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
       color: white;
-      padding: 40px 30px;
-      text-align: center;
+      padding: 40px;
+      position: relative;
     }
-    .header img { max-width: 180px; margin-bottom: 20px; }
-    .header h1 { font-size: 26px; margin-bottom: 10px; }
-    .header .codigo {
-      background: rgba(255,255,255,0.2);
-      padding: 8px 16px;
+    .hero-content {
+      position: relative;
+      z-index: 2;
+    }
+    .hero-badge {
+      background: rgba(201, 193, 157, 0.9);
+      color: #1a2620;
+      padding: 4px 12px;
       border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
       display: inline-block;
-      margin-top: 10px;
-      font-size: 14px;
+      margin-bottom: 15px;
+      font-family: 'Outfit', sans-serif;
     }
-    .content { padding: 30px; }
-    .greeting { font-size: 16px; color: #2C3D37; margin-bottom: 25px; }
-    .section {
-      background: #F5F4F0;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
+    .hero-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      margin-bottom: 5px;
+      color: white;
     }
+    .hero-price {
+      font-family: 'Outfit', sans-serif;
+      font-size: 42px;
+      font-weight: bold;
+      color: white;
+      margin: 15px 0;
+      line-height: 1;
+    }
+    .hero-details-box {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 20px;
+      color: white;
+    }
+    .hero-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+    .hero-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+    
+    /* CONTENT */
+    .content { padding: 40px; }
+    
     .section-title {
+      font-family: 'Outfit', sans-serif;
       font-size: 18px;
       font-weight: bold;
       color: #2C3D37;
+      margin-top: 30px;
       margin-bottom: 15px;
       padding-bottom: 10px;
       border-bottom: 2px solid #B0BDB4;
     }
+    
+    /* INFO GRID */
     .info-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 15px;
-      margin-top: 15px;
     }
     .info-item {
-      background: white;
+      background: #F9FAF9;
       padding: 12px;
-      border-radius: 6px;
-      border-left: 3px solid #2C3D37;
+      border-radius: 8px;
+      border-left: 3px solid #C9C19D;
     }
     .info-label {
       font-size: 11px;
-      color: #666;
+      color: #7A8C85;
       text-transform: uppercase;
-      margin-bottom: 4px;
+      font-weight: 600;
     }
     .info-value {
+      font-family: 'Outfit', sans-serif;
       font-size: 15px;
-      font-weight: bold;
+      font-weight: 600;
       color: #2C3D37;
-      font-family: 'Outfit', sans-serif;
     }
-    .result-box {
-      background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
-      color: white;
-      padding: 30px;
-      border-radius: 10px;
-      text-align: center;
-      margin: 20px 0;
-    }
-    .result-box h2 { font-size: 20px; margin-bottom: 15px; }
-    .result-price {
-      font-size: 36px;
-      font-weight: bold;
-      color: #C9C19D;
-      margin: 15px 0;
-      font-family: 'Outfit', sans-serif;
-    }
-    .result-range {
-      font-size: 14px;
-      opacity: 0.9;
-      margin-top: 10px;
-      font-family: 'Outfit', sans-serif;
-    }
-    .disclaimer {
-      background: #DEE8E9;
-      padding: 20px;
-      border-radius: 8px;
-      font-size: 13px;
-      line-height: 1.8;
-      margin: 20px 0;
-    }
-    .cta-section {
-      background: #DEE8E9;
-      padding: 25px;
-      border-radius: 8px;
-      text-align: center;
-      margin: 20px 0;
-    }
-    .cta-title {
-      font-size: 18px;
-      font-weight: bold;
-      color: #2C3D37;
-      margin-bottom: 15px;
-    }
-    .contact-info {
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    
+    /* METHODS CARDS */
+    .methods-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 20px;
-      flex-wrap: wrap;
-      margin-top: 15px;
+      margin-top: 20px;
     }
+    .method-card {
+      border: 1px solid #E0E5E2;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .method-header {
+      background: #F9FAF9;
+      padding: 10px 15px;
+      border-bottom: 1px solid #F0F2F1;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      color: #2C3D37;
+      font-size: 14px;
+    }
+    .method-body {
+      padding: 20px;
+      text-align: center;
+    }
+    .method-price {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: bold;
+      color: #2C3D37;
+      margin-bottom: 5px;
+    }
+    .method-desc {
+      font-size: 12px;
+      color: #7A8C85;
+    }
+    
+    /* TABLE */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 13px;
+    }
+    th {
+      background: #2C3D37;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+    }
+    
+    /* FOOTER */
     .footer {
       background: #2C3D37;
       color: white;
@@ -174,97 +263,117 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
       text-align: center;
       font-size: 13px;
     }
-    .footer img { max-width: 120px; margin-bottom: 15px; opacity: 0.9; }
+    
     @media only screen and (max-width: 600px) {
-      .info-grid { grid-template-columns: repeat(2, 1fr); }
-      .result-price { font-size: 28px; }
+      .methods-grid { grid-template-columns: 1fr; }
+      .info-grid { grid-template-columns: 1fr; }
+      .hero-price { font-size: 32px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal Hábitats">
-      <h1>Reporte de Avalúo Comercial Inmobiliario</h1>
-      <div class="codigo">Código: ${data.codigo_avaluo}</div>
-      <p style="margin-top: 10px; font-size: 14px; opacity: 0.9;">${new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-content">
+        <div class="hero-badge">ESTIMACIÓN IA</div>
+        <div class="hero-title">Valor Comercial Estimado</div>
+        <div class="hero-price">${formatCurrency(valorEstimadoFinal)}</div>
+        <div style="font-size: 14px; opacity: 0.9;">COP (Pesos Colombianos)</div>
+        
+        <div class="hero-details-box">
+          <div class="hero-row">
+            <span>Rango Sugerido</span>
+            <span style="font-weight: bold;">${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</span>
+          </div>
+          <div class="hero-row">
+            <span>Precio m² Ref.</span>
+            <span style="font-weight: bold;">${formatCurrency(precioM2Final)}/m²</span>
+          </div>
+          <div class="hero-row">
+            <span>Muestra</span>
+            <span style="font-weight: bold;">${comparablesList.length} inmuebles</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="content">
-      <div class="greeting">
-        Estimado/a <strong>${data.nombre_contacto}</strong>,<br><br>
-        Gracias por utilizar nuestro servicio de Avalúo Comercial Inmobiliario. A continuación encontrarás el análisis detallado de tu propiedad.
+      <p style="margin-bottom: 20px;">
+        Hola <strong>${data.nombre_contacto}</strong>,<br>
+        Aquí tienes el reporte detallado de tu avalúo generado el ${new Date().toLocaleDateString('es-CO')}.
+      </p>
+
+      <!-- INFO INMUEBLE -->
+      <div class="section-title">📍 Información del Inmueble</div>
+      <div class="info-grid">
+        <div class="info-item"><div class="info-label">Barrio</div><div class="info-value">${data.barrio}</div></div>
+        <div class="info-item"><div class="info-label">Municipio</div><div class="info-value">${data.municipio}</div></div>
+        <div class="info-item"><div class="info-label">Tipo</div><div class="info-value">${data.tipo_inmueble || 'No especificado'}</div></div>
+        <div class="info-item"><div class="info-label">Área</div><div class="info-value">${data.area_construida} m²</div></div>
+        <div class="info-item"><div class="info-label">Habitaciones</div><div class="info-value">${data.habitaciones || '—'}</div></div>
+        <div class="info-item"><div class="info-label">Baños</div><div class="info-value">${data.banos || '—'}</div></div>
       </div>
 
-      <div class="section">
-        <div class="section-title">📍 Información del Inmueble</div>
-        <div class="info-grid">
-          <div class="info-item"><div class="info-label">Barrio</div><div class="info-value">${data.barrio}</div></div>
-          <div class="info-item"><div class="info-label">Municipio</div><div class="info-value">${data.municipio}</div></div>
-          <div class="info-item"><div class="info-label">Tipo</div><div class="info-value">${data.tipo_inmueble || 'No especificado'}</div></div>
-          <div class="info-item"><div class="info-label">Área Construida</div><div class="info-value" style="font-family: 'Outfit', sans-serif;">${data.area_construida} m²</div></div>
-          <div class="info-item"><div class="info-label">Habitaciones</div><div class="info-value" style="font-family: 'Outfit', sans-serif;">${data.habitaciones || '—'}</div></div>
-          <div class="info-item"><div class="info-label">Baños</div><div class="info-value" style="font-family: 'Outfit', sans-serif;">${data.banos || '—'}</div></div>
-          <div class="info-item"><div class="info-label">Parqueaderos</div><div class="info-value" style="font-family: 'Outfit', sans-serif;">${data.tipo_parqueadero === 'propio' ? 'Propio' : data.tipo_parqueadero === 'comunal' ? 'Comunal' : 'No tiene'}</div></div>
-          ${data.contexto_zona ? `<div class="info-item"><div class="info-label">Contexto Zona</div><div class="info-value">${data.contexto_zona === 'conjunto_cerrado' ? 'Conjunto Cerrado' : data.contexto_zona === 'urbanizacion_porteria' ? 'Urbanización con Portería' : 'Barrio Abierto'}</div></div>` : ''}
+      <!-- MÉTODOS -->
+      <div class="methods-grid">
+        <div class="method-card">
+          <div class="method-header">Enfoque de Mercado</div>
+          <div class="method-body">
+            <div class="method-price">${formatCurrency(valorVentaDirecta)}</div>
+            <div class="method-desc">Basado en comparables de venta</div>
+          </div>
         </div>
-      </div>
-
-      <div class="result-box">
-        <h2>💰 Valor Comercial Estimado</h2>
-        <div class="result-price" style="font-family: 'Outfit', sans-serif;">$${valorEstimadoFinal.toLocaleString('es-CO', { maximumFractionDigits: 0 })}</div>
-        <div class="result-range" style="font-family: 'Outfit', sans-serif;">
-          Rango: $${rangoMin.toLocaleString('es-CO', { maximumFractionDigits: 0 })} - $${rangoMax.toLocaleString('es-CO', { maximumFractionDigits: 0 })}
-        </div>
-        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.3);">
-          <div style="font-size: 13px; margin-bottom: 5px;">Precio por m²</div>
-          <div style="font-size: 22px; font-weight: bold; color: #C9C19D; font-family: 'Outfit', sans-serif;">
-            $${precioM2Final.toLocaleString('es-CO', { maximumFractionDigits: 0 })}/m²
+        <div class="method-card">
+          <div class="method-header">Enfoque de Rentabilidad</div>
+          <div class="method-body">
+            <div class="method-price">${formatCurrency(valorRentabilidad)}</div>
+            <div class="method-desc">Basado en canon estimado y yield</div>
           </div>
         </div>
       </div>
 
-      <div class="section">
-        <div class="section-title">📊 Análisis de Mercado</div>
-        <p style="margin-top: 10px; line-height: 1.8;">
-          Se analizaron <strong>${comparablesData?.total_comparables || 0} propiedades comparables</strong> en la zona para determinar el valor de mercado de tu inmueble.
-        </p>
-        ${comparablesData?.resumen_busqueda ? `
-          <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 6px; line-height: 1.8;">
-            ${comparablesData.resumen_busqueda}
-          </div>
-        ` : ''}
+      <!-- COMPARABLES -->
+      <div class="section-title">📊 Propiedades Comparables</div>
+      <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+        Muestra de las propiedades utilizadas para el análisis (Top 10):
+      </p>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Inmueble</th>
+              <th>Ubicación</th>
+              <th style="text-align: center;">Área</th>
+              <th style="text-align: right;">Precio</th>
+              <th style="text-align: right;">m²</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${generarFilasComparables(comparablesList)}
+          </tbody>
+        </table>
       </div>
 
-      <div class="disclaimer">
-        <strong>⚠️ Aviso Legal:</strong><br>
-        Este avalúo comercial es una estimación basada en el análisis de propiedades comparables en el mercado inmobiliario actual y no constituye un avalúo oficial o catastral. Los valores presentados son aproximados y pueden variar según las condiciones específicas del inmueble y del mercado. Para transacciones legales o financieras, se recomienda obtener un avalúo oficial realizado por un perito avaluador certificado.
+      <!-- ANÁLISIS IA -->
+      <div class="section-title">🤖 Análisis Detallado</div>
+      <div style="background: #F9FAF9; padding: 20px; border-radius: 8px; font-size: 14px; color: #4F5B55;">
+        ${markdownToHtml(analisisTexto)}
       </div>
 
-      <div class="cta-section">
-        <div class="cta-title">¿Interesado en vender o comprar?</div>
-        <p style="color: #2C3D37; margin-bottom: 20px;">En Quetzal Hábitats te ayudamos a encontrar el comprador ideal o la propiedad perfecta para ti. Contáctanos para una asesoría personalizada sin compromiso.</p>
+      <!-- CTA -->
+      <div style="background: #DEE8E9; padding: 25px; border-radius: 8px; text-align: center; margin-top: 30px;">
+        <h3 style="color: #2C3D37; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">¿Interesado en vender o comprar?</h3>
+        <p style="margin-bottom: 15px; font-size: 14px;">En Quetzal Hábitats te ayudamos a encontrar el comprador ideal.</p>
+        <a href="https://wa.me/573186383809" style="display: inline-block; background: #2C3D37; color: white; text-decoration: none; padding: 10px 20px; border-radius: 25px; font-weight: bold; font-size: 14px;">Contactar Asesor</a>
       </div>
 
-      <div class="cta-section">
-        <div class="cta-title">¿Necesitas más información?</div>
-        <div style="display: flex; justify-content: center; align-items: center; gap: 30px; flex-wrap: wrap; margin-top: 15px;">
-          <span style="font-size: 14px; color: #2C3D37;">📞 +57 318 638 3809</span>
-          <span style="font-size: 14px; color: #2C3D37;">✉️ contacto@quetzalhabitats.com</span>
-        </div>
-      </div>
     </div>
 
     <div class="footer">
-      <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal Hábitats">
-      <p><strong>Quetzal Hábitats</strong></p>
-      <p>Avalúo Comercial Inmobiliario</p>
-      <p style="margin-top: 15px;">
-        📍 Cundinamarca, Colombia
-      </p>
-      <p style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
-        © 2025 Quetzal Hábitats - Todos los derechos reservados
-      </p>
+      <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal" style="width: 100px; margin-bottom: 15px; opacity: 0.8;">
+      <p>© 2025 Quetzal Hábitats - Todos los derechos reservados</p>
+      <p style="font-size: 11px; opacity: 0.6; margin-top: 5px;">Código: ${data.codigo_avaluo}</p>
     </div>
   </div>
 </body>
