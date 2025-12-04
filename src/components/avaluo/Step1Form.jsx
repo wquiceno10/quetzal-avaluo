@@ -38,7 +38,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch('/api/uploadFile', {
+        const response = await fetch(import.meta.env.VITE_WORKER_UPLOAD_URL, {
           method: 'POST',
           body: formData
         });

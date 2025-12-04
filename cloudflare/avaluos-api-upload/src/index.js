@@ -27,9 +27,9 @@ export default {
 
         try {
             const supabaseUrl = env.SUPABASE_URL;
-            const supabaseAnonKey = env.SUPABASE_ANON_KEY;
+            const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY; // Fallback to Anon if Service Role is missing, but Service Role is needed for RLS bypass
 
-            if (!supabaseUrl || !supabaseAnonKey) {
+            if (!supabaseUrl || !supabaseKey) {
                 return new Response(
                     JSON.stringify({ error: 'Supabase not configured' }),
                     { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -58,8 +58,8 @@ export default {
                 {
                     method: 'POST',
                     headers: {
-                        'apikey': supabaseAnonKey,
-                        'Authorization': `Bearer ${supabaseAnonKey}`,
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`,
                         'Content-Type': file.type || 'application/octet-stream',
                         'x-upsert': 'false'
                     },
