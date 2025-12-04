@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, CheckCircle } from 'lucide-react';
-import { api } from '@/api/client';
+// import { api } from '@/api/client'; // Removed legacy import
 import { createPageUrl } from '@/utils';
 
 export default function AccesoClientes() {

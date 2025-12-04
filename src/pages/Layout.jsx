@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Loader2 } from 'lucide-react';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { api } from '@/api/client';
+import { createClient } from '@supabase/supabase-js';
+// import { api } from '@/api/client'; // Removed legacy import
 import { createPageUrl } from '@/utils';
 
 
