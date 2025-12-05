@@ -101,7 +101,7 @@ INSTRUCCIONES GENERALES (GESTIÓN DE FALLBACK)
 2. NUNCA devuelvas valores "0", "null", "N/A" o similares.
 3. Si un dato no aparece directamente, GENERA una estimación razonable basada en promedios municipales.
 4. Siempre entrega comparables suficientes:
-   - Entrega idealmente entre 12 y 15 comparables en total.
+   - Entrega idealmente entre 15 y 20 comparables en total.
    - Incluye propiedades en arriendo (mínimo 3).
    - Incluye propiedades de barrios similares.
 5. NO incluyas hipervínculos ni enlaces. Solo textos descriptivos.

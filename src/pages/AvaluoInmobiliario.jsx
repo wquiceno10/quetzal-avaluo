@@ -4,6 +4,7 @@ import Step1Form from '../components/avaluo/Step1Form';
 import Step2Analysis from '../components/avaluo/Step2Analysis';
 import Step3Results from '../components/avaluo/Step3Results';
 import Step4Contact from '../components/avaluo/Step4Contact';
+import { createClient } from '@supabase/supabase-js';
 
 const initialState = {
   tipo_inmueble: '',
@@ -28,15 +29,37 @@ export default function AvaluoInmobiliario() {
   const [currentStep, setCurrentStep] = useState(1);
   const contentRef = useRef(null);
   const [avaluoData, setAvaluoData] = useState(initialState);
+  const [hasAvaluos, setHasAvaluos] = useState(false);
 
-  // Detectar modo desarrollo
-  const href = window.location.href;
-  const isDevMode =
-    href.includes('/editor/preview/') ||
-    href.includes('/sandbox/preview-url') ||
-    href.includes('server_url=') ||
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1';
+  const isDevMode = import.meta.env.MODE === 'development';
+
+  // Check if user has avalúos
+  useEffect(() => {
+    const checkAvaluos = async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+        if (supabaseUrl && supabaseAnonKey) {
+          const supabase = createClient(supabaseUrl, supabaseAnonKey);
+          const { data: { user } } = await supabase.auth.getUser();
+
+          if (user) {
+            const { count } = await supabase
+              .from('avaluos')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id);
+
+            setHasAvaluos(count > 0);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking avalúos:', error);
+      }
+    };
+
+    checkAvaluos();
+  }, []);
 
   const handleUpdateData = (newData) => {
     setAvaluoData(prev => ({ ...prev, ...newData }));
@@ -84,18 +107,20 @@ export default function AvaluoInmobiliario() {
         <StepIndicator currentStep={currentStep} />
       </div>
 
-      {/* Botón Mis Avalúos - Debajo del StepIndicator */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-end">
-        <a
-          href="/mis-avaluos"
-          className="inline-flex items-center gap-2 px-5 py-2 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full text-sm font-medium transition-all shadow-md hover:shadow-lg"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Mis Avalúos
-        </a>
-      </div>
+      {/* Botón Mis Avalúos - Debajo del StepIndicator (solo si tiene avalúos) */}
+      {hasAvaluos && (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-end">
+          <a
+            href="/mis-avaluos"
+            className="inline-flex items-center gap-2 px-5 py-2 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full text-sm font-medium transition-all shadow-md hover:shadow-lg"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Mis Avalúos
+          </a>
+        </div>
+      )}
 
 
 
