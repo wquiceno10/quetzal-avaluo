@@ -343,53 +343,6 @@ export default function BotonPDF({ formData }) {
                 </div>
                 <div class="method-card">
                   <div class="method-label">Enfoque de Rentabilidad</div>
-                  <div class="method-val">${formatCurrency(valorRentabilidad)}</div>
-                  <div style="font-size: 11px; color: #666;">Basado en canon estimado y yield</div>
-                </div>
-              </div>
-
-              <div class="analysis-section">
-                <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); border-bottom: 2px solid var(--secondary); display: inline-block; padding-bottom: 5px;">Análisis Detallado IA</h3>
-                <div class="analysis-text">
-                  ${(comparablesData.perplexity_full_text || '')
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/###/g, '')
-          .replace(/\n/g, '<br/>')}
-                </div>
-              </div>
-
-              <div style="page-break-inside: avoid;">
-                <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-top: 30px;">Evidencia de Mercado (Muestra)</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Propiedad</th>
-                      <th>Tipo</th>
-                      <th>Área</th>
-                      <th>Precio</th>
-                      <th>$/m²</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${(comparablesData.comparables || []).slice(0, 12).map(comp => `
-                      <tr>
-                        <td>${comp.titulo.substring(0, 40)}...</td>
-                        <td>${comp.tipo_origen}</td>
-                        <td>${Math.round(comp.area_m2)} m²</td>
-                        <td>${formatCurrency(comp.precio_cop)}</td>
-                        <td>${formatCurrency(comp.precio_m2)}</td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-                <p style="font-size: 10px; color: #888; margin-top: 5px;">* Muestra parcial de los comparables más relevantes utilizados en el estudio.</p>
-              </div>
-
-              <div class="footer">
-                <p><strong>Quetzal Hábitats - Inteligencia Inmobiliaria</strong></p>
-                <p>Este documento es una estimación de valor basada en datos estadísticos y no constituye un avalúo certificado por la lonja.</p>
-                <p>Generado el ${fecha}</p>
-              </div>
             </div>
           </div>
         </body>

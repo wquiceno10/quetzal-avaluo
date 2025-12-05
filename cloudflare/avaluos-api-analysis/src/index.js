@@ -134,7 +134,6 @@ IMPORTANTE:
 - Respeta EXACTAMENTE este formato. Usa pipes "|" como separadores.
 - Cada línea en su propia línea.
 - Separa cada comparable con una línea en blanco.
-- Para cada comparable indica si es "Mismo barrio", "Barrio similar" o "Zona cercana" en el título o descripción.
 
 ## 2. ANÁLISIS DEL VALOR
 

@@ -55,7 +55,7 @@ const AnalisisAI = ({ text }) => {
           );
         }
         return (
-          <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid" dangerouslySetInnerHTML={{ __html: trimmed }} />
+          <p key={index} className="mb-4 text-sm leading-relaxed text-left break-inside-avoid" dangerouslySetInnerHTML={{ __html: trimmed }} />
         );
       })}
     </div>

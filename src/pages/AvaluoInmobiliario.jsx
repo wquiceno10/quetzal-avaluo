@@ -67,6 +67,11 @@ export default function AvaluoInmobiliario() {
 
   const handleNext = () => {
     setCurrentStep(prev => Math.min(prev + 1, 4));
+
+    // If moving to step 4 (contact/email), mark that user will have an avalúo
+    if (currentStep === 3) {
+      setHasAvaluos(true);
+    }
   };
 
   const handleBack = () => {

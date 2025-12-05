@@ -55,7 +55,7 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
             <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${c.titulo ? c.titulo.substring(0, 40) + (c.titulo.length > 40 ? '...' : '') : 'Inmueble'}</td>
             <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${c.tipo_origen || '—'}</td>
             <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: center;">${Math.round(c.area_m2)} m²</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: right;">${formatCurrency(c.precio_cop)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: right;">${formatCurrency(c.precio_publicado)}</td>
             <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: right;">${formatCurrency(c.precio_m2)}</td>
           </tr>
         `).join('');
@@ -203,7 +203,7 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
                       <th>Inmueble</th>
                       <th>Tipo</th>
                       <th style="text-align: center;">Área</th>
-                      <th style="text-align: right;">Precio</th>
+                      <th style="text-align: right;">Precio Publicado</th>
                       <th style="text-align: right;">m²</th>
                     </tr>
                   </thead>
