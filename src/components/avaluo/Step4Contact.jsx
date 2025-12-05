@@ -187,11 +187,13 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
                   <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
                   <div style="font-size: 10px; color: #888;">Comparables Venta</div>
                 </div>
+                ${valorRentabilidad ? `
                 <div class="method-card">
                   <div class="method-label">Enfoque de Rentabilidad</div>
                   <div class="method-val">${formatCurrency(valorRentabilidad)}</div>
                   <div style="font-size: 10px; color: #888;">Capitalización de Rentas</div>
                 </div>
+                ` : ''}
               </div>
 
               <!-- COMPARABLES -->

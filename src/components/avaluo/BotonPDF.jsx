@@ -55,16 +55,15 @@ export default function BotonPDF({ formData }) {
             body {
               font-family: 'Raleway', sans-serif;
               color: var(--text);
-              background: #F0F0F0; /* Fondo gris claro para resaltar la "hoja" */
+              background: #F0F0F0;
               margin: 0;
               padding: 20px;
               line-height: 1.5;
             }
 
-            /* CONTENEDOR RESPONSIVO (768px tablet / 960px wide) */
             .container {
               width: 100%;
-              max-width: 960px; /* Pantallas Anchas */
+              max-width: 960px;
               margin: 0 auto;
               background: white;
               box-shadow: 0 10px 30px rgba(0,0,0,0.1);
@@ -72,13 +71,6 @@ export default function BotonPDF({ formData }) {
               position: relative;
             }
 
-            @media (max-width: 1024px) {
-              .container {
-                max-width: 768px; /* Pantallas Tablet */
-              }
-            }
-
-            /* Estilos de Impresión */
             @media print {
               body { background: white; padding: 0; }
               .container { 
@@ -87,12 +79,9 @@ export default function BotonPDF({ formData }) {
                 box-shadow: none; 
                 margin: 0;
               }
-              .hero { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              .card { break-inside: avoid; }
               .page-break { page-break-before: always; }
             }
 
-            /* HEADER CON LOGO */
             .header {
               display: flex;
               justify-content: space-between;
@@ -101,22 +90,11 @@ export default function BotonPDF({ formData }) {
               border-bottom: 2px solid var(--primary);
               margin-bottom: 30px;
             }
-            .header img {
-              max-width: 180px;
-              height: auto;
-            }
-            .report-meta {
-              text-align: right;
-              font-size: 12px;
-              color: #888;
-            }
+            .header img { max-width: 180px; height: auto; }
+            .report-meta { text-align: right; font-size: 12px; color: #888; }
 
-            /* CONTENIDO PRINCIPAL */
-            .content {
-              padding: 0 50px 50px 50px;
-            }
+            .content { padding: 0 50px 50px 50px; }
 
-            /* HERO SECTION (VALOR) */
             .hero {
               background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
               color: white;
@@ -128,156 +106,39 @@ export default function BotonPDF({ formData }) {
               margin-bottom: 40px;
               box-shadow: 0 10px 20px rgba(44, 61, 55, 0.15);
             }
-            .hero-title {
-              font-family: 'Outfit', sans-serif;
-              font-size: 14px;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              opacity: 0.8;
-              margin-bottom: 10px;
-            }
-            .hero-price {
-              font-family: 'Outfit', sans-serif;
-              font-size: 42px;
-              font-weight: 700;
-              color: white;
-            }
-            .hero-subtitle {
-              font-size: 14px;
-              opacity: 0.8;
-            }
-            .hero-stats {
-              text-align: right;
-              border-left: 1px solid rgba(255,255,255,0.2);
-              padding-left: 30px;
-            }
-            .stat-row {
-              margin-bottom: 10px;
-            }
-            .stat-label {
-              font-size: 12px;
-              opacity: 0.7;
-              display: block;
-            }
-            .stat-value {
-              font-family: 'Outfit', sans-serif;
-              font-size: 18px;
-              font-weight: 600;
-              color: var(--secondary);
-            }
+            .hero-title { font-family: 'Outfit', sans-serif; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 10px; }
+            .hero-price { font-family: 'Outfit', sans-serif; font-size: 42px; font-weight: 700; color: white; }
+            .hero-subtitle { font-size: 14px; opacity: 0.8; }
+            .hero-stats { text-align: right; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 30px; }
+            .stat-label { font-size: 12px; opacity: 0.7; display: block; }
+            .stat-value { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 600; color: var(--secondary); }
 
-            /* GRID DE INFORMACIÓN */
-            .grid-2 {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 30px;
-              margin-bottom: 40px;
-            }
-            .card {
-              background: var(--bg);
-              padding: 25px;
-              border-radius: 10px;
-              border: 1px solid var(--border);
-            }
-            .card-title {
-              font-family: 'Outfit', sans-serif;
-              font-size: 16px;
-              font-weight: 700;
-              color: var(--primary);
-              margin-bottom: 15px;
-              padding-bottom: 10px;
-              border-bottom: 1px dashed #ccc;
-            }
-            
-            .info-row {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 12px;
-              font-size: 13px;
-            }
-            .info-row strong {
-              color: var(--primary);
-            }
+            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
+            .card { background: var(--bg); padding: 25px; border-radius: 10px; border: 1px solid var(--border); }
+            .card-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed #ccc; }
+            .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px; }
+            .info-row strong { color: var(--primary); }
 
-            /* MÉTODOS DE VALORACIÓN */
-            .methods-container {
-              display: flex;
-              gap: 20px;
-              margin-bottom: 40px;
-            }
-            .method-card {
-              flex: 1;
-              background: white;
-              border: 1px solid var(--border);
-              border-radius: 8px;
-              padding: 20px;
-              text-align: center;
-            }
-            .method-val {
-              font-family: 'Outfit', sans-serif;
-              font-size: 24px;
-              font-weight: 700;
-              color: var(--primary);
-              margin: 10px 0;
-            }
-            .method-label {
-              font-size: 12px;
-              text-transform: uppercase;
-              color: #888;
-              letter-spacing: 1px;
-            }
-
-            /* ANÁLISIS IA */
-            .analysis-section {
-              margin-bottom: 40px;
-            }
-            .analysis-text {
-              column-count: 2;
-              column-gap: 40px;
-              font-size: 13px;
-              text-align: justify;
-            }
-            .analysis-text h3 {
-              font-family: 'Outfit', sans-serif;
-              font-size: 16px;
-              color: var(--primary);
-              margin-top: 20px;
-              margin-bottom: 10px;
-              break-after: avoid;
-            }
-            .analysis-text p {
-              margin-bottom: 15px;
-            }
+            .methods-container { display: flex; gap: 20px; margin-bottom: 40px; justify-content: center; }
+            .method-card { flex: 1; max-width: 300px; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
+            .method-val { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 700; color: var(--primary); margin: 10px 0; }
+            .method-label { font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
 
             /* TABLA COMPARABLES */
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              font-size: 11px;
-              margin-top: 20px;
-            }
-            th {
-              background: var(--primary);
-              color: white;
-              padding: 10px;
-              text-align: left;
-              font-family: 'Outfit', sans-serif;
-            }
-            td {
-              padding: 8px 10px;
-              border-bottom: 1px solid var(--border);
-            }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 20px; }
+            th { background: var(--primary); color: white; padding: 10px; text-align: left; font-family: 'Outfit', sans-serif; }
+            td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
             tr:nth-child(even) { background: #f9f9f9; }
-
-            /* FOOTER */
-            .footer {
-              margin-top: 60px;
-              border-top: 2px solid var(--primary);
-              padding-top: 20px;
-              text-align: center;
-              font-size: 11px;
-              color: #888;
+            .badge { 
+              display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: uppercase;
             }
+            .badge-venta { background: #E8F5E9; color: #2E7D32; }
+            .badge-arriendo { background: #E3F2FD; color: #1565C0; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            .sub-text { font-size: 9px; color: #888; display: block; margin-top: 2px; }
+
+            .footer { margin-top: 60px; border-top: 2px solid var(--primary); padding-top: 20px; text-align: center; font-size: 11px; color: #888; }
           </style>
         </head>
         <body>
@@ -341,8 +202,71 @@ export default function BotonPDF({ formData }) {
                   <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
                   <div style="font-size: 11px; color: #666;">Basado en comparables de venta directa</div>
                 </div>
+                ${valorRentabilidad ? `
                 <div class="method-card">
                   <div class="method-label">Enfoque de Rentabilidad</div>
+                  <div class="method-val">${formatCurrency(valorRentabilidad)}</div>
+                  <div style="font-size: 11px; color: #666;">Basado en canon estimado y yield</div>
+                </div>
+                ` : ''}
+              </div>
+
+              <div class="page-break"></div>
+
+              <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; margin-top: 30px;">Evidencia de Mercado (Muestra)</h3>
+              
+              <table>
+                <thead>
+                  <tr>
+                    <th width="25%">Propiedad</th>
+                    <th width="10%">Tipo</th>
+                    <th width="10%">Área</th>
+                    <th width="15%" class="text-right">Precio</th>
+                    <th width="20%" class="text-right">Valor Estimado</th>
+                    <th width="20%" class="text-right">$/m²</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${(comparablesData.comparables || []).map(item => {
+        const esArriendo = item.tipo_origen === 'arriendo';
+        const badgeClass = esArriendo ? 'badge-arriendo' : 'badge-venta';
+        const tipoLabel = esArriendo ? 'Arriendo' : 'Venta';
+
+        const notaArriendo = esArriendo
+          ? `<span class="sub-text">Estimado por rentabilidad (Yield ${(item.yield_mensual * 100).toFixed(2)}%)</span>`
+          : '';
+
+        return `
+                      <tr>
+                        <td>
+                          <strong>${item.titulo || 'Inmueble'}</strong><br>
+                          <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
+                        </td>
+                        <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+                        <td class="text-center">${formatNumber(item.area_m2)} m²</td>
+                        <td class="text-right">
+                          ${formatCurrency(item.precio_publicado)}
+                          ${esArriendo ? '<span class="sub-text">/mes</span>' : ''}
+                        </td>
+                        <td class="text-right">
+                          <strong>${formatCurrency(item.precio_cop)}</strong>
+                          ${notaArriendo}
+                        </td>
+                        <td class="text-right">
+                          ${formatCurrency(item.precio_m2)}
+                        </td>
+                      </tr>
+                    `;
+      }).join('')}
+                </tbody>
+              </table>
+
+              <div class="footer">
+                <p>Quetzal Hábitats - Inteligencia Inmobiliaria</p>
+                <p>Este documento es una estimación de valor basada en datos estadísticos y no constituye un avalúo certificado por la lonja.</p>
+                <p>Generado el ${fecha}</p>
+              </div>
+
             </div>
           </div>
         </body>

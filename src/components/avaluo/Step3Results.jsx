@@ -160,7 +160,8 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
       </Card>
 
       {/* 2. MÉTODOS DESGLOSADOS (ESTILO CORREGIDO: SIN SUBTÍTULOS, TEXTOS PAREJOS) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* 2. MÉTODOS DESGLOSADOS (ADAPTATIVO) */}
+      <div className={valorRentabilidad ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "max-w-lg mx-auto"}>
         {/* Venta Directa */}
         <Card className="border-[#E0E5E2] shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
@@ -171,16 +172,13 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
             <div className="text-center">
-              {/* SUBTÍTULO ELIMINADO */}
               <div className="text-3xl font-bold text-[#2C3D37] mt-1 font-outfit">
                 {formatCurrency(valorVentaDirecta)}
               </div>
             </div>
-            {/* DESCRIPCIÓN: TEXTO SM */}
             <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
               Basado en el precio por m² de propiedades similares ofertadas en la zona.
             </p>
-            {/* PRECIO M2: TEXTO SM (Emparejado) */}
             <div className="flex justify-between items-center pt-2 mt-1">
               <span className="text-sm text-[#7A8C85]">Precio m² estimado:</span>
               <span className="text-sm font-semibold text-[#2C3D37]">
@@ -190,34 +188,33 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
           </CardContent>
         </Card>
 
-        {/* Rentabilidad */}
-        <Card className="border-[#E0E5E2] shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
-            <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
-              <Calculator className="w-4 h-4 text-[#C9C19D]" />
-              Enfoque de Rentabilidad (Capitalización)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-4">
-            <div className="text-center">
-              {/* SUBTÍTULO ELIMINADO */}
-              <div className="text-3xl font-bold text-[#2C3D37] mt-1 font-outfit">
-                {formatCurrency(valorRentabilidad)}
+        {/* Rentabilidad (Condicional) */}
+        {valorRentabilidad && (
+          <Card className="border-[#E0E5E2] shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
+              <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
+                <Calculator className="w-4 h-4 text-[#C9C19D]" />
+                Enfoque de Rentabilidad (Capitalización)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-[#2C3D37] mt-1 font-outfit">
+                  {formatCurrency(valorRentabilidad)}
+                </div>
               </div>
-            </div>
-            {/* DESCRIPCIÓN: TEXTO SM */}
-            <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
-              Estimación basada en el canon de arrendamiento potencial y el yield del sector.
-            </p>
-            {/* PRECIO M2: TEXTO SM (Emparejado) */}
-            <div className="flex justify-between items-center pt-2 mt-1">
-              <span className="text-sm text-[#7A8C85]">Precio m² implícito:</span>
-              <span className="text-sm font-semibold text-[#2C3D37]">
-                {areaInmueble && valorRentabilidad ? `${formatCurrency(valorRentabilidad / areaInmueble)}/m²` : '—'}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
+                Estimación basada en el canon de arrendamiento potencial y el yield del sector.
+              </p>
+              <div className="flex justify-between items-center pt-2 mt-1">
+                <span className="text-sm text-[#7A8C85]">Precio m² implícito:</span>
+                <span className="text-sm font-semibold text-[#2C3D37]">
+                  {areaInmueble && valorRentabilidad ? `${formatCurrency(valorRentabilidad / areaInmueble)}/m²` : '—'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Alert className="border-[#C9C19D]/30 bg-[#FFFDF5] text-[#2C3D37]">

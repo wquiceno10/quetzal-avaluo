@@ -56,7 +56,9 @@ export default {
         }
 
         // --- 1. PREPARACIÓN DE DATOS (V9 LOGIC) ---
-        const tipoInmueble = formData.tipo_inmueble || 'inmueble';
+        const tipoInmueble = (formData.tipo_inmueble || 'inmueble').toLowerCase();
+        const esLote = tipoInmueble === 'lote';
+        const usoLote = formData.uso_lote || 'residencial'; // Default a residencial si no viene
         const ubicacion = `${formData.barrio || ''}, ${formData.municipio || ''}`.trim();
 
         // Fallback de área
@@ -64,13 +66,14 @@ export default {
         if (!Number.isFinite(areaBase) || areaBase <= 0) areaBase = 60;
         const area = areaBase;
 
-        const minArea = Math.round(area * 0.7); // -30% (ajustado para dar margen al prompt que pide +/- 50%)
+        const minArea = Math.round(area * 0.7); // -30%
         const maxArea = Math.round(area * 1.3); // +30%
 
         // --- VARIABLES V9 ---
         const areaConstruida = area;
         const infoInmueble = `
 - Tipo: ${tipoInmueble}
+${esLote ? `- Uso del Lote: ${usoLote}` : ''}
 - Ubicación: ${ubicacion}
 - Habitaciones: ${formData.habitaciones || '?'}
 `.trim();
@@ -81,6 +84,19 @@ export default {
 - Rango de áreas VENTA (Estricto): ${Math.round(area * 0.5)} a ${Math.round(area * 1.5)} m² (±50%)
 - SOLO incluye comparables de venta cuyas áreas estén dentro de este rango. Para arriendos, intenta mantener el área similar, pero prioriza encontrar datos.`
             : '';
+
+        // --- INSTRUCCIONES ESPECÍFICAS PARA LOTES ---
+        const instruccionesLote = esLote ? `
+INSTRUCCIONES ESPECIALES PARA LOTES:
+1. OMITIR POR COMPLETO EL ENFOQUE DE RENTABILIDAD. No busques arriendos.
+2. Busca SOLO comparables de VENTA de lotes con uso ${usoLote}.
+3. Si no encuentras suficientes lotes comparables en venta en la zona:
+   - Puedes considerar inmuebles ${usoLote === 'comercial' ? 'comerciales' : 'residenciales'} construidos en el mismo sector.
+   - Estima el valor aproximado del terreno como un porcentaje razonable del valor total del inmueble (Método Residual).
+   - Por ejemplo, un lote puede valer entre 25% y 40% del valor de una propiedad construida si el terreno es el activo principal.
+   - Explica claramente si usas esta lógica de "proxy" en el análisis.
+4. Evita comparar con fincas productivas o proyectos de gran escala si el lote es pequeño/urbano.
+` : '';
 
         // --- PROMPT V9 (ROBUSTO + FALLBACK) ---
         const perplexityPrompt = `
@@ -93,6 +109,8 @@ Basado en estos datos proporcionados por el usuario:
 ${infoInmueble}
 ${areaInstruction}
 
+${instruccionesLote}
+
 INSTRUCCIONES GENERALES (GESTIÓN DE FALLBACK)
 ---------------------------------------------
 1. Si no encuentras suficientes datos reales en portales inmobiliarios, DEBES complementar con:
@@ -102,7 +120,7 @@ INSTRUCCIONES GENERALES (GESTIÓN DE FALLBACK)
 3. Si un dato no aparece directamente, GENERA una estimación razonable basada en promedios municipales.
 4. Siempre entrega comparables suficientes:
    - Entrega idealmente entre 15 y 20 comparables en total.
-   - Incluye propiedades en arriendo (mínimo 3).
+   - ${esLote ? 'SOLO incluye propiedades en VENTA.' : 'Incluye propiedades en arriendo (mínimo 3).'}
    - Incluye propiedades de barrios similares.
 5. NO incluyas hipervínculos ni enlaces. Solo textos descriptivos.
 6. Incluye precios, áreas y valores de mercado siempre en pesos colombianos.
@@ -115,25 +133,25 @@ TAREAS
 
 Primero, detalla brevemente la disponibilidad de información encontrada.
 
-Luego presenta un listado de **entre 15 a 20 comparables** usando EXACTAMENTE este formato (respeta pipes "|" y saltos de línea):
+Luego presenta un listado de **entre 15 a 20 comparables** usando EXACTAMENTE este formato (usa la etiqueta <br> para saltos de línea):
 
-**[Título descriptivo del inmueble]**
-[Tipo de inmueble] | [Venta/Arriendo]
-$[Precio] | [Área] m² | [Hab] hab | [Baños] baños
-[Barrio] | [Ciudad]
+**[Título descriptivo del inmueble]**<br>
+[Tipo de inmueble] | [Venta/Arriendo]<br>
+$[Precio] | [Área] m² | [Hab] hab | [Baños] baños<br>
+[Barrio] | [Ciudad]<br>
 **[Fuente]**
 
 Ejemplo:
-**Apartamento en Condina, Pereira**
-Apartamento | Venta
-$245.000.000 | 68 m² | 3 hab | 2 baños
-Condina | Pereira
+**Apartamento en Condina, Pereira**<br>
+Apartamento | Venta<br>
+$245.000.000 | 68 m² | 3 hab | 2 baños<br>
+Condina | Pereira<br>
 **Fincaraiz**
 
 IMPORTANTE: 
-- Respeta EXACTAMENTE este formato. Usa pipes "|" como separadores.
-- Cada línea en su propia línea.
-- Separa cada comparable con una línea en blanco.
+- Respeta EXACTAMENTE este formato.
+- Usa la etiqueta HTML \`<br>\` al final de cada línea para garantizar el salto de línea visual.
+- Separa cada comparable con una línea en blanco adicional.
 
 ## 2. ANÁLISIS DEL VALOR
 
@@ -142,14 +160,14 @@ IMPORTANTE:
 - Indica el valor por m² FINAL que decides usar (ajustado por antigüedad, estado, etc.).
 - Calcula el valor estimado: Precio por m² final × ${areaConstruida || 'área'} m².
 
-### 2.2. Método de Rentabilidad (Yield Mensual)
+${!esLote ? `### 2.2. Método de Rentabilidad (Yield Mensual)
 - **CÁLCULO DEL CANON:** No uses un promedio simple de precios totales.
   1. Calcula el precio por m² de arriendo de cada comparable (Precio / Área).
   2. Obtén el promedio de canon/m².
   3. Multiplica ese promedio por los ${areaConstruida || 'metros'} m² del inmueble objetivo para obtener el Canon Mensual Estimado.
 - Investiga y Estima el Yield mensual promedio del sector (ej: 0.4% - 0.6%).
 - Presenta el Yield mensual promedio del sector **Yield promedio mercado: 0.45%**
-- Aplica la fórmula: Valor estimado = Canon Mensual Estimado / Yield mensual promedio.
+- Aplica la fórmula: Valor estimado = Canon Mensual Estimado / Yield mensual promedio.` : ''}
 
 ## 3. RESULTADOS FINALES
 Entrega de forma clara:
@@ -236,21 +254,22 @@ INSTRUCCIONES DE EXTRACCIÓN:
    **Fuente**
    
    Extrae:
-   - "titulo": Texto entre ** ** de la primera línea
-   - "tipo_inmueble": Texto antes del | en la segunda línea
+   - "titulo": Texto entre ** ** de la primera línea (sin etiquetas HTML)
+   - "tipo_inmueble": Texto antes del | en la segunda línea (sin etiquetas HTML)
    - "tipo_operacion": Texto después del | en la segunda línea ("Venta" o "Arriendo")
    - "precio_lista": Número después del símbolo $ en la tercera línea (sin puntos ni $)
    - "area": Número antes de "m²" en la tercera línea
    - "habitaciones": Número antes de "hab" en la tercera línea
    - "banos": Número antes de "baños" en la tercera línea
-   - "barrio": Texto antes del | en la cuarta línea
-   - "ciudad": Texto después del | en la cuarta línea
+   - "barrio": Texto antes del | en la cuarta línea (sin etiquetas HTML)
+   - "ciudad": Texto después del | en la cuarta línea (sin etiquetas HTML)
    - "fuente": Texto entre ** ** de la última línea
+
+   IMPORTANTE: Elimina cualquier etiqueta HTML (como <br>) de los valores extraídos.
 
 2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
 
-3. "yield_zona": Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto.
-   Extrae SOLO el número como decimal (ej: si dice "0.45%", devuelve 0.0045).
+3. "yield_zona": ${esLote ? 'IGNORAR (Devolver null)' : 'Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.45%", devuelve 0.0045).'}
 
 4. "valor_recomendado_venta": Busca "Valor Recomendado de Venta: $XXX.XXX.XXX".
    Extrae el número (sin separadores de miles ni símbolo $).
@@ -338,6 +357,9 @@ Devuelve SOLO JSON válido.
                 const esArriendo = c.tipo_operacion?.toLowerCase().includes('arriendo');
                 // ---------------------------
 
+                // SI ES LOTE, IGNORAR ARRIENDOS
+                if (esLote && esArriendo) return null;
+
                 let precioVentaEstimado = 0;
                 let precioM2 = 0;
 
@@ -373,7 +395,7 @@ Devuelve SOLO JSON válido.
                     yield_mensual: esArriendo ? yieldFinal : null,
                 };
             })
-            .filter((c) => c.precio_cop > 0 && c.area_m2 > 0);
+            .filter((c) => c && c.precio_cop > 0 && c.area_m2 > 0);
 
         // Validación Mínima
         if (comparables.length < 5) {
@@ -391,35 +413,57 @@ Devuelve SOLO JSON válido.
         const compsVenta = comparables.filter((c) => c.tipo_origen === 'venta');
         const compsArriendo = comparables.filter((c) => c.tipo_origen === 'arriendo');
 
-        // 1. Venta Directa
+        // 1. Venta Directa (CON PODA DE OUTLIERS)
         let valorVentaDirecta = null;
         let precioM2Promedio = 0;
+
         if (compsVenta.length > 0) {
-            const sumM2 = compsVenta.reduce((acc, c) => acc + c.precio_m2, 0);
-            precioM2Promedio = Math.round(sumM2 / compsVenta.length);
+            // Ordenar por precio m2
+            const sortedByM2 = [...compsVenta].sort((a, b) => a.precio_m2 - b.precio_m2);
+
+            // Poda del 10% superior e inferior (si hay suficientes datos)
+            let filteredComps = sortedByM2;
+            if (sortedByM2.length >= 5) {
+                const cut = Math.floor(sortedByM2.length * 0.1); // 10%
+                filteredComps = sortedByM2.slice(cut, sortedByM2.length - cut);
+            }
+
+            const sumM2 = filteredComps.reduce((acc, c) => acc + c.precio_m2, 0);
+            precioM2Promedio = Math.round(sumM2 / filteredComps.length);
             valorVentaDirecta = Math.round(precioM2Promedio * area);
         }
 
         // 2. Rentabilidad
         let valorRentabilidad = null;
         let canonPromedio = 0;
-        if (compsArriendo.length > 0) {
-            const sumCanon = compsArriendo.reduce((acc, c) => acc + c.precio_publicado, 0);
-            canonPromedio = Math.round(sumCanon / compsArriendo.length);
-            valorRentabilidad = Math.round(canonPromedio / yieldFinal);
-        } else {
-            // Fallback
-            if (valorVentaDirecta) {
-                valorRentabilidad = valorVentaDirecta;
-                canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
+
+        if (!esLote) { // SOLO SI NO ES LOTE
+            if (compsArriendo.length > 0) {
+                const sumCanon = compsArriendo.reduce((acc, c) => acc + c.precio_publicado, 0);
+                canonPromedio = Math.round(sumCanon / compsArriendo.length);
+                valorRentabilidad = Math.round(canonPromedio / yieldFinal);
+            } else {
+                // Fallback
+                if (valorVentaDirecta) {
+                    valorRentabilidad = valorVentaDirecta;
+                    canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
+                }
             }
         }
 
         // 3. Usar valor recomendado por Perplexity (o calcular como fallback)
         const valorRecomendado = sanitizeNumber(extractedData.valor_recomendado_venta);
-        const valorPonderado = (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0)
-            ? Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4)
-            : null;
+
+        let valorPonderado = null;
+        if (esLote) {
+            // Para lotes, solo mercado
+            valorPonderado = valorVentaDirecta;
+        } else {
+            // Para otros, ponderado
+            valorPonderado = (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0)
+                ? Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4)
+                : null;
+        }
 
         const valorFinal = valorRecomendado || valorVentaDirecta || valorRentabilidad || 0;
         const valorFuente = valorRecomendado ? 'perplexity' : 'calculado';

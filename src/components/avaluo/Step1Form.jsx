@@ -87,7 +87,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
 
   const isValid = localData.tipo_inmueble && localData.municipio &&
     localData.departamento && localData.area_construida &&
-    (isLote ? localData.tipo_lote : (localData.barrio && localData.contexto_zona && localData.estado_inmueble && localData.antiguedad)) &&
+    (isLote ? localData.uso_lote : (localData.barrio && localData.contexto_zona && localData.estado_inmueble && localData.antiguedad)) &&
     isRemodelacionValid &&
     (isLote || localData.contexto_zona !== 'conjunto_cerrado' || (localData.nombre_conjunto && localData.nombre_conjunto.trim().length >= 3));
 
@@ -122,14 +122,14 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
 
             {isLote && (
               <div className="space-y-2">
-                <Label className="text-[#2C3D37] font-medium">Tipo de Lote *</Label>
-                <Select value={localData.tipo_lote || ''} onValueChange={(value) => handleChange('tipo_lote', value)}>
+                <Label className="text-[#2C3D37] font-medium">Uso del Lote *</Label>
+                <Select value={localData.uso_lote || ''} onValueChange={(value) => handleChange('uso_lote', value)}>
                   <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
                     <SelectValue placeholder="Selecciona" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="urbano">Urbano</SelectItem>
-                    <SelectItem value="rural">Rural</SelectItem>
+                    <SelectItem value="residencial">Residencial</SelectItem>
+                    <SelectItem value="comercial">Comercial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
