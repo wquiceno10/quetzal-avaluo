@@ -7,6 +7,7 @@ export default function BotonPDF({ formData }) {
   const generatePDFMutation = useMutation({
     mutationFn: async (data) => {
       const comparablesData = data.comparables_data || {};
+      const esLote = (formData.tipo_inmueble || '').toLowerCase() === 'lote';
 
       // Cálculos de valores (Lógica espejo del frontend)
       const valorVentaDirecta = comparablesData.valor_estimado_venta_directa;
@@ -31,6 +32,17 @@ export default function BotonPDF({ formData }) {
 
       // Fecha actual
       const fecha = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      // Función para formatear texto (Markdown simple a HTML)
+      const formatText = (text) => {
+        if (!text) return '';
+        return text
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negritas
+          .replace(/^#+\s*(.*?)$/gm, '<h4 style="color: #2C3D37; margin-top: 15px; margin-bottom: 8px; font-size: 13px; border-bottom: 1px dashed #ccc;">$1</h4>') // Títulos
+          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px;">$1</li>') // Listas
+          .replace(/\n\n/g, '<br><br>') // Saltos de párrafo
+          .replace(/\n/g, '<br>'); // Saltos de línea simples
+      };
 
       // HTML DEL REPORTE
       const htmlContent = `
@@ -58,7 +70,7 @@ export default function BotonPDF({ formData }) {
               background: #F0F0F0;
               margin: 0;
               padding: 20px;
-              line-height: 1.5;
+              line-height: 1.4;
             }
 
             .container {
@@ -80,65 +92,70 @@ export default function BotonPDF({ formData }) {
                 margin: 0;
               }
               .page-break { page-break-before: always; }
+              .avoid-break { page-break-inside: avoid; }
             }
 
             .header {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              padding: 40px 50px 20px 50px;
+              padding: 30px 50px 15px 50px; /* Padding reducido */
               border-bottom: 2px solid var(--primary);
-              margin-bottom: 30px;
+              margin-bottom: 20px;
             }
-            .header img { max-width: 180px; height: auto; }
-            .report-meta { text-align: right; font-size: 12px; color: #888; }
+            .header img { max-width: 160px; height: auto; }
+            .report-meta { text-align: right; font-size: 11px; color: #888; }
 
-            .content { padding: 0 50px 50px 50px; }
+            .content { padding: 0 50px 40px 50px; }
 
             .hero {
               background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
               color: white;
-              padding: 40px;
+              padding: 30px; /* Padding reducido */
               border-radius: 12px;
               display: flex;
               justify-content: space-between;
               align-items: center;
-              margin-bottom: 40px;
+              margin-bottom: 30px;
               box-shadow: 0 10px 20px rgba(44, 61, 55, 0.15);
             }
-            .hero-title { font-family: 'Outfit', sans-serif; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 10px; }
-            .hero-price { font-family: 'Outfit', sans-serif; font-size: 42px; font-weight: 700; color: white; }
-            .hero-subtitle { font-size: 14px; opacity: 0.8; }
+            .hero-title { font-family: 'Outfit', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 8px; }
+            .hero-price { font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; color: white; } /* Tamaño reducido */
+            .hero-subtitle { font-size: 13px; opacity: 0.8; }
             .hero-stats { text-align: right; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 30px; }
-            .stat-label { font-size: 12px; opacity: 0.7; display: block; }
-            .stat-value { font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 600; color: var(--secondary); }
+            .stat-label { font-size: 11px; opacity: 0.7; display: block; }
+            .stat-value { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600; color: var(--secondary); }
 
-            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; }
-            .card { background: var(--bg); padding: 25px; border-radius: 10px; border: 1px solid var(--border); }
-            .card-title { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px dashed #ccc; }
-            .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px; }
+            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px; }
+            .card { background: var(--bg); padding: 20px; border-radius: 10px; border: 1px solid var(--border); }
+            .card-title { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc; }
+            .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; }
             .info-row strong { color: var(--primary); }
 
-            .methods-container { display: flex; gap: 20px; margin-bottom: 40px; justify-content: center; }
-            .method-card { flex: 1; max-width: 300px; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
-            .method-val { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 700; color: var(--primary); margin: 10px 0; }
-            .method-label { font-size: 12px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+            .methods-container { display: flex; gap: 20px; margin-bottom: 30px; justify-content: center; }
+            .method-card { flex: 1; max-width: 300px; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; }
+            .method-val { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; color: var(--primary); margin: 8px 0; }
+            .method-label { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+
+            /* ANÁLISIS DETALLADO */
+            .analysis-section { margin-top: 30px; margin-bottom: 30px; font-size: 12px; text-align: justify; color: #444; }
+            .analysis-section h3 { font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 10px; font-size: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 5px; display: inline-block; }
 
             /* TABLA COMPARABLES */
-            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 20px; }
-            th { background: var(--primary); color: white; padding: 10px; text-align: left; font-family: 'Outfit', sans-serif; }
-            td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 15px; }
+            th { background: var(--primary); color: white; padding: 8px; text-align: left; font-family: 'Outfit', sans-serif; }
+            td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
             tr:nth-child(even) { background: #f9f9f9; }
             .badge { 
-              display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: uppercase;
+              display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 8px; font-weight: 600; text-transform: uppercase;
             }
             .badge-venta { background: #E8F5E9; color: #2E7D32; }
             .badge-arriendo { background: #E3F2FD; color: #1565C0; }
             .text-right { text-align: right; }
             .text-center { text-align: center; }
-            .sub-text { font-size: 9px; color: #888; display: block; margin-top: 2px; }
+            .sub-text { font-size: 8px; color: #888; display: block; margin-top: 2px; }
 
-            .footer { margin-top: 60px; border-top: 2px solid var(--primary); padding-top: 20px; text-align: center; font-size: 11px; color: #888; }
+            .footer { margin-top: 40px; border-top: 2px solid var(--primary); padding-top: 15px; text-align: center; font-size: 10px; color: #888; }
           </style>
         </head>
         <body>
@@ -177,15 +194,20 @@ export default function BotonPDF({ formData }) {
                   <div class="info-row"><span>Tipo Inmueble:</span> <strong>${formData.tipo_inmueble || 'Inmueble'}</strong></div>
                   <div class="info-row"><span>Ubicación:</span> <strong>${formData.barrio || '—'}, ${formData.municipio || '—'}</strong></div>
                   <div class="info-row"><span>Área Construida:</span> <strong>${formData.area_construida || 0} m²</strong></div>
+                  ${!esLote ? `
                   <div class="info-row"><span>Habitaciones:</span> <strong>${formData.habitaciones || '—'}</strong></div>
                   <div class="info-row"><span>Baños:</span> <strong>${formData.banos || '—'}</strong></div>
                   <div class="info-row"><span>Parqueadero:</span> <strong>${formData.tipo_parqueadero || '—'}</strong></div>
                   <div class="info-row"><span>Antigüedad:</span> <strong>${formData.antiguedad || '—'}</strong></div>
+                  ` : ''}
+                  ${esLote ? `
+                  <div class="info-row"><span>Uso del Lote:</span> <strong>${formData.uso_lote || '—'}</strong></div>
+                  ` : ''}
                 </div>
 
                 <div class="card">
                   <div class="card-title">Resumen del Mercado</div>
-                  <p style="font-size: 13px; text-align: justify;">
+                  <p style="font-size: 12px; text-align: justify;">
                     ${comparablesData.resumen_busqueda || 'Análisis de mercado realizado con base en la oferta actual.'}
                   </p>
                   <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;">
@@ -195,7 +217,7 @@ export default function BotonPDF({ formData }) {
                 </div>
               </div>
 
-              <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px;">Metodología de Valoración</h3>
+              <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; font-size: 16px;">Metodología de Valoración</h3>
               <div class="methods-container">
                 <div class="method-card">
                   <div class="method-label">Enfoque de Mercado</div>
@@ -211,23 +233,31 @@ export default function BotonPDF({ formData }) {
                 ` : ''}
               </div>
 
+              <!-- ANÁLISIS DETALLADO (Restaurado) -->
+              ${comparablesData.perplexity_full_text ? `
               <div class="page-break"></div>
+              <div class="analysis-section">
+                <h3>Análisis Detallado</h3>
+                <div>${formatText(comparablesData.perplexity_full_text)}</div>
+              </div>
+              ` : ''}
 
-              <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; margin-top: 30px;">Evidencia de Mercado (Muestra)</h3>
-              
-              <table>
-                <thead>
-                  <tr>
-                    <th width="25%">Propiedad</th>
-                    <th width="10%">Tipo</th>
-                    <th width="10%">Área</th>
-                    <th width="15%" class="text-right">Precio</th>
-                    <th width="20%" class="text-right">Valor Estimado</th>
-                    <th width="20%" class="text-right">$/m²</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${(comparablesData.comparables || []).map(item => {
+              <div class="avoid-break">
+                <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; margin-top: 30px; font-size: 16px;">Evidencia de Mercado (Muestra)</h3>
+                
+                <table>
+                  <thead>
+                    <tr>
+                      <th width="25%">Propiedad</th>
+                      <th width="10%">Tipo</th>
+                      <th width="10%">Área</th>
+                      <th width="15%" class="text-right">Precio</th>
+                      <th width="20%" class="text-right">Valor Estimado</th>
+                      <th width="20%" class="text-right">$/m²</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${(comparablesData.comparables || []).map(item => {
         const esArriendo = item.tipo_origen === 'arriendo';
         const badgeClass = esArriendo ? 'badge-arriendo' : 'badge-venta';
         const tipoLabel = esArriendo ? 'Arriendo' : 'Venta';
@@ -237,29 +267,30 @@ export default function BotonPDF({ formData }) {
           : '';
 
         return `
-                      <tr>
-                        <td>
-                          <strong>${item.titulo || 'Inmueble'}</strong><br>
-                          <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
-                        </td>
-                        <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-                        <td class="text-center">${formatNumber(item.area_m2)} m²</td>
-                        <td class="text-right">
-                          ${formatCurrency(item.precio_publicado)}
-                          ${esArriendo ? '<span class="sub-text">/mes</span>' : ''}
-                        </td>
-                        <td class="text-right">
-                          <strong>${formatCurrency(item.precio_cop)}</strong>
-                          ${notaArriendo}
-                        </td>
-                        <td class="text-right">
-                          ${formatCurrency(item.precio_m2)}
-                        </td>
-                      </tr>
-                    `;
+                        <tr>
+                          <td>
+                            <strong>${item.titulo || 'Inmueble'}</strong><br>
+                            <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
+                          </td>
+                          <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+                          <td class="text-center">${formatNumber(item.area_m2)} m²</td>
+                          <td class="text-right">
+                            ${formatCurrency(item.precio_publicado)}
+                            ${esArriendo ? '<span class="sub-text">/mes</span>' : ''}
+                          </td>
+                          <td class="text-right">
+                            <strong>${formatCurrency(item.precio_cop)}</strong>
+                            ${notaArriendo}
+                          </td>
+                          <td class="text-right">
+                            ${formatCurrency(item.precio_m2)}
+                          </td>
+                        </tr>
+                      `;
       }).join('')}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
 
               <div class="footer">
                 <p>Quetzal Hábitats - Inteligencia Inmobiliaria</p>

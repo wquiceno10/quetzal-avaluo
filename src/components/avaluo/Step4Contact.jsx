@@ -62,6 +62,8 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
       };
 
       // Helper para convertir markdown básico a HTML
+      const esLote = (data.tipo_inmueble || '').toLowerCase() === 'lote';
+
       const markdownToHtml = (text) => {
         if (!text) return '';
         let html = text
@@ -164,10 +166,16 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
                   <div class="card-title">Ficha Técnica</div>
                   <div class="info-row"><span>Tipo Inmueble:</span> <strong>${data.tipo_inmueble || 'Inmueble'}</strong></div>
                   <div class="info-row"><span>Ubicación:</span> <strong>${data.barrio || '—'}, ${data.municipio || '—'}</strong></div>
-                  <div class="info-row"><span>Área:</span> <strong>${data.area_construida || 0} m²</strong></div>
+                  <div class="info-row"><span>Área Construida:</span> <strong>${data.area_construida || 0} m²</strong></div>
+                  ${!esLote ? `
                   <div class="info-row"><span>Habitaciones:</span> <strong>${data.habitaciones || '—'}</strong></div>
                   <div class="info-row"><span>Baños:</span> <strong>${data.banos || '—'}</strong></div>
+                  <div class="info-row"><span>Parqueadero:</span> <strong>${data.tipo_parqueadero || '—'}</strong></div>
                   <div class="info-row"><span>Antigüedad:</span> <strong>${data.antiguedad || '—'}</strong></div>
+                  ` : ''}
+                  ${esLote ? `
+                  <div class="info-row"><span>Uso del Lote:</span> <strong>${data.uso_lote || '—'}</strong></div>
+                  ` : ''}
                 </div>
 
                 <div class="card">
