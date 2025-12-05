@@ -38,7 +38,7 @@ export default function BotonPDF({ formData }) {
         if (!text) return '';
         return text
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negritas
-          .replace(/^#+\s*(.*?)$/gm, '<h4 style="color: #2C3D37; margin-top: 15px; margin-bottom: 8px; font-size: 13px; border-bottom: 1px dashed #ccc;">$1</h4>') // Títulos
+          .replace(/^#+\s*(.*?)$/gm, '<h4>$1</h4>') // Títulos (Simplificado para consistencia)
           .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px;">$1</li>') // Listas
           .replace(/\n\n/g, '<br><br>') // Saltos de párrafo
           .replace(/\n/g, '<br>'); // Saltos de línea simples
@@ -138,8 +138,12 @@ export default function BotonPDF({ formData }) {
             .method-label { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
 
             /* ANÁLISIS DETALLADO */
-            .analysis-section { margin-top: 30px; margin-bottom: 30px; font-size: 12px; text-align: justify; color: #444; }
-            .analysis-section h3 { font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 10px; font-size: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 5px; display: inline-block; }
+            .analysis-section { margin-top: 30px; margin-bottom: 30px; font-size: 11px; text-align: justify; color: #444; }
+            .two-columns { column-count: 2; column-gap: 30px; }
+            .analysis-section h3 { font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; font-size: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 5px; display: inline-block; width: 100%; }
+            .analysis-section h4 { font-family: 'Outfit', sans-serif; color: var(--primary); margin-top: 15px; margin-bottom: 5px; font-size: 12px; font-weight: 700; break-inside: avoid; }
+            .analysis-section ul { padding-left: 20px; margin-bottom: 10px; }
+            .analysis-section li { margin-bottom: 3px; }
 
             /* TABLA COMPARABLES */
             table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 15px; }
@@ -238,11 +242,11 @@ export default function BotonPDF({ formData }) {
               <div class="page-break"></div>
               <div class="analysis-section">
                 <h3>Análisis Detallado</h3>
-                <div>${formatText(comparablesData.perplexity_full_text)}</div>
+                <div class="two-columns">${formatText(comparablesData.perplexity_full_text)}</div>
               </div>
               ` : ''}
 
-              <div class="avoid-break">
+              <div>
                 <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; margin-top: 30px; font-size: 16px;">Evidencia de Mercado (Muestra)</h3>
                 
                 <table>
