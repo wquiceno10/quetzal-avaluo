@@ -88,6 +88,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
   }
 
   const areaInmueble = validarNumero(formData.area_construida || formData.area_total || data.area_construida || data.area_total);
+  const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
 
   const formatCurrency = (value) => {
     const num = validarNumero(value);
@@ -159,7 +160,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
         </CardContent>
       </Card>
 
-      {/* 2. MÉTODOS DESGLOSADOS (ESTILO CORREGIDO: SIN SUBTÍTULOS, TEXTOS PAREJOS) */}
       {/* 2. MÉTODOS DESGLOSADOS (ADAPTATIVO) */}
       <div className={valorRentabilidad ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "max-w-lg mx-auto"}>
         {/* Venta Directa */}
@@ -167,7 +167,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
           <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
             <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
               <TrendingUp className="w-4 h-4 text-[#C9C19D]" />
-              Enfoque de Mercado (Comparables)
+              {esLote ? 'Metodología Ajustada (Lotes)' : 'Enfoque de Mercado (Comparables)'}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
@@ -177,7 +177,9 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
               </div>
             </div>
             <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
-              Basado en el precio por m² de propiedades similares ofertadas en la zona.
+              {esLote
+                ? 'Segmentación por tamaño + Método Residual para estimación de terreno.'
+                : 'Basado en el precio por m² de propiedades similares ofertadas en la zona.'}
             </p>
             <div className="flex justify-between items-center pt-2 mt-1">
               <span className="text-sm text-[#7A8C85]">Precio m² estimado:</span>
