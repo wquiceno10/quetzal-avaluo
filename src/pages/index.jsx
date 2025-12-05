@@ -4,6 +4,7 @@ import AvaluoInmobiliario from "./AvaluoInmobiliario";
 
 import AccesoClientes from "./AccesoClientes";
 import MisAvaluos from "./MisAvaluos";
+import AvaluoDetalle from "./AvaluoDetalle";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -13,6 +14,7 @@ const PAGES = {
 
     AccesoClientes: AccesoClientes,
     MisAvaluos: MisAvaluos,
+    AvaluoDetalle: AvaluoDetalle,
 
 }
 
@@ -45,6 +47,7 @@ function PagesContent() {
 
                 <Route path="/AccesoClientes" element={<AccesoClientes />} />
                 <Route path="/mis-avaluos" element={<MisAvaluos />} />
+                <Route path="/avaluo/:id" element={<AvaluoDetalle />} />
 
             </Routes>
         </Layout>

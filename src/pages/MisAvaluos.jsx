@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function MisAvaluos() {
+    const navigate = useNavigate();
     const [avaluos, setAvaluos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -240,10 +242,18 @@ export default function MisAvaluos() {
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-4 mt-8 pt-6 border-t border-[#F0F2F1]">
-                                            <div className="flex-1">
+                                            <div className="flex-1 flex gap-3">
+                                                <Button
+                                                    onClick={() => navigate(`/avaluo/${avaluo.id}`)}
+                                                    className="bg-[#2C3D37] text-white hover:bg-[#1a2620]"
+                                                >
+                                                    <ArrowRight className="w-4 h-4 mr-2" />
+                                                    Ver Detalles
+                                                </Button>
                                                 <BotonPDF
                                                     formData={formDataForPDF}
-                                                    className="w-full sm:w-auto bg-[#2C3D37] text-white hover:bg-[#1a2620]"
+                                                    className="bg-white text-[#2C3D37] border border-[#2C3D37] hover:bg-[#F0F2F1]"
+                                                    variant="outline"
                                                 />
                                             </div>
                                             <Button

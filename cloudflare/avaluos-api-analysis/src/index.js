@@ -111,49 +111,69 @@ INSTRUCCIONES GENERALES (GESTIÓN DE FALLBACK)
 TAREAS
 ------
 
-## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES (FORMATO CRÍTICO)
-Para que el sistema procese la información correctamente, debes presentar el listado de comparables en el siguiente formato de lista (NO tabla):
+## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES
 
-**Título del inmueble**
-Tipo (Venta/Arriendo) | Precio
-Área (m2) | Habitaciones | Ubicación
-**Fuente** (solo nombre, sin extensión, ej: Fincaraiz)
+Primero, detalla brevemente la disponibilidad de información encontrada.
+
+Luego presenta un listado de **entre 15 a 20 comparables** usando EXACTAMENTE este formato (respeta pipes "|" y saltos de línea):
+
+**[Título descriptivo del inmueble]**
+[Tipo de inmueble] | [Venta/Arriendo]
+$[Precio] | [Área] m² | [Hab] hab | [Baños] baños
+[Barrio] | [Ciudad]
+**[Fuente]**
 
 Ejemplo:
 **Apartamento en Condina, Pereira**
-Venta | 245.000.000
-68 m² | 3 hab | Condina, Pereira
+Apartamento | Venta
+$245.000.000 | 68 m² | 3 hab | 2 baños
+Condina | Pereira
 **Fincaraiz**
 
-*Nota: Título y Precio deben ser lo más fieles posible al anuncio original. Separa cada comparable con una línea en blanco.*
+IMPORTANTE: 
+- Respeta EXACTAMENTE este formato. Usa pipes "|" como separadores.
+- Cada línea en su propia línea.
+- Separa cada comparable con una línea en blanco.
+- Para cada comparable indica si es "Mismo barrio", "Barrio similar" o "Zona cercana" en el título o descripción.
 
-
-## 2. ANÁLISIS DEL VALOR (CÁLCULO JS EXTERNO)
-Escribe un análisis narrativo sobre ambos enfoques, sin hacer cálculos finales.
+## 2. ANÁLISIS DEL VALOR
 
 ### 2.1. Método de Venta Directa (Precio por m²)
-- Comenta el valor promedio por m² del mercado basándote en los comparables de venta.
-- Sugiere el valor por m² FINAL que debería usarse (ajustado por antigüedad, estado, etc.).
+- Calcula el valor promedio por m² del mercado basándote en los comparables de venta filtrados.
+- Indica el valor por m² FINAL que decides usar (ajustado por antigüedad, estado, etc.).
+- Calcula el valor estimado: Precio por m² final × ${areaConstruida || 'área'} m².
 
 ### 2.2. Método de Rentabilidad (Yield Mensual)
-- Estima el Canon Mensual Promedio de Arriendo para ${areaConstruida || 'metros'} m² en la zona.
+- **CÁLCULO DEL CANON:** No uses un promedio simple de precios totales.
+  1. Calcula el precio por m² de arriendo de cada comparable (Precio / Área).
+  2. Obtén el promedio de canon/m².
+  3. Multiplica ese promedio por los ${areaConstruida || 'metros'} m² del inmueble objetivo para obtener el Canon Mensual Estimado.
 - Investiga y Estima el Yield mensual promedio del sector (ej: 0.4% - 0.6%).
 - Presenta el Yield mensual promedio del sector **Yield promedio mercado: 0.45%**
+- Aplica la fórmula: Valor estimado = Canon Mensual Estimado / Yield mensual promedio.
 
-## 3. RESULTADOS FINALES Y AJUSTES
+## 3. RESULTADOS FINALES
 Entrega de forma clara:
 - **Valor Recomendado de Venta: $XXX.XXX.XXX** (valor único, ajustado por todos los factores)
 - **Rango sugerido: $XXX.XXX.XXX - $XXX.XXX.XXX** (rango de publicación recomendado)
-- Resumen de la posición del inmueble en el mercado (liquidez).
-- Comentario sobre ajustes aplicados por antigüedad o características.
-- Menciona las limitaciones si se usaron promedios regionales.
+- Precio por m² final usado para el cálculo.
+- Comentario sobre la posición del inmueble en el mercado (liquidez).
 
-## 4. RESUMEN EJECUTIVO
-Cierra con 1-4 párrafos claros con el valor recomendado y estrategia de venta.
+## 4. AJUSTES APLICADOS
+Explica ajustes aplicados por antigüedad, estado, parqueadero, características especiales, etc.
+
+## 5. LIMITACIONES
+Menciona escasez de datos, dependencias de promedios regionales, o cualquier limitación del análisis.
+
+## 6. RESUMEN EJECUTIVO
+Cierra con 2-3 párrafos claros que incluyan:
+1. Valor técnico recomendado
+2. Rango de publicación sugerido
+3. Estrategia de venta y posicionamiento de mercado
 
 FORMATO FINAL
 --------
-- La sección 1 DEBE ser una Tabla Markdown.
+- La sección 1 DEBE usar el formato de lista especificado (NO tabla markdown).
 - Las demás secciones deben ser texto narrativo claro.
 - NO devuelvas JSON.
         `.trim();
@@ -209,20 +229,24 @@ ${perplexityContent}
 INSTRUCCIONES DE EXTRACCIÓN:
 1. "comparables": Extrae CADA INMUEBLE del listado (formato multi-línea, NO tabla).
    Cada comparable sigue este patrón:
+   
    **Título**
-   Tipo | Precio
-   Área | Habitaciones | Ubicación
-   Fuente
+   Tipo | Venta/Arriendo
+   Precio | Área | Habitaciones | Baños
+   Barrio | Ciudad
+   **Fuente**
    
    Extrae:
-   - "titulo": El texto que aparece en negrita (entre **...**)
-   - "precio_lista": El número EXACTO del precio (el que aparece después del | en la segunda línea)
-   - "tipo_operacion": "venta" o "arriendo" (el que aparece ANTES del | en la segunda línea)
-     * IMPORTANTE: Si dice "Venta", es "venta". Si dice "Arriendo", es "arriendo". NO asumas nada por el precio.
-   - "area": Área en m² (el número que aparece antes de "m²" en la tercera línea)
-   - "habitaciones": Número de habitaciones (el número que aparece antes de "hab" en la tercera línea)
-   - "ubicacion": La ubicación completa (el texto después del segundo | en la tercera línea)
-   - "fuente": El nombre de la fuente (cuarta línea)
+   - "titulo": Texto entre ** ** de la primera línea
+   - "tipo_inmueble": Texto antes del | en la segunda línea
+   - "tipo_operacion": Texto después del | en la segunda línea ("Venta" o "Arriendo")
+   - "precio_lista": Número después del símbolo $ en la tercera línea (sin puntos ni $)
+   - "area": Número antes de "m²" en la tercera línea
+   - "habitaciones": Número antes de "hab" en la tercera línea
+   - "banos": Número antes de "baños" en la tercera línea
+   - "barrio": Texto antes del | en la cuarta línea
+   - "ciudad": Texto después del | en la cuarta línea
+   - "fuente": Texto entre ** ** de la última línea
 
 2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
 
@@ -337,8 +361,9 @@ Devuelve SOLO JSON válido.
                 return {
                     titulo: c.titulo || 'Inmueble',
                     tipo_origen: esArriendo ? 'arriendo' : 'venta',
-                    barrio: c.ubicacion || formData.barrio,
-                    municipio: formData.municipio,
+                    tipo_inmueble: c.tipo_inmueble || tipoInmueble,
+                    barrio: c.barrio || c.ubicacion || formData.barrio,
+                    municipio: c.ciudad || formData.municipio,
                     area_m2: areaComp,
                     habitaciones: sanitizeNumber(c.habitaciones),
                     banos: sanitizeNumber(c.banos),
