@@ -123,12 +123,7 @@ export default function Layout({ children, currentPageName }) {
             <div className="flex items-center space-x-6">
               {isAuthenticated && (
                 <nav className="hidden md:flex items-center gap-6">
-                  <a
-                    href="/AvaluoInmobiliario"
-                    className={`text-sm font-medium transition-colors hover:text-[#C9C19D] ${currentPageName === 'AvaluoInmobiliario' ? 'text-[#C9C19D]' : 'text-[#DEE8E9]'}`}
-                  >
-                    Nuevo Avalúo
-                  </a>
+
 
                 </nav>
               )}
