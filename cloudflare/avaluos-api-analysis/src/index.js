@@ -1,10 +1,10 @@
 /**
- * avaluos-api-analysis V6 (Restored Quality & Logic Fixes)
- * - Prompt Perplexity detallado (V4 style) para mejor calidad
- * - Heurística de precios para corregir clasificación Venta/Arriendo
- * - Extracción robusta de resumen y títulos
+ * avaluos-api-analysis V7 (Strict Extraction & Quality)
+ * - Prompt Perplexity detallado (V4 style)
+ * - Extracción estricta (SIN heurísticas de precio)
+ * - Clasificación basada 100% en la fuente
  */
-console.log("Deploy V6 (Quality Restoration) - " + new Date().toISOString());
+console.log("Deploy V7 (Strict Extraction) - " + new Date().toISOString());
 
 export default {
     async fetch(request, env) {
@@ -125,7 +125,6 @@ IMPORTANTE:
                         { role: 'user', content: perplexityPrompt },
                     ],
                     temperature: 0.1,
-                    max_tokens: 8000,
                 }),
             });
 
@@ -161,11 +160,12 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - "titulo": El nombre o descripción del inmueble.
    - "precio_lista": El número EXACTO del precio.
    - "tipo_operacion": "venta" o "arriendo".
+     * IMPORTANTE: Si la columna dice "Venta", es "venta". Si dice "Arriendo", es "arriendo". NO asumas nada por el precio.
    - "area": Área en m².
    - "habitaciones": Número de habitaciones.
    - "ubicacion": Barrio o zona.
 
-2. "resumen_mercado": Extrae EL TEXTO COMPLETO de la sección "RESUMEN EJECUTIVO". Queremos el análisis rico y detallado.
+2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
 
 3. "yield_zona": Busca el porcentaje de rentabilidad/yield mencionado en el análisis (ej: 0.5%). Devuélvelo como decimal (0.005).
 
@@ -183,7 +183,7 @@ Devuelve SOLO JSON válido.
                 body: JSON.stringify({
                     model: 'deepseek-chat',
                     messages: [
-                        { role: 'system', content: 'Eres un extractor JSON experto.' },
+                        { role: 'system', content: 'Eres un extractor JSON experto. Tu prioridad es la fidelidad a los datos de origen.' },
                         { role: 'user', content: extractionPrompt },
                     ],
                     temperature: 0.0,
@@ -217,7 +217,7 @@ Devuelve SOLO JSON válido.
             );
         }
 
-        // --- 4. PROCESAMIENTO Y LÓGICA DE NEGOCIO (HEURÍSTICA DE PRECIOS) ---
+        // --- 4. PROCESAMIENTO Y LÓGICA DE NEGOCIO ---
         const sanitizeNumber = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : null);
 
         const yieldDefault = 0.0055;
@@ -235,19 +235,15 @@ Devuelve SOLO JSON válido.
         const portalesList = Array.from(portalesUnicos);
         if (portalesList.length === 0) portalesList.push('fincaraiz', 'metrocuadrado');
 
-        // Procesamiento de Comparables con HEURÍSTICA
+        // Procesamiento de Comparables (SIN HEURÍSTICA)
         const comparables = (extractedData.comparables || [])
             .map((c) => {
                 const areaComp = sanitizeNumber(c.area);
                 const precioLista = sanitizeNumber(c.precio_lista);
 
-                // --- HEURÍSTICA CRÍTICA ---
-                // Si el precio es menor a 20 millones, ES ARRIENDO (aunque diga venta)
-                // Esto corrige errores de clasificación de la IA
-                let esArriendo = c.tipo_operacion?.toLowerCase().includes('arriendo');
-                if (precioLista && precioLista < 20000000) {
-                    esArriendo = true;
-                }
+                // --- CLASIFICACIÓN ESTRICTA ---
+                // Respetamos estrictamente lo que dice la fuente
+                const esArriendo = c.tipo_operacion?.toLowerCase().includes('arriendo');
                 // ---------------------------
 
                 let precioVentaEstimado = 0;
