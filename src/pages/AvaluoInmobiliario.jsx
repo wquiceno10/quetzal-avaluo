@@ -79,7 +79,12 @@ export default function AvaluoInmobiliario() {
         </div>
       </div>
 
-      {/* Botón Mis Avalúos - Entre Hero y StepIndicator */}
+      {/* Step Indicator - siempre visible */}
+      <div className="bg-white shadow-sm">
+        <StepIndicator currentStep={currentStep} />
+      </div>
+
+      {/* Botón Mis Avalúos - Debajo del StepIndicator */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-end">
         <a
           href="/mis-avaluos"
@@ -92,10 +97,6 @@ export default function AvaluoInmobiliario() {
         </a>
       </div>
 
-      {/* Step Indicator - siempre visible */}
-      <div className="bg-white shadow-sm">
-        <StepIndicator currentStep={currentStep} />
-      </div>
 
 
 
