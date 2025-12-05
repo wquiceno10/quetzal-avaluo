@@ -62,16 +62,16 @@ const AnalisisAI = ({ text }) => {
   );
 };
 
-export default function Step3Results({ formData, onUpdate, onNext, onBack }) {
+export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset }) {
   const [mostrarComparables, setMostrarComparables] = useState(false);
 
   if (!formData) return renderErrorState('Datos del formulario no disponibles', onBack);
 
   const data = formData.comparables_data || formData;
   if (!data || (Array.isArray(data.comparables) && data.comparables.length === 0 && !data.valor_final)) {
-     if (!data.valor_final && !data.valor_estimado_venta_directa && !data.valor_estimado_rentabilidad) {
-        return renderErrorState("Análisis de mercado insuficiente", onBack);
-     }
+    if (!data.valor_final && !data.valor_estimado_venta_directa && !data.valor_estimado_rentabilidad) {
+      return renderErrorState("Análisis de mercado insuficiente", onBack);
+    }
   }
 
   const valorVentaDirecta = validarNumero(data.valor_estimado_venta_directa);
@@ -105,7 +105,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack }) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
-      
+
       {/* 1. SECCIÓN HERO */}
       <Card className="border-none shadow-lg bg-gradient-to-br from-[#2C3D37] to-[#1a2620] text-white overflow-hidden relative">
         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[#C9C19D] opacity-10 rounded-full blur-2xl"></div>
@@ -300,11 +300,18 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack }) {
 
       {/* 7. NAVEGACIÓN (BOTONES ALINEADOS) */}
       <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4 pt-6 border-t border-[#E0E5E2] mt-8">
-        <Button variant="ghost" onClick={onBack} className="text-[#7A8C85] hover:text-[#2C3D37] hover:bg-[#F5F7F6]">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Atrás
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="ghost" onClick={onBack} className="text-[#7A8C85] hover:text-[#2C3D37] hover:bg-[#F5F7F6]">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Editar Datos
+          </Button>
+        </div>
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
           <BotonPDF formData={formData} />
+          {onReset && (
+            <Button variant="outline" onClick={onReset} className="text-[#7A8C85] border-[#B0BDB4] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-6">
+              Nuevo Avalúo
+            </Button>
+          )}
           <Button onClick={onNext} className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium shadow-lg transition-all" disabled={!valorPrincipal}>
             Finalizar Informe <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
@@ -332,7 +339,7 @@ function renderErrorState(mensaje, onBack) {
         <h3 className="text-lg font-semibold text-[#2C3D37]">No pudimos generar el análisis</h3>
         <p className="text-sm text-[#4F5B55]">{mensaje}</p>
       </div>
-      <Button onClick={onBack} variant="outline" className="border-[#B0BDB4] text-[#2C3D37]">
+      <Button onClick={onBack} variant="outline" className="border-[#B0BDB4] text-[#2C3D37] rounded-full">
         <ArrowLeft className="w-4 h-4 mr-2" /> Intentar nuevamente
       </Button>
     </div>

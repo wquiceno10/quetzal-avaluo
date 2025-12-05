@@ -3,15 +3,17 @@ import Layout from "./Layout.jsx";
 import AvaluoInmobiliario from "./AvaluoInmobiliario";
 
 import AccesoClientes from "./AccesoClientes";
+import MisAvaluos from "./MisAvaluos";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
-    
+
     AvaluoInmobiliario: AvaluoInmobiliario,
-    
+
     AccesoClientes: AccesoClientes,
-    
+    MisAvaluos: MisAvaluos,
+
 }
 
 function _getCurrentPage(url) {
@@ -31,18 +33,19 @@ function _getCurrentPage(url) {
 function PagesContent() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
-    
+
     return (
         <Layout currentPageName={currentPage}>
-            <Routes>            
-                
-                    <Route path="/" element={<AvaluoInmobiliario />} />
-                
-                
+            <Routes>
+
+                <Route path="/" element={<AvaluoInmobiliario />} />
+
+
                 <Route path="/AvaluoInmobiliario" element={<AvaluoInmobiliario />} />
-                
+
                 <Route path="/AccesoClientes" element={<AccesoClientes />} />
-                
+                <Route path="/MisAvaluos" element={<MisAvaluos />} />
+
             </Routes>
         </Layout>
     );

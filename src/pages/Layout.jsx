@@ -35,6 +35,7 @@ export default function Layout({ children, currentPageName }) {
     // En modo desarrollo, permitir acceso sin autenticación
     if (isDevMode) {
       console.log('Modo dev detectado, saltando auth');
+      setIsAuthenticated(true); // ✅ Forzar autenticación en dev para mostrar "Mis Avalúos"
       setCheckingAuth(false);
       return;
     }
@@ -117,6 +118,26 @@ export default function Layout({ children, currentPageName }) {
                 </p>
               </div>
             </div>
+
+            {/* Navigation Menu */}
+            <div className="flex items-center space-x-6">
+              {isAuthenticated && (
+                <nav className="hidden md:flex items-center gap-6">
+                  <a
+                    href="/AvaluoInmobiliario"
+                    className={`text-sm font-medium transition-colors hover:text-[#C9C19D] ${currentPageName === 'AvaluoInmobiliario' ? 'text-[#C9C19D]' : 'text-[#DEE8E9]'}`}
+                  >
+                    Nuevo Avalúo
+                  </a>
+                  <a
+                    href="/MisAvaluos"
+                    className={`text-sm font-medium transition-colors hover:text-[#C9C19D] ${currentPageName === 'MisAvaluos' ? 'text-[#C9C19D]' : 'text-[#DEE8E9]'}`}
+                  >
+                    Mis Avalúos
+                  </a>
+                </nav>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -173,6 +194,6 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </div>
       </footer>
-    </div>
+    </div >
   );
 }

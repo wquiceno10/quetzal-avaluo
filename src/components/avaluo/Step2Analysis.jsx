@@ -19,9 +19,28 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
         body: JSON.stringify({ formData: data })
       });
 
-      const responseData = await response.json();
+      // Check if response is OK before parsing JSON
+      if (!response.ok) {
+        const text = await response.text();
+        let errorMsg = `Error del servidor: ${response.status} ${response.statusText}`;
+        try {
+          const json = JSON.parse(text);
+          if (json.error) errorMsg = json.error;
+        } catch (e) {
+          // If not JSON, use the text body if short, or generic message
+          if (text.length < 200) errorMsg += ` - ${text}`;
+        }
+        throw new Error(errorMsg);
+      }
 
-      if (!response.ok || responseData.error) {
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        throw new Error('La respuesta del servidor no es un JSON válido. Es posible que el análisis haya fallado o excedido el tiempo de espera.');
+      }
+
+      if (responseData.error) {
         throw new Error(responseData.error || (responseData.details ? `: ${responseData.details}` : 'Error desconocido del servidor'));
       }
 
@@ -98,13 +117,13 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
                 <Button
                   onClick={onBack}
                   variant="outline"
-                  className="flex-1 border-[#B0BDB4] text-[#2C3D37]"
+                  className="flex-1 border-[#B0BDB4] text-[#2C3D37] rounded-full"
                 >
                   Volver
                 </Button>
                 <Button
                   onClick={() => searchMutation.mutate(formData)}
-                  className="flex-1 bg-[#2C3D37] hover:bg-[#1a2620] text-white"
+                  className="flex-1 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full"
                 >
                   Reintentar Búsqueda
                 </Button>

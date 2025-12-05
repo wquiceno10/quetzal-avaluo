@@ -594,6 +594,14 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
             Volver
           </Button>
           <Button
+            onClick={onReset}
+            variant="outline"
+            className="border-[#B0BDB4] text-[#2C3D37] rounded-full py-6 text-lg font-medium"
+          >
+            <RefreshCw className="w-5 h-5 mr-2" />
+            Nuevo Avalúo
+          </Button>
+          <Button
             onClick={handleSubmit}
             disabled={!isValid || sendEmailMutation.isPending}
             className="flex-1 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium"

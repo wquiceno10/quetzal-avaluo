@@ -133,6 +133,7 @@ INSTRUCCIONES GENERALES
 5. NO incluyas hipervínculos ni enlaces. Solo textos descriptivos.
 6. Incluye precios, áreas y valores de mercado siempre en pesos colombianos.
 7. Responde SIEMPRE en español.
+8. AL FINAL DEL ANÁLISIS, agrega una sección explícita llamada "FUENTES CONSULTADAS" donde listes los dominios de los portales visitados (ej: fincaraiz.com.co, metrocuadrado.com, ciencuadras.com).
 
 TAREAS
 ------
@@ -166,14 +167,15 @@ Aunque la información de portales no sea perfecta, debes estimar valores razona
 - Indica el valor por m² FINAL que decides usar para el cálculo del inmueble objetivo.
 - Calcula el valor estimado del inmueble objetivo por este método (precio por m² x área).
 
-### 2.2. Método de Rentabilidad (Yield mensual promedio del mercado según el análisis)
+### 2.2. Método de Rentabilidad (Yield mensual promedio del mercado)
 
-- Estima el canon promedio usando los comparables de arriendo (al menos 20% de los comparables deben ser arriendos o estimaciones de arriendo).
+- Estima el canon de arrendamiento mensual promedio para este inmueble usando los comparables.
+- Estima el Yield (Rentabilidad) mensual promedio del sector (ej: 0.4%, 0.5%, 0.6%).
 - Aplícalo a la fórmula:
 
-  Valor estimado = canon mensual promedio / Yield mensual promedio del mercado según el análisis
+  Valor estimado = Canon mensual estimado / Yield mensual estimado
 
-- Indica el canon mensual promedio usado.
+- Indica claramente el Canon mensual y el Yield mensual utilizados.
 - Calcula el valor estimado del inmueble objetivo por este método.
 
 ## 3. RESULTADOS FINALES
@@ -218,6 +220,7 @@ FORMATO
 - Usa subtítulos y listas claras.
 - NO devuelvas JSON.
 - NO incluyas enlaces.
+- Asegúrate de incluir la sección "FUENTES CONSULTADAS" al final con los dominios de los portales.
 `.trim();
 
         // -----------------------------
@@ -299,7 +302,7 @@ FORMATO
                 resumen_busqueda: {
                     type: 'string',
                     description:
-                        'Resumen orientativo explicando las variables usadas (ventas, arriendos, barrios similares), el valor m² y las principales conclusiones.',
+                        'Resumen ejecutivo completo y rico en detalles, explicando las variables usadas, el valor m² y las principales conclusiones. DEBE SER EXTENSO Y EXPLICATIVO.',
                 },
                 total_comparables: { type: 'number' },
                 total_comparables_venta: { type: 'number' },
@@ -418,14 +421,14 @@ INSTRUCCIONES PARA LA EXTRACCIÓN:
 
 5. INDICADORES GLOBALES
    - valor_estimado_venta_directa: valor de venta calculado por el método de precio por m².
-   - valor_estimado_rentabilidad: valor por método de rentabilidad.
-   - canon_arriendo_promedio: canon promedio usado.
-   - yield_mensual_mercado: yield mensual promedio del mercado.
+   - valor_estimado_rentabilidad: valor calculado como (canon_arriendo_promedio / yield_mensual_mercado).
+   - canon_arriendo_promedio: canon mensual estimado.
+   - yield_mensual_mercado: yield mensual estimado (ej: 0.005).
    - rango_valor_min y rango_valor_max: rango de negociación recomendado.
    - precio_m2_usado: valor m² final usado en el cálculo.
 
 6. PORTALES CONOCIDOS
-   - portales_consultados: lista de portales o fuentes mencionadas.
+   - portales_consultados: Extrae los dominios listados en la sección "FUENTES CONSULTADAS" del análisis. Si no existe esa sección, busca menciones de portales en el texto.
 
 7. AJUSTES Y LIMITACIONES
    - ajustes_antiguedad, ajustes_parqueadero, limitaciones.
@@ -485,6 +488,25 @@ REGLA IMPORTANTE:
             content = content.replace(/```json\n?|```/g, '').trim();
 
             const extractedData = JSON.parse(content);
+
+            // --- REGEX FALLBACKS PARA VALORES CRÍTICOS ---
+            // Si DeepSeek devuelve null en valores clave, intentamos extraerlos con Regex del texto de Perplexity
+
+            if (!extractedData.valor_final) {
+                const match = perplexityContent.match(/valor\s+(?:comercial|recomendado|sugerido|final).*?\$?\s*([\d.,]+)/i);
+                if (match) extractedData.valor_final = parseFloat(match[1].replace(/[.,](?=\d{3})/g, '').replace(',', '.'));
+            }
+
+            if (!extractedData.valor_estimado_venta_directa) {
+                const match = perplexityContent.match(/venta\s+directa.*?\$?\s*([\d.,]+)/i);
+                if (match) extractedData.valor_estimado_venta_directa = parseFloat(match[1].replace(/[.,](?=\d{3})/g, '').replace(',', '.'));
+            }
+
+            if (!extractedData.valor_estimado_rentabilidad) {
+                const match = perplexityContent.match(/rentabilidad.*?\$?\s*([\d.,]+)/i);
+                if (match) extractedData.valor_estimado_rentabilidad = parseFloat(match[1].replace(/[.,](?=\d{3})/g, '').replace(',', '.'));
+            }
+            // ---------------------------------------------
 
             console.log(
                 'DeepSeek Extracted Data (first part):',
@@ -654,12 +676,42 @@ REGLA IMPORTANTE:
             const yieldDelAnalisis = sanitizeNumber(extractedData.yield_mensual_mercado);
             const yieldFinal = yieldDelAnalisis || yieldMercado;
 
+            // --- CÁLCULOS DE RESPALDO (FALLBACKS) ---
+            // Si DeepSeek no devolvió los valores calculados, los calculamos aquí.
+
+            // 1. Fallback Venta Directa
+            let valVentaDirecta = sanitizeNumber(extractedData.valor_estimado_venta_directa);
+            if (!valVentaDirecta && precioM2Final && areaConstruida) {
+                valVentaDirecta = Math.round(precioM2Final * areaConstruida);
+                console.log(`🧮 Recalculando Valor Venta Directa: ${precioM2Final} * ${areaConstruida} = ${valVentaDirecta}`);
+            }
+
+            // 2. Fallback Rentabilidad
+            let valRentabilidad = sanitizeNumber(extractedData.valor_estimado_rentabilidad);
+            const canonPromedio = sanitizeNumber(extractedData.canon_arriendo_promedio);
+
+            if (!valRentabilidad && canonPromedio && yieldFinal) {
+                valRentabilidad = Math.round(canonPromedio / yieldFinal);
+                console.log(`🧮 Recalculando Valor Rentabilidad: ${canonPromedio} / ${yieldFinal} = ${valRentabilidad}`);
+            }
+
+            // 3. Fallback Valor Final
+            let valFinal = sanitizeNumber(extractedData.valor_final);
+            if (!valFinal) {
+                if (valVentaDirecta && valRentabilidad) {
+                    valFinal = Math.round((valVentaDirecta + valRentabilidad) / 2);
+                } else {
+                    valFinal = valVentaDirecta || valRentabilidad;
+                }
+                console.log(`🧮 Recalculando Valor Final: ${valFinal}`);
+            }
+
             const resultado = {
                 resumen_busqueda:
                     extractedData.resumen_busqueda ||
                     'Análisis completado a partir de comparables de venta y arriendo en el mercado local.',
 
-                valor_final: sanitizeNumber(extractedData.valor_final),
+                valor_final: valFinal,
 
                 // TOTALES que reflejan TODOS los comparables
                 total_comparables: totalComparables,
@@ -667,19 +719,13 @@ REGLA IMPORTANTE:
                 total_comparables_arriendo: totalArriendo,
                 portales_consultados,
 
-                valor_estimado_venta_directa: sanitizeNumber(
-                    extractedData.valor_estimado_venta_directa,
-                ),
+                valor_estimado_venta_directa: valVentaDirecta,
                 precio_m2_venta_directa: precioM2VentaDirecta,
                 metodologia_venta_directa:
                     extractedData.metodologia_venta_directa || null,
 
-                valor_estimado_rentabilidad: sanitizeNumber(
-                    extractedData.valor_estimado_rentabilidad,
-                ),
-                canon_arriendo_promedio: sanitizeNumber(
-                    extractedData.canon_arriendo_promedio,
-                ),
+                valor_estimado_rentabilidad: valRentabilidad,
+                canon_arriendo_promedio: canonPromedio,
                 metodologia_rentabilidad:
                     extractedData.metodologia_rentabilidad || null,
                 yield_mensual_mercado: yieldFinal,

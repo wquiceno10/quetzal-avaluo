@@ -77,17 +77,19 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
     onUpdate(updated);
   };
 
-  const isRemodelacionValid = localData.estado_inmueble !== 'remodelado' || (
+  const isLote = localData.tipo_inmueble === 'lote';
+
+  const isRemodelacionValid = isLote || localData.estado_inmueble !== 'remodelado' || (
     localData.tipo_remodelacion &&
     localData.descripcion_mejoras?.trim() &&
     (localData.tipo_remodelacion !== 'premium' || localData.valor_remodelacion?.trim())
   );
 
-  const isValid = localData.tipo_inmueble && localData.barrio && localData.municipio &&
-    localData.departamento && localData.area_construida && localData.contexto_zona &&
-    localData.estado_inmueble && localData.antiguedad &&
+  const isValid = localData.tipo_inmueble && localData.municipio &&
+    localData.departamento && localData.area_construida &&
+    (isLote ? localData.tipo_lote : (localData.barrio && localData.contexto_zona && localData.estado_inmueble && localData.antiguedad)) &&
     isRemodelacionValid &&
-    (localData.contexto_zona !== 'conjunto_cerrado' || (localData.nombre_conjunto && localData.nombre_conjunto.trim().length >= 3));
+    (isLote || localData.contexto_zona !== 'conjunto_cerrado' || (localData.nombre_conjunto && localData.nombre_conjunto.trim().length >= 3));
 
   return (
     <div className="space-y-6">
@@ -118,29 +120,47 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[#2C3D37] font-medium">Barrio *</Label>
-              <Input
-                value={localData.barrio || ''}
-                onChange={(e) => handleChange('barrio', e.target.value)}
-                placeholder="Ej: Ciudad Verde"
-                className="border-[#B0BDB4] focus:border-[#2C3D37]"
-              />
-            </div>
+            {isLote && (
+              <div className="space-y-2">
+                <Label className="text-[#2C3D37] font-medium">Tipo de Lote *</Label>
+                <Select value={localData.tipo_lote || ''} onValueChange={(value) => handleChange('tipo_lote', value)}>
+                  <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                    <SelectValue placeholder="Selecciona" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="urbano">Urbano</SelectItem>
+                    <SelectItem value="rural">Rural</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <Label className="text-[#2C3D37] font-medium">Tipo de Urbanización *</Label>
-              <Select value={localData.contexto_zona || ''} onValueChange={(value) => handleChange('contexto_zona', value)}>
-                <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="conjunto_cerrado">Conjunto Cerrado</SelectItem>
-                  <SelectItem value="urbanizacion_porteria">Urbanización con Portería</SelectItem>
-                  <SelectItem value="barrio_abierto">Barrio Abierto</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!isLote && (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium">Barrio *</Label>
+                  <Input
+                    value={localData.barrio || ''}
+                    onChange={(e) => handleChange('barrio', e.target.value)}
+                    placeholder="Ej: Ciudad Verde"
+                    className="border-[#B0BDB4] focus:border-[#2C3D37]"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium">Tipo de Urbanización *</Label>
+                  <Select value={localData.contexto_zona || ''} onValueChange={(value) => handleChange('contexto_zona', value)}>
+                    <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="barrio_abierto">Barrio</SelectItem>
+                      <SelectItem value="conjunto_cerrado">Conjunto Cerrado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
 
             {localData.contexto_zona === 'conjunto_cerrado' && (
               <div className="space-y-2">
@@ -192,183 +212,151 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[#2C3D37] font-medium"># Habitaciones</Label>
-              <Input
-                type="number"
-                value={localData.habitaciones || ''}
-                onChange={(e) => handleChange('habitaciones', parseInt(e.target.value))}
-                placeholder="3"
-                className="border-[#B0BDB4] focus:border-[#2C3D37]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[#2C3D37] font-medium"># Baños</Label>
-              <Input
-                type="number"
-                value={localData.banos || ''}
-                onChange={(e) => handleChange('banos', parseInt(e.target.value))}
-                placeholder="2"
-                className="border-[#B0BDB4] focus:border-[#2C3D37]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[#2C3D37] font-medium">Parqueadero</Label>
-              <Select value={localData.tipo_parqueadero || ''} onValueChange={(value) => handleChange('tipo_parqueadero', value)}>
-                <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="propio">Propio</SelectItem>
-                  <SelectItem value="comunal">Comunal</SelectItem>
-                  <SelectItem value="sin_parqueadero">Sin Parqueadero</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[#2C3D37] font-medium">Antigüedad *</Label>
-              <Select value={localData.antiguedad || ''} onValueChange={(value) => handleChange('antiguedad', value)}>
-                <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0 a 5 años">0 a 5 años</SelectItem>
-                  <SelectItem value="6 a 10 años">6 a 10 años</SelectItem>
-                  <SelectItem value="11 a 15 años">11 a 15 años</SelectItem>
-                  <SelectItem value="15 a 20 años">15 a 20 años</SelectItem>
-                  <SelectItem value="Más de 20 años">Más de 20 años</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Estado del Inmueble */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label className="text-[#2C3D37] font-medium">Estado del Inmueble *</Label>
-              <Select value={localData.estado_inmueble || ''} onValueChange={(value) => handleChange('estado_inmueble', value)}>
-                <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
-                  <SelectValue placeholder="Selecciona" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="nuevo">Nuevo</SelectItem>
-                  <SelectItem value="remodelado">Remodelado</SelectItem>
-                  <SelectItem value="buen_estado">Buen Estado</SelectItem>
-                  <SelectItem value="requiere_reformas_minimas">Requiere Reformas Mínimas</SelectItem>
-                  <SelectItem value="requiere_reformas_moderadas">Requiere Reformas Moderadas</SelectItem>
-                  <SelectItem value="requiere_reforma_amplia">Requiere Reforma Amplia</SelectItem>
-                  <SelectItem value="obra_gris">Obra Gris</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {localData.estado_inmueble === 'remodelado' && (
+            {!isLote && (
               <>
                 <div className="space-y-2">
-                  <Label className="text-[#2C3D37] font-medium">Tipo de Remodelación *</Label>
-                  <Select value={localData.tipo_remodelacion || ''} onValueChange={(value) => {
-                    const updated = { ...localData, tipo_remodelacion: value, descripcion_mejoras: '', valor_remodelacion: '' };
-                    setLocalData(updated);
-                    onUpdate(updated);
-                  }}>
+                  <Label className="text-[#2C3D37] font-medium"># Habitaciones</Label>
+                  <Input
+                    type="number"
+                    value={localData.habitaciones || ''}
+                    onChange={(e) => handleChange('habitaciones', parseInt(e.target.value))}
+                    placeholder="3"
+                    className="border-[#B0BDB4] focus:border-[#2C3D37]"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium"># Baños</Label>
+                  <Input
+                    type="number"
+                    value={localData.banos || ''}
+                    onChange={(e) => handleChange('banos', parseInt(e.target.value))}
+                    placeholder="2"
+                    className="border-[#B0BDB4] focus:border-[#2C3D37]"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium">Parqueadero</Label>
+                  <Select value={localData.tipo_parqueadero || ''} onValueChange={(value) => handleChange('tipo_parqueadero', value)}>
                     <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
                       <SelectValue placeholder="Selecciona" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ligera">Reforma Ligera ($0 - $2'000.000)</SelectItem>
-                      <SelectItem value="moderada">Reforma Moderada ($2'000.000 - $5'000.000)</SelectItem>
-                      <SelectItem value="amplia">Remodelación Amplia ($5'000.000 - $10'000.000)</SelectItem>
-                      <SelectItem value="premium">Remodelación Premium (Más de $10'000.000)</SelectItem>
+                      <SelectItem value="propio">Propio</SelectItem>
+                      <SelectItem value="comunal">Comunal</SelectItem>
+                      <SelectItem value="sin_parqueadero">Sin Parqueadero</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {localData.tipo_remodelacion && localData.tipo_remodelacion === 'premium' && (
-                  <div className="space-y-2">
-                    <Label className="text-[#2C3D37] font-medium">Valor estimado de la remodelación *</Label>
-                    <Input
-                      type="text"
-                      value={localData.valor_remodelacion || ''}
-                      onChange={(e) => handleChange('valor_remodelacion', e.target.value)}
-                      placeholder="Ej: $15.000.000"
-                      className="border-[#B0BDB4] focus:border-[#2C3D37]"
-                    />
-                  </div>
-                )}
-
-                {localData.tipo_remodelacion && (
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="text-[#2C3D37] font-medium">Describe las mejoras *</Label>
-                    <Input
-                      value={localData.descripcion_mejoras || ''}
-                      onChange={(e) => handleChange('descripcion_mejoras', e.target.value)}
-                      placeholder="Ej: Cocina nueva, baños remodelados, pisos en porcelanato..."
-                      className="border-[#B0BDB4] focus:border-[#2C3D37]"
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium">Antigüedad *</Label>
+                  <Select value={localData.antiguedad || ''} onValueChange={(value) => handleChange('antiguedad', value)}>
+                    <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0 a 5 años">0 a 5 años</SelectItem>
+                      <SelectItem value="6 a 10 años">6 a 10 años</SelectItem>
+                      <SelectItem value="11 a 15 años">11 a 15 años</SelectItem>
+                      <SelectItem value="15 a 20 años">15 a 20 años</SelectItem>
+                      <SelectItem value="Más de 20 años">Más de 20 años</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </>
             )}
           </div>
 
+          {/* Estado del Inmueble */}
+          {!isLote && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[#2C3D37] font-medium">Estado del Inmueble *</Label>
+                <Select value={localData.estado_inmueble || ''} onValueChange={(value) => handleChange('estado_inmueble', value)}>
+                  <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                    <SelectValue placeholder="Selecciona" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nuevo">Nuevo</SelectItem>
+                    <SelectItem value="remodelado">Remodelado</SelectItem>
+                    <SelectItem value="buen_estado">Buen Estado</SelectItem>
+                    <SelectItem value="requiere_reformas_minimas">Requiere Reformas Mínimas</SelectItem>
+                    <SelectItem value="requiere_reformas_moderadas">Requiere Reformas Moderadas</SelectItem>
+                    <SelectItem value="requiere_reforma_amplia">Requiere Reforma Amplia</SelectItem>
+                    <SelectItem value="obra_gris">Obra Gris</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {localData.estado_inmueble === 'remodelado' && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-[#2C3D37] font-medium">Tipo de Remodelación *</Label>
+                    <Select value={localData.tipo_remodelacion || ''} onValueChange={(value) => {
+                      const updated = { ...localData, tipo_remodelacion: value, descripcion_mejoras: '', valor_remodelacion: '' };
+                      setLocalData(updated);
+                      onUpdate(updated);
+                    }}>
+                      <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                        <SelectValue placeholder="Selecciona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ligera">Reforma Ligera ($0 - $2'000.000)</SelectItem>
+                        <SelectItem value="moderada">Reforma Moderada ($2'000.000 - $5'000.000)</SelectItem>
+                        <SelectItem value="amplia">Remodelación Amplia ($5'000.000 - $10'000.000)</SelectItem>
+                        <SelectItem value="premium">Remodelación Premium (Más de $10'000.000)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {localData.tipo_remodelacion && localData.tipo_remodelacion === 'premium' && (
+                    <div className="space-y-2">
+                      <Label className="text-[#2C3D37] font-medium">Valor estimado de la remodelación *</Label>
+                      <Input
+                        type="text"
+                        value={localData.valor_remodelacion || ''}
+                        onChange={(e) => handleChange('valor_remodelacion', e.target.value)}
+                        placeholder="Ej: $15.000.000"
+                        className="border-[#B0BDB4] focus:border-[#2C3D37]"
+                      />
+                    </div>
+                  )}
+
+                  {localData.tipo_remodelacion && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-[#2C3D37] font-medium">Describe las mejoras *</Label>
+                      <Input
+                        value={localData.descripcion_mejoras || ''}
+                        onChange={(e) => handleChange('descripcion_mejoras', e.target.value)}
+                        placeholder="Ej: Cocina nueva, baños remodelados, pisos en porcelanato..."
+                        className="border-[#B0BDB4] focus:border-[#2C3D37]"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Información Complementaria */}
           <div className="space-y-2">
             <Label className="text-[#2C3D37] font-medium">Información Complementaria</Label>
+            <div className="bg-[#FFFDF5] border border-[#C9C19D]/30 p-3 rounded-md mb-2">
+              <p className="text-xs text-[#4F5B55] leading-relaxed">
+                <strong>Importante:</strong> Para evitar penalizaciones por "hallazgos ocultos" en futuras promesas de compraventa, por favor detalla: situación legal (herencias, sucesiones, hipotecas), si el inmueble tiene licencia de construcción (especialmente lotes), si está libre de patrimonio familiar o si requiere ajustes puntuales. <strong>También puedes agregar características especiales que no encuentres en el formulario.</strong>
+              </p>
+            </div>
             <Textarea
               value={localData.informacion_complementaria || ''}
               onChange={(e) => handleChange('informacion_complementaria', e.target.value)}
-              placeholder="Incluye aquí cualquier información adicional relevante: año de construcción, amenidades del conjunto, reformas realizadas, estrato, características especiales, etc."
+              placeholder="Ej: El inmueble tiene una hipoteca vigente con Davivienda. Es una sucesión en trámite..."
               className="min-h-[100px] border-[#B0BDB4] focus:border-[#2C3D37]"
             />
           </div>
 
-          {/* Carga de Documentos */}
-          <div className="space-y-3">
-            <Label className="text-[#2C3D37] font-medium">Documentos de Soporte (Opcional)</Label>
-            <p className="text-sm text-gray-500">
-              Puedes documentos PDFs de avalúos anteriores, certificados de tradición, etc.
-            </p>
-
-            <div className="flex items-center gap-4">
-              <label className="cursor-pointer">
-                <Input
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={uploadingFiles}
-                />
-                <div className="flex items-center gap-2 px-4 py-2 border border-[#B0BDB4] rounded-lg hover:bg-[#F5F4F0] transition-colors">
-                  {uploadingFiles ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Upload className="w-4 h-4" />
-                  )}
-                  <span className="text-sm">{uploadingFiles ? 'Subiendo...' : 'Cargar Archivos'}</span>
-                </div>
-              </label>
-            </div>
-
-            {uploadedFiles.length > 0 && (
-              <div className="space-y-2">
-                {uploadedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between bg-[#DEE8E9] rounded-lg px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-[#2C3D37]" />
-                      <span className="text-sm text-[#2C3D37] truncate max-w-xs">{file.name}</span>
-                    </div>
-                    <button onClick={() => removeFile(index)} className="text-red-500 hover:text-red-700">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Carga de Documentos Eliminada */}
 
           <Button
             onClick={onNext}

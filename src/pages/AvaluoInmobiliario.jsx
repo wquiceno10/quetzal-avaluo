@@ -91,11 +91,10 @@ export default function AvaluoInmobiliario() {
               <button
                 key={step}
                 onClick={() => setCurrentStep(step)}
-                className={`px-3 py-1 text-sm rounded ${
-                  currentStep === step 
-                    ? 'bg-yellow-600 text-white' 
+                className={`px-3 py-1 text-sm rounded ${currentStep === step
+                    ? 'bg-yellow-600 text-white'
                     : 'bg-white text-yellow-800 hover:bg-yellow-200'
-                }`}
+                  }`}
               >
                 Paso {step}
               </button>
@@ -129,6 +128,7 @@ export default function AvaluoInmobiliario() {
             onUpdate={handleUpdateData}
             onNext={handleNext}
             onBack={handleBack}
+            onReset={handleReset}
           />
         )}
 

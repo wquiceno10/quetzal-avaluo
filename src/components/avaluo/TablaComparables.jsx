@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Home } from 'lucide-react';
 
 export default function TablaComparables({ comparables }) {
-  
+
   const formatCurrency = (value) => {
     if (!value && value !== 0) return 'Por consultar';
     return '$ ' + Math.round(value).toLocaleString('es-CO');
@@ -33,7 +33,7 @@ export default function TablaComparables({ comparables }) {
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-center">Área</TableHead>
             {/* CORRECCIÓN: Columna estrecha con salto de línea */}
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-center w-[80px] leading-tight">
-              Hab<br/><span className="text-xs font-normal">Baños</span>
+              Hab<br /><span className="text-xs font-normal">Baños</span>
             </TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio Publicado</TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio Venta (Est)</TableHead>
@@ -44,7 +44,7 @@ export default function TablaComparables({ comparables }) {
         <TableBody>
           {comparables.map((item, index) => (
             <TableRow key={index} className="hover:bg-[#F5F7F6] transition-colors border-b border-[#E0E5E2]">
-              
+
               <TableCell className="font-medium text-[#2C3D37] align-top py-3">
                 <div className="flex items-start gap-2">
                   <div className="p-1.5 bg-white border border-[#E0E5E2] rounded-md mt-0.5 shrink-0">
@@ -57,12 +57,12 @@ export default function TablaComparables({ comparables }) {
               </TableCell>
 
               <TableCell className="align-top py-3">
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className={`
                     capitalize font-normal text-[10px] px-2 py-0.5 border-0
-                    ${item.tipo_origen === 'arriendo' 
-                      ? 'bg-blue-50 text-blue-700' 
+                    ${item.tipo_origen === 'arriendo'
+                      ? 'bg-blue-50 text-blue-700'
                       : 'bg-[#E8F5E9] text-[#2E7D32]'}
                   `}
                 >
@@ -110,10 +110,10 @@ export default function TablaComparables({ comparables }) {
                   <span className="text-sm font-semibold text-[#2C3D37]">
                     {formatCurrency(item.precio_cop)}
                   </span>
-                  
+
                   {item.tipo_origen === 'arriendo' && (
                     <span className="text-[9px] text-[#A3B2AA] leading-tight max-w-[100px]">
-                      Estimado por rentabilidad
+                      Estimado por rentabilidad{item.yield_mensual ? ` (Yield ${(item.yield_mensual * 100).toFixed(2)}% según mercado)` : ''}
                     </span>
                   )}
                 </div>
