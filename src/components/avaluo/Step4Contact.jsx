@@ -22,25 +22,29 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
     mutationFn: async (data) => {
       const comparablesData = data.comparables_data || {};
 
-      // Calcular valor principal igual que en Step3Results (promedio si existen ambos métodos)
-      let valorEstimadoFinal = null;
+      // Cálculos de valores (Lógica idéntica al BotonPDF para consistencia visual)
       const valorVentaDirecta = comparablesData.valor_estimado_venta_directa;
       const valorRentabilidad = comparablesData.valor_estimado_rentabilidad;
-      if (valorVentaDirecta && valorRentabilidad) {
-        valorEstimadoFinal = Math.round((valorVentaDirecta + valorRentabilidad) / 2);
-      } else {
-        valorEstimadoFinal = valorVentaDirecta || valorRentabilidad || 0;
+      const rangoMin = comparablesData.rango_valor_min;
+      const rangoMax = comparablesData.rango_valor_max;
+
+      let valorEstimadoFinal = comparablesData.valor_final;
+      if (!valorEstimadoFinal) {
+        if (rangoMin && rangoMax) valorEstimadoFinal = (rangoMin + rangoMax) / 2;
+        else if (valorVentaDirecta && valorRentabilidad) valorEstimadoFinal = (valorVentaDirecta * 0.8 + valorRentabilidad * 0.2);
+        else valorEstimadoFinal = valorVentaDirecta || valorRentabilidad;
       }
 
-      const rangoMin = comparablesData.rango_valor_min || 0;
-      const rangoMax = comparablesData.rango_valor_max || 0;
-      const precioM2Final = comparablesData.precio_m2_usado || 0;
+      // Área para cálculos
+      const area = parseFloat(data.area_construida || comparablesData.area_construida || 0);
+      const precioM2 = valorEstimadoFinal && area ? valorEstimadoFinal / area : 0;
 
-      // Helper para formatear moneda
-      const formatCurrency = (val) => {
-        if (!val && val !== 0) return '—';
-        return '$ ' + Math.round(val).toLocaleString('es-CO');
-      };
+      // Formateadores
+      const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
+      const formatNumber = (val) => val ? Math.round(val).toLocaleString('es-CO') : '—';
+
+      // Fecha actual
+      const fecha = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
 
       // Helper para generar filas de comparables
       const generarFilasComparables = (comparables) => {
@@ -48,11 +52,11 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
 
         return comparables.slice(0, 10).map(c => `
           <tr>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px;">${c.titulo || 'Inmueble'}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px;">${c.barrio || '—'}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; text-align: center;">${c.area_m2 ? c.area_m2 + ' m²' : '—'}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; text-align: right;">${formatCurrency(c.precio_cop)}</td>
-            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 12px; text-align: right;">${formatCurrency(c.precio_m2)}/m²</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${c.titulo ? c.titulo.substring(0, 40) + (c.titulo.length > 40 ? '...' : '') : 'Inmueble'}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px;">${c.tipo_origen || '—'}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: center;">${Math.round(c.area_m2)} m²</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: right;">${formatCurrency(c.precio_cop)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; font-size: 11px; text-align: right;">${formatCurrency(c.precio_m2)}</td>
           </tr>
         `).join('');
       };
@@ -61,18 +65,14 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
       const markdownToHtml = (text) => {
         if (!text) return '';
         let html = text
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negritas
-          .replace(/^#+\s*(.*?)$/gm, '<h3 style="color: #2C3D37; margin-top: 15px; margin-bottom: 10px; font-size: 16px;">$1</h3>') // Títulos
-          .replace(/^\s*[-*]\s+(.*?)$/gm, '<li style="margin-bottom: 5px;">$1</li>'); // Listas
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/^#+\s*(.*?)$/gm, '<h3 style="color: #2C3D37; margin-top: 15px; margin-bottom: 8px; font-size: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">$1</h3>')
+          .replace(/^\s*[-*]\s+(.*?)$/gm, '<li style="margin-bottom: 5px;">$1</li>');
 
-        // Envolver listas
         if (html.includes('<li>')) {
           html = html.replace(/((<li.*?>.*?<\/li>\s*)+)/s, '<ul style="padding-left: 20px; margin-bottom: 15px;">$1</ul>');
         }
-
-        // Párrafos (saltos de línea dobles)
         html = html.replace(/\n\n/g, '<br><br>');
-
         return html;
       };
 
@@ -80,304 +80,165 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
       const analisisTexto = data.comparables_data?.perplexity_full_text || '';
 
       const emailBody = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reporte de Avalúo - ${data.codigo_avaluo}</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap');
-    
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Raleway', 'Arial', sans-serif;
-      line-height: 1.6;
-      color: #4F5B55;
-      background-color: #F5F4F0;
-      padding: 20px;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    }
-    
-    /* HERO SECTION */
-    .hero {
-      background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
-      color: white;
-      padding: 40px;
-      position: relative;
-    }
-    .hero-content {
-      position: relative;
-      z-index: 2;
-    }
-    .hero-badge {
-      background: rgba(201, 193, 157, 0.9);
-      color: #1a2620;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: bold;
-      display: inline-block;
-      margin-bottom: 15px;
-      font-family: 'Outfit', sans-serif;
-    }
-    .hero-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 24px;
-      margin-bottom: 5px;
-      color: white;
-    }
-    .hero-price {
-      font-family: 'Outfit', sans-serif;
-      font-size: 42px;
-      font-weight: bold;
-      color: white;
-      margin: 15px 0;
-      line-height: 1;
-    }
-    .hero-details-box {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      padding: 15px;
-      margin-top: 20px;
-      color: white;
-    }
-    .hero-row {
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      padding-bottom: 8px;
-      margin-bottom: 8px;
-    }
-    .hero-row:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-      margin-bottom: 0;
-    }
-    
-    /* CONTENT */
-    .content { padding: 40px; }
-    
-    .section-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 18px;
-      font-weight: bold;
-      color: #2C3D37;
-      margin-top: 30px;
-      margin-bottom: 15px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #B0BDB4;
-    }
-    
-    /* INFO GRID */
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-    }
-    .info-item {
-      background: #F9FAF9;
-      padding: 12px;
-      border-radius: 8px;
-      border-left: 3px solid #C9C19D;
-    }
-    .info-label {
-      font-size: 11px;
-      color: #7A8C85;
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-    .info-value {
-      font-family: 'Outfit', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-      color: #2C3D37;
-    }
-    
-    /* METHODS CARDS */
-    .methods-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .method-card {
-      border: 1px solid #E0E5E2;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .method-header {
-      background: #F9FAF9;
-      padding: 10px 15px;
-      border-bottom: 1px solid #F0F2F1;
-      font-family: 'Outfit', sans-serif;
-      font-weight: 600;
-      color: #2C3D37;
-      font-size: 14px;
-    }
-    .method-body {
-      padding: 20px;
-      text-align: center;
-    }
-    .method-price {
-      font-family: 'Outfit', sans-serif;
-      font-size: 24px;
-      font-weight: bold;
-      color: #2C3D37;
-      margin-bottom: 5px;
-    }
-    .method-desc {
-      font-size: 12px;
-      color: #7A8C85;
-    }
-    
-    /* TABLE */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-      font-size: 13px;
-    }
-    th {
-      background: #2C3D37;
-      color: white;
-      padding: 10px;
-      text-align: left;
-      font-family: 'Outfit', sans-serif;
-      font-size: 12px;
-    }
-    
-    /* FOOTER */
-    .footer {
-      background: #2C3D37;
-      color: white;
-      padding: 30px;
-      text-align: center;
-      font-size: 13px;
-    }
-    
-    @media only screen and (max-width: 600px) {
-      .methods-grid { grid-template-columns: 1fr; }
-      .info-grid { grid-template-columns: 1fr; }
-      .hero-price { font-size: 32px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <!-- HERO -->
-    <div class="hero">
-      <div class="hero-content">
-        <div class="hero-badge">ESTIMACIÓN IA</div>
-        <div class="hero-title">Valor Comercial Estimado</div>
-        <div class="hero-price">${formatCurrency(valorEstimadoFinal)}</div>
-        <div style="font-size: 14px; opacity: 0.9;">COP (Pesos Colombianos)</div>
-        
-        <div class="hero-details-box">
-          <div class="hero-row">
-            <span>Rango Sugerido</span>
-            <span style="font-weight: bold;">${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</span>
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <title>Reporte de Avalúo - Quetzal Hábitats</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Raleway:wght@400;500&display=swap');
+            
+            :root { --primary: #2C3D37; --secondary: #C9C19D; --bg: #F9FAF9; --text: #4F5B55; --border: #E0E5E2; }
+            body { font-family: 'Raleway', sans-serif; color: #4F5B55; background: #F0F0F0; margin: 0; padding: 20px; line-height: 1.5; }
+            .container { width: 100%; max-width: 800px; margin: 0 auto; background: white; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; position: relative; border-radius: 12px; }
+            .header { display: flex; justify-content: space-between; align-items: center; padding: 30px 40px; border-bottom: 2px solid #2C3D37; margin-bottom: 30px; }
+            .header img { max-width: 150px; height: auto; }
+            .report-meta { text-align: right; font-size: 12px; color: #888; }
+            .content { padding: 0 40px 40px 40px; }
+            
+            /* Hero similar al PDF */
+            .hero { background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; text-align: center; box-shadow: 0 8px 16px rgba(44, 61, 55, 0.15); }
+            .hero-title { font-family: 'Outfit', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 5px; }
+            .hero-price { font-family: 'Outfit', sans-serif; font-size: 36px; font-weight: 700; color: white; margin: 10px 0; }
+            .hero-subtitle { font-size: 12px; opacity: 0.8; margin-bottom: 20px; }
+            .hero-stats { border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px; display: flex; justify-content: space-around; }
+            .stat-label { font-size: 10px; opacity: 0.7; display: block; }
+            .stat-value { font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; color: #C9C19D; }
+
+            /* Tarjetas */
+            .grid-2 { display: block; margin-bottom: 30px; }
+            .card { background: #F9FAF9; padding: 20px; border-radius: 8px; border: 1px solid #E0E5E2; margin-bottom: 15px; }
+            .card-title { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: #2C3D37; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc; }
+            .info-row { margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+            .info-row:last-child { border-bottom: none; }
+            .info-row strong { color: #2C3D37; float: right; }
+
+            /* Métodos */
+            .methods-container { margin-bottom: 30px; display: block; }
+            .method-card { background: white; border: 1px solid #E0E5E2; border-radius: 8px; padding: 15px; text-align: center; margin-bottom: 10px; }
+            .method-val { font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; color: #2C3D37; margin: 5px 0; }
+            .method-label { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+
+            /* Tablas */
+            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 15px; }
+            th { background: #2C3D37; color: white; padding: 8px; text-align: left; font-family: 'Outfit', sans-serif; }
+            td { padding: 6px 8px; border-bottom: 1px solid #E0E5E2; }
+            tr:nth-child(even) { background: #f9f9f9; }
+
+            /* CTA Caja destacada */
+            .cta-box { margin-top: 40px; background: #FFF9E6; border: 1px solid #C9C19D; padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 4px 10px rgba(201, 193, 157, 0.15); }
+            
+            .footer { margin-top: 40px; border-top: 2px solid #2C3D37; padding-top: 20px; text-align: center; font-size: 11px; color: #888; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal Hábitats">
+              <div class="report-meta">
+                <strong>Avalúo Comercial</strong><br>
+                Fecha: ${fecha}
+              </div>
+            </div>
+
+            <div class="content">
+              <p style="margin-bottom: 20px; font-size: 14px;">
+                Hola <strong>${data.nombre_contacto}</strong>,<br>
+                Aquí tienes el resultado de tu avalúo inmobiliario:
+              </p>
+
+              <!-- HERO -->
+              <div class="hero">
+                <div class="hero-title">Valor Comercial Estimado</div>
+                <div class="hero-price">${formatCurrency(valorEstimadoFinal)}</div>
+                <div class="hero-subtitle">Peso Colombiano (COP)</div>
+                <div class="hero-stats">
+                  <div><span class="stat-label">Rango Sugerido</span><span class="stat-value">${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</span></div>
+                  <div><span class="stat-label">Precio m²</span><span class="stat-value">${formatCurrency(precioM2)}/m²</span></div>
+                </div>
+              </div>
+
+              <!-- INFO -->
+              <div class="grid-2">
+                <div class="card">
+                  <div class="card-title">Ficha Técnica</div>
+                  <div class="info-row"><span>Tipo Inmueble:</span> <strong>${data.tipo_inmueble || 'Inmueble'}</strong></div>
+                  <div class="info-row"><span>Ubicación:</span> <strong>${data.barrio || '—'}, ${data.municipio || '—'}</strong></div>
+                  <div class="info-row"><span>Área:</span> <strong>${data.area_construida || 0} m²</strong></div>
+                  <div class="info-row"><span>Habitaciones:</span> <strong>${data.habitaciones || '—'}</strong></div>
+                  <div class="info-row"><span>Baños:</span> <strong>${data.banos || '—'}</strong></div>
+                  <div class="info-row"><span>Antigüedad:</span> <strong>${data.antiguedad || '—'}</strong></div>
+                </div>
+
+                <div class="card">
+                  <div class="card-title">Resumen del Mercado</div>
+                  <p style="font-size: 12px; text-align: justify; margin-bottom: 10px; color: #666;">
+                    ${comparablesData.resumen_busqueda || 'Análisis basado en oferta actual.'}
+                  </p>
+                  <div class="info-row"><span>Comparables:</span> <strong>${comparablesData.total_comparables || 0} inmuebles</strong></div>
+                  <div class="info-row"><span>Yield Estimado:</span> <strong>${((comparablesData.yield_mensual_mercado || 0) * 100).toFixed(2)}% mensual</strong></div>
+                </div>
+              </div>
+
+              <!-- MÉTODOS -->
+              <div class="methods-container">
+                <div class="method-card">
+                  <div class="method-label">Enfoque de Mercado</div>
+                  <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
+                  <div style="font-size: 10px; color: #888;">Comparables Venta</div>
+                </div>
+                <div class="method-card">
+                  <div class="method-label">Enfoque de Rentabilidad</div>
+                  <div class="method-val">${formatCurrency(valorRentabilidad)}</div>
+                  <div style="font-size: 10px; color: #888;">Capitalización de Rentas</div>
+                </div>
+              </div>
+
+              <!-- COMPARABLES -->
+              <h3 style="font-family: 'Outfit', sans-serif; color: #2C3D37; font-size: 15px; border-bottom: 2px solid #C9C19D; display: inline-block; padding-bottom: 5px; margin-bottom: 10px;">Evidencia de Mercado (Top 10)</h3>
+              <div style="overflow-x: auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Inmueble</th>
+                      <th>Tipo</th>
+                      <th style="text-align: center;">Área</th>
+                      <th style="text-align: right;">Precio</th>
+                      <th style="text-align: right;">m²</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${generarFilasComparables(comparablesList)}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="margin-top: 30px; font-size: 13px; color: #666; background: #fff; padding: 15px; border-radius: 8px; line-height: 1.6;">
+                <h3 style="font-family: 'Outfit', sans-serif; color: #2C3D37; font-size: 15px; margin-bottom: 10px;">Análisis Detallado IA</h3>
+                ${markdownToHtml(analisisTexto)}
+              </div>
+
+              <!-- CTA DESCARGA PDF -->
+              <div class="cta-box">
+                <h3 style="color: #2C3D37; margin-bottom: 8px; font-family: 'Outfit', sans-serif; font-size: 18px;">Análisis detallado</h3>
+                <p style="margin-bottom: 20px; font-size: 14px; color: #4F5B55;">
+                  Para ver el reporte completo, oficial y guardar una copia, descarga el PDF.
+                </p>
+                <a href="https://quetzal-avaluo.pages.dev/mis-avaluos" 
+                   style="display: inline-block; background: #2C3D37; color: white; text-decoration: none; padding: 14px 30px; border-radius: 50px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 10px rgba(44,61,55,0.2);">
+                   Descargar Reporte PDF
+                </a>
+              </div>
+
+              <div class="footer">
+                <p><strong>Quetzal Hábitats - Inteligencia Inmobiliaria</strong></p>
+                <p>Generado el ${fecha} • ID: ${data.codigo_avaluo}</p>
+                <p style="font-size: 10px; margin-top: 10px;">No respondas a este correo. Para contacto escribe a contacto@quetzalhabitats.com</p>
+              </div>
+            </div>
           </div>
-          <div class="hero-row">
-            <span>Precio m² Ref.</span>
-            <span style="font-weight: bold;">${formatCurrency(precioM2Final)}/m²</span>
-          </div>
-          <div class="hero-row">
-            <span>Muestra</span>
-            <span style="font-weight: bold;">${comparablesList.length} inmuebles</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="content">
-      <p style="margin-bottom: 20px;">
-        Hola <strong>${data.nombre_contacto}</strong>,<br>
-        Aquí tienes el reporte detallado de tu avalúo generado el ${new Date().toLocaleDateString('es-CO')}.
-      </p>
-
-      <!-- INFO INMUEBLE -->
-      <div class="section-title">📍 Información del Inmueble</div>
-      <div class="info-grid">
-        <div class="info-item"><div class="info-label">Barrio</div><div class="info-value">${data.barrio}</div></div>
-        <div class="info-item"><div class="info-label">Municipio</div><div class="info-value">${data.municipio}</div></div>
-        <div class="info-item"><div class="info-label">Tipo</div><div class="info-value">${data.tipo_inmueble || 'No especificado'}</div></div>
-        <div class="info-item"><div class="info-label">Área</div><div class="info-value">${data.area_construida} m²</div></div>
-        <div class="info-item"><div class="info-label">Habitaciones</div><div class="info-value">${data.habitaciones || '—'}</div></div>
-        <div class="info-item"><div class="info-label">Baños</div><div class="info-value">${data.banos || '—'}</div></div>
-      </div>
-
-      <!-- MÉTODOS -->
-      <div class="methods-grid">
-        <div class="method-card">
-          <div class="method-header">Enfoque de Mercado</div>
-          <div class="method-body">
-            <div class="method-price">${formatCurrency(valorVentaDirecta)}</div>
-            <div class="method-desc">Basado en comparables de venta</div>
-          </div>
-        </div>
-        <div class="method-card">
-          <div class="method-header">Enfoque de Rentabilidad</div>
-          <div class="method-body">
-            <div class="method-price">${formatCurrency(valorRentabilidad)}</div>
-            <div class="method-desc">Basado en canon estimado y yield</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- COMPARABLES -->
-      <div class="section-title">📊 Propiedades Comparables</div>
-      <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
-        Muestra de las propiedades utilizadas para el análisis (Top 10):
-      </p>
-      <div style="overflow-x: auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Inmueble</th>
-              <th>Ubicación</th>
-              <th style="text-align: center;">Área</th>
-              <th style="text-align: right;">Precio</th>
-              <th style="text-align: right;">m²</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${generarFilasComparables(comparablesList)}
-          </tbody>
-        </table>
-      </div>
-
-      <!-- ANÁLISIS IA -->
-      <div class="section-title">🤖 Análisis Detallado</div>
-      <div style="background: #F9FAF9; padding: 20px; border-radius: 8px; font-size: 14px; color: #4F5B55;">
-        ${markdownToHtml(analisisTexto)}
-      </div>
-
-      <!-- CTA -->
-      <div style="background: #DEE8E9; padding: 25px; border-radius: 8px; text-align: center; margin-top: 30px;">
-        <h3 style="color: #2C3D37; margin-bottom: 10px; font-family: 'Outfit', sans-serif;">¿Interesado en vender o comprar?</h3>
-        <p style="margin-bottom: 15px; font-size: 14px;">En Quetzal Hábitats te ayudamos a encontrar el comprador ideal.</p>
-        <a href="https://wa.me/573186383809" style="display: inline-block; background: #2C3D37; color: white; text-decoration: none; padding: 10px 20px; border-radius: 25px; font-weight: bold; font-size: 14px;">Contactar Asesor</a>
-      </div>
-
-    </div>
-
-    <div class="footer">
-      <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal" style="width: 100px; margin-bottom: 15px; opacity: 0.8;">
-      <p>© 2025 Quetzal Hábitats - Todos los derechos reservados</p>
-      <p style="font-size: 11px; opacity: 0.6; margin-top: 5px;">Código: ${data.codigo_avaluo}</p>
-    </div>
-  </div>
-</body>
-</html>
+        </body>
+        </html>
       `;
 
       const response = await fetch(import.meta.env.VITE_WORKER_EMAIL_URL, {
@@ -387,7 +248,7 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
         },
         body: JSON.stringify({
           to: data.email,
-          subject: `Reporte de Avalúo - ${data.codigo_avaluo}${data.barrio ? ` - ${data.barrio}, ${data.municipio}` : ''}`,
+          subject: `Reporte de Avalúo - ${data.codigo_avaluo}${data.barrio ? ` - ${data.barrio}` : ''}`,
           htmlBody: emailBody
         })
       });
