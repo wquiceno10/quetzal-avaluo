@@ -7,7 +7,7 @@ export default function BotonPDF({ formData }) {
   const generatePDFMutation = useMutation({
     mutationFn: async (data) => {
       const comparablesData = data.comparables_data || {};
-      const esLote = (formData.tipo_inmueble || '').toLowerCase() === 'lote';
+      const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
 
       // Cálculos de valores (Lógica espejo del frontend)
       const valorVentaDirecta = comparablesData.valor_estimado_venta_directa;
@@ -216,19 +216,30 @@ export default function BotonPDF({ formData }) {
                   </p>
                   <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;">
                     <div class="info-row"><span>Comparables Analizados:</span> <strong>${comparablesData.total_comparables || 0}</strong></div>
+                    ${!esLote ? `
                     <div class="info-row"><span>Yield Promedio:</span> <strong>${((comparablesData.yield_mensual_mercado || 0) * 100).toFixed(2)}% mensual</strong></div>
+                    ` : ''}
                   </div>
                 </div>
               </div>
 
               <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; font-size: 16px;">Metodología de Valoración</h3>
               <div class="methods-container">
+                ${esLote ? `
+                <div class="method-card" style="max-width: 100%; flex: 1;">
+                  <div class="method-label">Metodología Ajustada (Lotes)</div>
+                  <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
+                  <div style="font-size: 11px; color: #666;">Segmentación por tamaño + Método Residual</div>
+                </div>
+                ` : `
                 <div class="method-card">
                   <div class="method-label">Enfoque de Mercado</div>
                   <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
                   <div style="font-size: 11px; color: #666;">Basado en comparables de venta directa</div>
                 </div>
-                ${valorRentabilidad ? `
+                `}
+                
+                ${valorRentabilidad && !esLote ? `
                 <div class="method-card">
                   <div class="method-label">Enfoque de Rentabilidad</div>
                   <div class="method-val">${formatCurrency(valorRentabilidad)}</div>

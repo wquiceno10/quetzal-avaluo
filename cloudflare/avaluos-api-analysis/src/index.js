@@ -467,6 +467,16 @@ Devuelve SOLO JSON válido.
 
         const valorFinal = valorRecomendado || valorVentaDirecta || valorRentabilidad || 0;
         const valorFuente = valorRecomendado ? 'perplexity' : 'calculado';
+
+        // CORRECCIÓN PARA LOTES:
+        // Si es lote y tenemos un valor recomendado por IA (que usa segmentación/residual),
+        // forzamos que el valorVentaDirecta sea ese y RECALCULAMOS el precio m2 promedio
+        // para evitar que el promedio simple (que mezcla lotes pequeños y grandes) infle el resultado.
+        if (esLote && valorRecomendado) {
+            valorVentaDirecta = valorRecomendado;
+            precioM2Promedio = Math.round(valorRecomendado / area);
+        }
+
         console.log(`Valor final: $${valorFinal.toLocaleString()} (fuente: ${valorFuente})`);
 
         const precioM2Usado = precioM2Promedio || (valorFinal > 0 ? Math.round(valorFinal / area) : 0);
