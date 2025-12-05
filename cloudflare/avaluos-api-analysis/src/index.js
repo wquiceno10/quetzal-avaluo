@@ -112,10 +112,21 @@ TAREAS
 ------
 
 ## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES (FORMATO CRÍTICO)
-Para que el sistema procese la información correctamente, debes presentar el listado de comparables en una **TABLA MARKDOWN** con estas columnas exactas:
-| Título | Tipo (Venta/Arriendo) | Precio | Área (m2) | Habitaciones | Ubicación | Fuente |
+Para que el sistema procese la información correctamente, debes presentar el listado de comparables en el siguiente formato de lista (NO tabla):
 
-*Nota: Título y Precio deben ser lo más fieles posible al anuncio original.*
+**Título del inmueble**
+Tipo (Venta/Arriendo) | Precio
+Área (m2) | Habitaciones | Ubicación
+Fuente (solo nombre, sin extensión, ej: Fincaraiz)
+
+Ejemplo:
+**Apartamento en Condina, Pereira**
+Venta | 245.000.000
+68 m² | 3 hab | Condina, Pereira
+**Fincaraiz**
+
+*Nota: Título y Precio deben ser lo más fieles posible al anuncio original. Separa cada comparable con una línea en blanco.*
+
 
 ## 2. ANÁLISIS DEL VALOR (CÁLCULO JS EXTERNO)
 Escribe un análisis narrativo sobre ambos enfoques, sin hacer cálculos finales.
@@ -187,20 +198,28 @@ FORMATO FINAL
 
         // --- 3. EXTRACCIÓN ESTRUCTURADA CON DEEPSEEK ---
         const extractionPrompt = `
-Del siguiente texto (que contiene tablas y análisis), extrae un JSON estructurado.
+Del siguiente texto (que contiene listados y análisis), extrae un JSON estructurado.
 
 TEXTO:
 ${perplexityContent}
 
 INSTRUCCIONES DE EXTRACCIÓN:
-1. "comparables": Extrae CADA FILA de la tabla de inmuebles.
-   - "titulo": El nombre o descripción del inmueble.
-   - "precio_lista": El número EXACTO del precio.
-   - "tipo_operacion": "venta" o "arriendo".
-     * IMPORTANTE: Si la columna dice "Venta", es "venta". Si dice "Arriendo", es "arriendo". NO asumas nada por el precio.
-   - "area": Área en m².
-   - "habitaciones": Número de habitaciones.
-   - "ubicacion": Barrio o zona.
+1. "comparables": Extrae CADA INMUEBLE del listado (formato multi-línea, NO tabla).
+   Cada comparable sigue este patrón:
+   **Título**
+   Tipo | Precio
+   Área | Habitaciones | Ubicación
+   Fuente
+   
+   Extrae:
+   - "titulo": El texto que aparece en negrita (entre **...**)
+   - "precio_lista": El número EXACTO del precio (el que aparece después del | en la segunda línea)
+   - "tipo_operacion": "venta" o "arriendo" (el que aparece ANTES del | en la segunda línea)
+     * IMPORTANTE: Si dice "Venta", es "venta". Si dice "Arriendo", es "arriendo". NO asumas nada por el precio.
+   - "area": Área en m² (el número que aparece antes de "m²" en la tercera línea)
+   - "habitaciones": Número de habitaciones (el número que aparece antes de "hab" en la tercera línea)
+   - "ubicacion": La ubicación completa (el texto después del segundo | en la tercera línea)
+   - "fuente": El nombre de la fuente (cuarta línea)
 
 2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
 
