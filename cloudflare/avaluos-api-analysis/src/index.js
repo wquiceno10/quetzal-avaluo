@@ -1,10 +1,10 @@
 /**
- * avaluos-api-analysis V7 (Strict Extraction & Quality)
- * - Prompt Perplexity detallado (V4 style)
- * - Extracción estricta (SIN heurísticas de precio)
- * - Clasificación basada 100% en la fuente
+ * avaluos-api-analysis V9 (Dynamic Area & Fallback Logic)
+ * - Prompt V2 (Recomendado): Lógica de área dinámica + Fallback robusto
+ * - Extracción estricta (V7 logic maintained)
+ * - Resumen conciso (V8 logic maintained)
  */
-console.log("Deploy V7 (Strict Extraction) - " + new Date().toISOString());
+console.log("Deploy V9 (Dynamic Area + Fallback) - " + new Date().toISOString());
 
 export default {
     async fetch(request, env) {
@@ -55,7 +55,7 @@ export default {
             );
         }
 
-        // --- 1. CONSTRUCCIÓN DEL PROMPT DETALLADO (V4 RESTORED) ---
+        // --- 1. PREPARACIÓN DE DATOS (V9 LOGIC) ---
         const tipoInmueble = formData.tipo_inmueble || 'inmueble';
         const ubicacion = `${formData.barrio || ''}, ${formData.municipio || ''}`.trim();
 
@@ -64,47 +64,84 @@ export default {
         if (!Number.isFinite(areaBase) || areaBase <= 0) areaBase = 60;
         const area = areaBase;
 
-        const minArea = Math.round(area * 0.7);
-        const maxArea = Math.round(area * 1.3);
+        const minArea = Math.round(area * 0.7); // -30% (ajustado para dar margen al prompt que pide +/- 50%)
+        const maxArea = Math.round(area * 1.3); // +30%
 
-        // Prompt detallado original para garantizar calidad
+        // --- VARIABLES V9 ---
+        const areaConstruida = area;
+        const infoInmueble = `
+- Tipo: ${tipoInmueble}
+- Ubicación: ${ubicacion}
+- Habitaciones: ${formData.habitaciones || '?'}
+`.trim();
+
+        const areaInstruction = areaConstruida
+            ? `
+- ÁREA CONSTRUIDA: ${areaConstruida} m²
+- Rango de áreas VENTA (Estricto): ${Math.round(area * 0.5)} a ${Math.round(area * 1.5)} m² (±50%)
+- SOLO incluye comparables de venta cuyas áreas estén dentro de este rango. Para arriendos, intenta mantener el área similar, pero prioriza encontrar datos.`
+            : '';
+
+        // --- PROMPT V9 (ROBUSTO + FALLBACK) ---
         const perplexityPrompt = `
-Eres un analista inmobiliario experto en Colombia.
-Tu tarea es realizar un estudio de mercado técnico y detallado para un inmueble en: ${ubicacion} (${tipoInmueble}).
-Datos Objetivo: Área ${area}m², ${formData.habitaciones || '?'} habitaciones.
+Eres un analista inmobiliario especializado en avalúos comerciales técnicos y estimación de valor apoyada en datos estadísticos del mercado colombiano.
+Tu tarea es elaborar un **análisis completo, claro y profesional**, incluso cuando la información disponible sea limitada.
 
-## 1. BÚSQUEDA DE COMPARABLES
-Busca en portales inmobiliarios reales (Fincaraiz, Metrocuadrado, Ciencuadras, etc.).
-- Filtro de Área: ${minArea}m² a ${maxArea}m².
-- Cantidad: Mínimo 15 comparables.
-- Mix: Intenta que el 20-30% sean ARRIENDOS para calcular rentabilidad.
-- Si no hay exactos en el barrio, busca en zonas aledañas del mismo estrato.
+DATOS DEL INMUEBLE
+-------------------
+Basado en estos datos proporcionados por el usuario:
+${infoInmueble}
+${areaInstruction}
 
-## 2. LISTADO DETALLADO
-Para cada inmueble encontrado, genera una línea en una TABLA MARKDOWN con:
-- Título del Anuncio (Extracto breve)
-- Ubicación (Barrio)
-- Operación (Venta o Arriendo)
-- Precio (Valor total o Canon mensual)
-- Área (m²)
-- Habitaciones
+INSTRUCCIONES GENERALES (GESTIÓN DE FALLBACK)
+---------------------------------------------
+1. Si no encuentras suficientes datos reales en portales inmobiliarios, DEBES complementar con:
+   - Estadísticas municipales y regionales.
+   - Valores típicos de mercado según tamaño del inmueble y ubicación.
+2. NUNCA devuelvas valores "0", "null", "N/A" o similares.
+3. Si un dato no aparece directamente, GENERA una estimación razonable basada en promedios municipales.
+4. Siempre entrega comparables suficientes:
+   - Entrega idealmente entre 12 y 15 comparables en total.
+   - Incluye propiedades en arriendo (mínimo 3).
+   - Incluye propiedades de barrios similares.
+5. NO incluyas hipervínculos ni enlaces. Solo textos descriptivos.
+6. Incluye precios, áreas y valores de mercado siempre en pesos colombianos.
+7. Responde SIEMPRE en español.
 
-## 3. ANÁLISIS DE MERCADO
-Calcula y explica:
-- Precio promedio por m² en VENTA en la zona.
-- Canon de arrendamiento promedio para esta tipología.
-- Yield (Rentabilidad) mensual estimada del sector (ej: 0.5%).
+TAREAS
+------
+
+## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES (FORMATO CRÍTICO)
+Para que el sistema procese la información correctamente, debes presentar el listado de comparables en una **TABLA MARKDOWN** con estas columnas exactas:
+| Título | Tipo (Venta/Arriendo) | Precio | Área (m2) | Habitaciones | Ubicación | Fuente |
+
+*Nota: Título y Precio deben ser lo más fieles posible al anuncio original.*
+
+## 2. ANÁLISIS DEL VALOR (CÁLCULO JS EXTERNO)
+Escribe un análisis narrativo sobre ambos enfoques, sin hacer cálculos finales.
+
+### 2.1. Método de Venta Directa (Precio por m²)
+- Comenta el valor promedio por m² del mercado basándote en los comparables de venta.
+- Sugiere el valor por m² FINAL que debería usarse (ajustado por antigüedad, estado, etc.).
+
+### 2.2. Método de Rentabilidad (Yield Mensual)
+- Estima el Canon Mensual Promedio de Arriendo para ${areaConstruida || 'metros'} m² en la zona.
+- Estima el Yield mensual promedio del sector (ej: 0.4% - 0.6%).
+
+## 3. RESULTADOS FINALES Y AJUSTES
+Entrega de forma clara:
+- Resumen de la posición del inmueble en el mercado (liquidez).
+- Comentario sobre ajustes aplicados por antigüedad o características.
+- Menciona las limitaciones si se usaron promedios regionales.
 
 ## 4. RESUMEN EJECUTIVO
-Escribe 2 párrafos densos y profesionales dirigidos al propietario con:
-- Valoración del mercado actual (oferta/demanda).
-- Rango de precios sugerido para venta y arriendo.
-- Factores clave que valorizan o desvalorizan en esta zona específica.
+Cierra con 1-2 párrafos claros con el valor recomendado y estrategia de venta.
 
-IMPORTANTE:
-- Usa fuentes reales.
-- Sé preciso con los números.
-- NO inventes datos.
+FORMATO FINAL
+--------
+- La sección 1 DEBE ser una Tabla Markdown.
+- Las demás secciones deben ser texto narrativo claro.
+- NO devuelvas JSON.
         `.trim();
 
         // --- 2. LLAMADA A PERPLEXITY (MODELO SONAR) ---
@@ -119,12 +156,13 @@ IMPORTANTE:
                     Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    model: 'sonar', // Mantenemos sonar por velocidad, pero con prompt detallado
+                    model: 'sonar',
                     messages: [
                         { role: 'system', content: 'Eres un analista inmobiliario preciso y profesional.' },
                         { role: 'user', content: perplexityPrompt },
                     ],
                     temperature: 0.1,
+                    max_tokens: 8000,
                 }),
             });
 

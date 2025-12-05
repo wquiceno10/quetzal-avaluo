@@ -67,18 +67,7 @@ export default function AvaluoInmobiliario() {
     <div className="min-h-screen bg-[#F5F4F0]">
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-[#2C3D37] to-[#1a2620] text-white py-16">
-        {/* Botón Mis Avalúos - Absolute Top Right */}
-        <div className="absolute top-6 right-6 z-10">
-          <a
-            href="/mis-avaluos"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white rounded-full text-sm font-medium transition-all shadow-lg"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Mis Avalúos
-          </a>
-        </div>
+
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
@@ -95,9 +84,22 @@ export default function AvaluoInmobiliario() {
         <StepIndicator currentStep={currentStep} />
       </div>
 
+      {/* Botón Mis Avalúos - Ubicación Específica */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex justify-end">
+        <a
+          href="/mis-avaluos"
+          className="inline-flex items-center gap-2 px-5 py-2 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full text-sm font-medium transition-all shadow-md"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Mis Avalúos
+        </a>
+      </div>
+
       {/* Dev Navigation - Solo visible en modo desarrollo */}
       {isDevMode && (
-        <div className="bg-yellow-100 border-b border-yellow-300 py-2">
+        <div className="bg-yellow-100 border-b border-yellow-300 py-2 mt-4">
           <div className="max-w-5xl mx-auto px-4 flex items-center justify-center gap-2 flex-wrap">
             <span className="text-yellow-800 text-sm font-medium mr-2">🛠️ Dev:</span>
             {[1, 2, 3, 4].map((step) => (
