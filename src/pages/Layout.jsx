@@ -121,12 +121,7 @@ export default function Layout({ children, currentPageName }) {
 
             {/* Navigation Menu */}
             <div className="flex items-center space-x-6">
-              {isAuthenticated && (
-                <nav className="hidden md:flex items-center gap-6">
 
-
-                </nav>
-              )}
             </div>
           </div>
         </div>
