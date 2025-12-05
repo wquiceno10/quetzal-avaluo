@@ -1,8 +1,10 @@
 /**
- * avaluos-api-analysis V5 (Hybrid & Robust + Optimizations)
- * Cloudflare Worker para análisis de mercado con Perplexity + DeepSeek
+ * avaluos-api-analysis V6 (Restored Quality & Logic Fixes)
+ * - Prompt Perplexity detallado (V4 style) para mejor calidad
+ * - Heurística de precios para corregir clasificación Venta/Arriendo
+ * - Extracción robusta de resumen y títulos
  */
-console.log("Deploy V5.1 (Optimized) - " + new Date().toISOString());
+console.log("Deploy V6 (Quality Restoration) - " + new Date().toISOString());
 
 export default {
     async fetch(request, env) {
@@ -53,47 +55,59 @@ export default {
             );
         }
 
-        // --- 1. CONSTRUCCIÓN DEL PROMPT PARA PERPLEXITY ---
+        // --- 1. CONSTRUCCIÓN DEL PROMPT DETALLADO (V4 RESTORED) ---
         const tipoInmueble = formData.tipo_inmueble || 'inmueble';
         const ubicacion = `${formData.barrio || ''}, ${formData.municipio || ''}`.trim();
 
-        // Fallback de área para evitar NaN
+        // Fallback de área
         let areaBase = parseInt(formData.area_construida);
-        if (!Number.isFinite(areaBase) || areaBase <= 0) {
-            areaBase = 60; // Fallback sensato
-        }
+        if (!Number.isFinite(areaBase) || areaBase <= 0) areaBase = 60;
         const area = areaBase;
 
         const minArea = Math.round(area * 0.7);
         const maxArea = Math.round(area * 1.3);
 
+        // Prompt detallado original para garantizar calidad
         const perplexityPrompt = `
-Actúa como tasador inmobiliario experto en Colombia.
-Busca inmuebles en VENTA y ARRIENDO en: ${ubicacion} (${tipoInmueble}).
-Objetivo: Área ${area}m², ${formData.habitaciones || '?'} habs.
+Eres un analista inmobiliario experto en Colombia.
+Tu tarea es realizar un estudio de mercado técnico y detallado para un inmueble en: ${ubicacion} (${tipoInmueble}).
+Datos Objetivo: Área ${area}m², ${formData.habitaciones || '?'} habitaciones.
 
-REQUISITOS DE BÚSQUEDA:
-1. Filtro de Área: ${minArea}m² a ${maxArea}m².
-2. Cantidad: Mínimo 15 comparables. Intenta que el 20-30% sean ARRIENDOS.
-3. Fuentes: Portales reales (Fincaraiz, Metrocuadrado, Ciencuadras, etc.).
-4. Si escasean datos en el barrio exacto, busca en barrios vecinos del mismo estrato.
+## 1. BÚSQUEDA DE COMPARABLES
+Busca en portales inmobiliarios reales (Fincaraiz, Metrocuadrado, Ciencuadras, etc.).
+- Filtro de Área: ${minArea}m² a ${maxArea}m².
+- Cantidad: Mínimo 15 comparables.
+- Mix: Intenta que el 20-30% sean ARRIENDOS para calcular rentabilidad.
+- Si no hay exactos en el barrio, busca en zonas aledañas del mismo estrato.
 
-FORMATO DE RESPUESTA:
-Genera una lista detallada. Para cada inmueble especifica:
-- Título y Ubicación.
-- Operación: VENTA o ARRIENDO.
-- Precio de Lista (El valor total si es venta, o el canon mensual si es arriendo).
-- Área, Habitaciones, Baños.
+## 2. LISTADO DETALLADO
+Para cada inmueble encontrado, genera una línea en una TABLA MARKDOWN con:
+- Título del Anuncio (Extracto breve)
+- Ubicación (Barrio)
+- Operación (Venta o Arriendo)
+- Precio (Valor total o Canon mensual)
+- Área (m²)
+- Habitaciones
 
-AL FINAL, ESCRIBE UN "RESUMEN EJECUTIVO" DE 2-3 PÁRRAFOS QUE INCLUYA:
-- Precio promedio por m² encontrado en el mercado
-- Yield (rentabilidad) estimado del sector
-- Nivel de oferta disponible (abundante/escasa/moderada)
-- Recomendación de precio de publicación para el propietario
-- Principales factores que afectan el valor (ubicación, estado, amenidades)
+## 3. ANÁLISIS DE MERCADO
+Calcula y explica:
+- Precio promedio por m² en VENTA en la zona.
+- Canon de arrendamiento promedio para esta tipología.
+- Yield (Rentabilidad) mensual estimada del sector (ej: 0.5%).
+
+## 4. RESUMEN EJECUTIVO
+Escribe 2 párrafos densos y profesionales dirigidos al propietario con:
+- Valoración del mercado actual (oferta/demanda).
+- Rango de precios sugerido para venta y arriendo.
+- Factores clave que valorizan o desvalorizan en esta zona específica.
+
+IMPORTANTE:
+- Usa fuentes reales.
+- Sé preciso con los números.
+- NO inventes datos.
         `.trim();
 
-        // --- 2. LLAMADA A PERPLEXITY (MODELO RÁPIDO) ---
+        // --- 2. LLAMADA A PERPLEXITY (MODELO SONAR) ---
         let perplexityContent = '';
         let citations = [];
 
@@ -105,9 +119,9 @@ AL FINAL, ESCRIBE UN "RESUMEN EJECUTIVO" DE 2-3 PÁRRAFOS QUE INCLUYA:
                     Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
                 },
                 body: JSON.stringify({
-                    model: 'sonar', // Modelo rápido y efectivo
+                    model: 'sonar', // Mantenemos sonar por velocidad, pero con prompt detallado
                     messages: [
-                        { role: 'system', content: 'Eres un motor de búsqueda inmobiliaria preciso.' },
+                        { role: 'system', content: 'Eres un analista inmobiliario preciso y profesional.' },
                         { role: 'user', content: perplexityPrompt },
                     ],
                     temperature: 0.1,
@@ -117,7 +131,6 @@ AL FINAL, ESCRIBE UN "RESUMEN EJECUTIVO" DE 2-3 PÁRRAFOS QUE INCLUYA:
 
             if (!response.ok) {
                 const errText = await response.text();
-                console.error('Perplexity API error:', response.status, errText);
                 return new Response(
                     JSON.stringify({ error: `Error Perplexity (${response.status})`, details: errText }),
                     { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -127,41 +140,36 @@ AL FINAL, ESCRIBE UN "RESUMEN EJECUTIVO" DE 2-3 PÁRRAFOS QUE INCLUYA:
             const data = await response.json();
             perplexityContent = data.choices?.[0]?.message?.content || '';
             citations = data.citations || [];
-            console.log(`Perplexity completado. Fuentes: ${citations.length}, Chars: ${perplexityContent.length}`);
+            console.log(`Perplexity completado. Fuentes: ${citations.length}`);
 
         } catch (e) {
-            console.error('Perplexity request failed:', e);
             return new Response(
                 JSON.stringify({ error: 'Error conexión Perplexity', details: e.message }),
                 { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        if (!perplexityContent) {
-            return new Response(
-                JSON.stringify({ error: 'Perplexity devolvió respuesta vacía' }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
         // --- 3. EXTRACCIÓN ESTRUCTURADA CON DEEPSEEK ---
         const extractionPrompt = `
-Del siguiente texto, extrae un JSON con los comparables y el análisis.
+Del siguiente texto (que contiene tablas y análisis), extrae un JSON estructurado.
 
 TEXTO:
 ${perplexityContent}
 
-REGLAS DE EXTRACCIÓN:
-1. "precio_lista": El número EXACTO del aviso.
-   - Si es ARRIENDO, pon el CANON MENSUAL (ej: 1500000). NO multipliques ni capitalices.
-   - Si es VENTA, pon el PRECIO TOTAL (ej: 300000000).
-2. "tipo_operacion": "venta" o "arriendo".
-3. "yield_zona": Extrae el % de rentabilidad si se menciona (ej: 0.0055 para 0.55%). Si no se menciona, usa null.
-4. "resumen_mercado": Extrae el RESUMEN EJECUTIVO completo del final del texto. Debe ser rico en detalles.
+INSTRUCCIONES DE EXTRACCIÓN:
+1. "comparables": Extrae CADA FILA de la tabla de inmuebles.
+   - "titulo": El nombre o descripción del inmueble.
+   - "precio_lista": El número EXACTO del precio.
+   - "tipo_operacion": "venta" o "arriendo".
+   - "area": Área en m².
+   - "habitaciones": Número de habitaciones.
+   - "ubicacion": Barrio o zona.
 
-IMPORTANTE: Extrae TODOS los comparables que encuentres. No filtres por área ni precio.
+2. "resumen_mercado": Extrae EL TEXTO COMPLETO de la sección "RESUMEN EJECUTIVO". Queremos el análisis rico y detallado.
 
-Devuelve SOLO JSON válido, sin texto adicional.
+3. "yield_zona": Busca el porcentaje de rentabilidad/yield mencionado en el análisis (ej: 0.5%). Devuélvelo como decimal (0.005).
+
+Devuelve SOLO JSON válido.
         `.trim();
 
         let extractedData = {};
@@ -175,10 +183,7 @@ Devuelve SOLO JSON válido, sin texto adicional.
                 body: JSON.stringify({
                     model: 'deepseek-chat',
                     messages: [
-                        {
-                            role: 'system',
-                            content: 'Eres un extractor JSON estricto. Responde SOLO con el objeto JSON, sin bloques de código markdown.',
-                        },
+                        { role: 'system', content: 'Eres un extractor JSON experto.' },
                         { role: 'user', content: extractionPrompt },
                     ],
                     temperature: 0.0,
@@ -187,7 +192,6 @@ Devuelve SOLO JSON válido, sin texto adicional.
 
             if (!dsResponse.ok) {
                 const errDs = await dsResponse.text();
-                console.error('DeepSeek API error:', dsResponse.status, errDs);
                 return new Response(
                     JSON.stringify({ error: `Error DeepSeek (${dsResponse.status})`, details: errDs }),
                     { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -197,63 +201,60 @@ Devuelve SOLO JSON válido, sin texto adicional.
             const dsData = await dsResponse.json();
             let content = dsData.choices?.[0]?.message?.content || '{}';
 
-            // Limpieza defensiva de Markdown
+            // Limpieza Markdown
             content = content.trim();
             if (content.startsWith('```')) {
                 const match = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
-                if (match && match[1]) {
-                    content = match[1].trim();
-                }
+                if (match && match[1]) content = match[1].trim();
             }
 
             extractedData = JSON.parse(content);
-            console.log('DeepSeek extraction successful');
 
         } catch (e) {
-            console.error('DeepSeek parsing error:', e);
             return new Response(
                 JSON.stringify({ error: 'Error Parseo DeepSeek', details: e.message }),
                 { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        // --- 4. PROCESAMIENTO Y LÓGICA DE AVALÚO (Metodología Dual) ---
+        // --- 4. PROCESAMIENTO Y LÓGICA DE NEGOCIO (HEURÍSTICA DE PRECIOS) ---
         const sanitizeNumber = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : null);
 
-        // a. Determinar Yield del Mercado
-        const yieldDefault = 0.0055; // 0.55%
+        const yieldDefault = 0.0055;
         const yieldExtracted = sanitizeNumber(extractedData.yield_zona);
         const yieldFinal = yieldExtracted || yieldDefault;
 
-        // b. Procesar Portales (Limpiar URLs a Dominios)
+        // Portales
         const portalesUnicos = new Set(
-            citations
-                .map((url) => {
-                    try {
-                        return new URL(url).hostname.replace('www.', '').replace('.com.co', '').replace('.com', '');
-                    } catch {
-                        return null;
-                    }
-                })
-                .filter(Boolean)
+            citations.map((url) => {
+                try {
+                    return new URL(url).hostname.replace('www.', '').replace('.com.co', '').replace('.com', '');
+                } catch { return null; }
+            }).filter(Boolean)
         );
         const portalesList = Array.from(portalesUnicos);
-        if (portalesList.length === 0) {
-            portalesList.push('fincaraiz', 'metrocuadrado'); // Fallback
-        }
+        if (portalesList.length === 0) portalesList.push('fincaraiz', 'metrocuadrado');
 
-        // c. Normalizar Comparables
+        // Procesamiento de Comparables con HEURÍSTICA
         const comparables = (extractedData.comparables || [])
             .map((c) => {
                 const areaComp = sanitizeNumber(c.area);
                 const precioLista = sanitizeNumber(c.precio_lista);
-                const esArriendo = c.tipo_operacion?.toLowerCase().includes('arriendo');
 
-                let precioVentaEstimado = 0; // Capital
-                let precioM2 = 0; // Normalizado a Venta
+                // --- HEURÍSTICA CRÍTICA ---
+                // Si el precio es menor a 20 millones, ES ARRIENDO (aunque diga venta)
+                // Esto corrige errores de clasificación de la IA
+                let esArriendo = c.tipo_operacion?.toLowerCase().includes('arriendo');
+                if (precioLista && precioLista < 20000000) {
+                    esArriendo = true;
+                }
+                // ---------------------------
+
+                let precioVentaEstimado = 0;
+                let precioM2 = 0;
 
                 if (esArriendo) {
-                    // METODOLOGÍA RENTABILIDAD: Capital = Canon / Yield
+                    // Arriendo -> Capitalización
                     if (precioLista && yieldFinal > 0) {
                         precioVentaEstimado = Math.round(precioLista / yieldFinal);
                     }
@@ -261,7 +262,7 @@ Devuelve SOLO JSON válido, sin texto adicional.
                         precioM2 = Math.round(precioVentaEstimado / areaComp);
                     }
                 } else {
-                    // METODOLOGÍA MERCADO: Capital = Precio Lista
+                    // Venta -> Directo
                     precioVentaEstimado = precioLista || 0;
                     if (precioVentaEstimado && areaComp) {
                         precioM2 = Math.round(precioVentaEstimado / areaComp);
@@ -277,34 +278,31 @@ Devuelve SOLO JSON válido, sin texto adicional.
                     habitaciones: sanitizeNumber(c.habitaciones),
                     banos: sanitizeNumber(c.banos),
 
-                    // FRONTEND DATA
-                    precio_publicado: precioLista, // Lo que se ve (Canon o Venta)
-                    precio_cop: precioVentaEstimado, // Valor Capital (para cálculos)
-                    precio_m2: precioM2, // $/m² Homogeneizado
+                    precio_publicado: precioLista,
+                    precio_cop: precioVentaEstimado,
+                    precio_m2: precioM2,
                     yield_mensual: esArriendo ? yieldFinal : null,
                 };
             })
             .filter((c) => c.precio_cop > 0 && c.area_m2 > 0);
 
-        // Validación de comparables mínimos
+        // Validación Mínima
         if (comparables.length < 5) {
             return new Response(
                 JSON.stringify({
                     error: 'Datos insuficientes',
-                    details: `Se encontraron solo ${comparables.length} comparables válidos (mínimo 5 requeridos)`,
+                    details: `Solo se encontraron ${comparables.length} comparables válidos.`,
                     perplexity_full_text: perplexityContent,
                 }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        console.log(`Comparables procesados: ${comparables.length}`);
-
-        // d. Cálculos Estadísticos Separados
+        // Cálculos Finales
         const compsVenta = comparables.filter((c) => c.tipo_origen === 'venta');
         const compsArriendo = comparables.filter((c) => c.tipo_origen === 'arriendo');
 
-        // 1. Enfoque Venta Directa ($/m² promedio * área)
+        // 1. Venta Directa
         let valorVentaDirecta = null;
         let precioM2Promedio = 0;
         if (compsVenta.length > 0) {
@@ -313,7 +311,7 @@ Devuelve SOLO JSON válido, sin texto adicional.
             valorVentaDirecta = Math.round(precioM2Promedio * area);
         }
 
-        // 2. Enfoque Rentabilidad (Canon promedio / yield)
+        // 2. Rentabilidad
         let valorRentabilidad = null;
         let canonPromedio = 0;
         if (compsArriendo.length > 0) {
@@ -321,46 +319,36 @@ Devuelve SOLO JSON válido, sin texto adicional.
             canonPromedio = Math.round(sumCanon / compsArriendo.length);
             valorRentabilidad = Math.round(canonPromedio / yieldFinal);
         } else {
-            // Fallback: Si no hay arriendos, estimamos canon con el yield inverso
+            // Fallback
             if (valorVentaDirecta) {
                 valorRentabilidad = valorVentaDirecta;
                 canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
             }
         }
 
-        // 3. Valor Final Ponderado
+        // 3. Ponderación
         let valorFinal = 0;
-
         if (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0) {
-            // 60% Venta (más directo), 40% Rentabilidad (inferido)
             valorFinal = Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4);
         } else {
             valorFinal = valorVentaDirecta || valorRentabilidad || 0;
         }
 
-        // Fallback final de seguridad para precio m2 usado
         const precioM2Usado = precioM2Promedio || (valorFinal > 0 ? Math.round(valorFinal / area) : 0);
 
-        console.log(`Valores calculados - Final: ${valorFinal}, Venta: ${valorVentaDirecta}, Rentabilidad: ${valorRentabilidad}`);
-
-        // --- 5. RESPUESTA FINAL ---
         const resultado = {
-            resumen_busqueda: extractedData.resumen_mercado || 'Análisis de mercado basado en oferta disponible.',
-
+            resumen_busqueda: extractedData.resumen_mercado || 'Análisis de mercado realizado.',
             valor_final: valorFinal,
             rango_valor_min: Math.round(valorFinal * 0.95),
             rango_valor_max: Math.round(valorFinal * 1.05),
 
-            // Metodología Venta
             valor_estimado_venta_directa: valorVentaDirecta,
             precio_m2_usado: precioM2Usado,
 
-            // Metodología Rentabilidad
             valor_estimado_rentabilidad: valorRentabilidad,
             canon_arriendo_promedio: canonPromedio,
             yield_mensual_mercado: yieldFinal,
 
-            // Estadísticas
             total_comparables: comparables.length,
             total_comparables_venta: compsVenta.length,
             total_comparables_arriendo: compsArriendo.length,
