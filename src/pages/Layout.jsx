@@ -129,12 +129,7 @@ export default function Layout({ children, currentPageName }) {
                   >
                     Nuevo Avalúo
                   </a>
-                  <a
-                    href="/MisAvaluos"
-                    className={`text-sm font-medium transition-colors hover:text-[#C9C19D] ${currentPageName === 'MisAvaluos' ? 'text-[#C9C19D]' : 'text-[#DEE8E9]'}`}
-                  >
-                    Mis Avalúos
-                  </a>
+
                 </nav>
               )}
             </div>
