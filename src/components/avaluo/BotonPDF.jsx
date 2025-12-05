@@ -37,11 +37,11 @@ export default function BotonPDF({ formData }) {
       const formatText = (text) => {
         if (!text) return '';
         return text
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negritas
-          .replace(/^#+\s*(.*?)$/gm, '<h4>$1</h4>') // Títulos (Simplificado para consistencia)
-          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px;">$1</li>') // Listas
-          .replace(/\n\n/g, '<br><br>') // Saltos de párrafo
-          .replace(/\n/g, '<br>'); // Saltos de línea simples
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/^#+\s*(.*?)$/gm, '<h4>$1</h4>')
+          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px;">$1</li>')
+          .replace(/\n\n/g, '<br><br>')
+          .replace(/\n/g, '<br>');
       };
 
       // HTML DEL REPORTE
@@ -99,7 +99,7 @@ export default function BotonPDF({ formData }) {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              padding: 30px 50px 15px 50px; /* Padding reducido */
+              padding: 30px 50px 15px 50px;
               border-bottom: 2px solid var(--primary);
               margin-bottom: 20px;
             }
@@ -111,7 +111,7 @@ export default function BotonPDF({ formData }) {
             .hero {
               background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
               color: white;
-              padding: 30px; /* Padding reducido */
+              padding: 30px;
               border-radius: 12px;
               display: flex;
               justify-content: space-between;
@@ -120,7 +120,7 @@ export default function BotonPDF({ formData }) {
               box-shadow: 0 10px 20px rgba(44, 61, 55, 0.15);
             }
             .hero-title { font-family: 'Outfit', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 8px; }
-            .hero-price { font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; color: white; } /* Tamaño reducido */
+            .hero-price { font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; color: white; }
             .hero-subtitle { font-size: 13px; opacity: 0.8; }
             .hero-stats { text-align: right; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 30px; }
             .stat-label { font-size: 11px; opacity: 0.7; display: block; }
@@ -137,7 +137,6 @@ export default function BotonPDF({ formData }) {
             .method-val { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; color: var(--primary); margin: 8px 0; }
             .method-label { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
 
-            /* ANÁLISIS DETALLADO */
             .analysis-section { margin-top: 30px; margin-bottom: 30px; font-size: 11px; text-align: justify; color: #444; }
             .two-columns { column-count: 2; column-gap: 30px; }
             .analysis-section h3 { font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; font-size: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 5px; display: inline-block; width: 100%; }
@@ -145,14 +144,11 @@ export default function BotonPDF({ formData }) {
             .analysis-section ul { padding-left: 20px; margin-bottom: 10px; }
             .analysis-section li { margin-bottom: 3px; }
 
-            /* TABLA COMPARABLES */
             table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 15px; }
             th { background: var(--primary); color: white; padding: 8px; text-align: left; font-family: 'Outfit', sans-serif; }
             td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
             tr:nth-child(even) { background: #f9f9f9; }
-            .badge { 
-              display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 8px; font-weight: 600; text-transform: uppercase;
-            }
+            .badge { display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 8px; font-weight: 600; text-transform: uppercase; }
             .badge-venta { background: #E8F5E9; color: #2E7D32; }
             .badge-arriendo { background: #E3F2FD; color: #1565C0; }
             .text-right { text-align: right; }
@@ -248,7 +244,6 @@ export default function BotonPDF({ formData }) {
                 ` : ''}
               </div>
 
-              <!-- ANÁLISIS DETALLADO (Restaurado) -->
               ${comparablesData.perplexity_full_text ? `
               <div class="page-break"></div>
               <div class="analysis-section">
@@ -276,11 +271,9 @@ export default function BotonPDF({ formData }) {
         const esArriendo = item.tipo_origen === 'arriendo';
         const badgeClass = esArriendo ? 'badge-arriendo' : 'badge-venta';
         const tipoLabel = esArriendo ? 'Arriendo' : 'Venta';
-
         const notaArriendo = esArriendo
           ? `<span class="sub-text">Estimado por rentabilidad (Yield ${(item.yield_mensual * 100).toFixed(2)}%)</span>`
           : '';
-
         return `
                         <tr>
                           <td>
@@ -305,6 +298,11 @@ export default function BotonPDF({ formData }) {
       }).join('')}
                   </tbody>
                 </table>
+                ${esLote ? `
+                <p style="font-size: 10px; color: #888; margin-top: 15px; font-style: italic; text-align: justify;">
+                  Nota: Ante la escasez de oferta comercial idéntica, se han utilizado lotes campestres y urbanos como referencia base, ajustando sus valores por factores de localización, escala y uso comercial. Se aplicó ajuste por factor de comercialización.
+                </p>
+                ` : ''}
               </div>
 
               <div class="footer">

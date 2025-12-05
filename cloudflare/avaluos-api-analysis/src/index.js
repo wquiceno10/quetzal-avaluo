@@ -4,7 +4,36 @@
  * - Extracción estricta (V7 logic maintained)
  * - Resumen conciso (V8 logic maintained)
  */
-console.log("Deploy V9 (Dynamic Area + Fallback) - " + new Date().toISOString());
+console.log("Deploy V10 (Dedup + Filtering) - " + new Date().toISOString());
+
+// --- HELPER: Similitud de Texto (Levenshtein simplificado -> Ratio) ---
+function getSimilarity(s1, s2) {
+    if (!s1 || !s2) return 0;
+    const str1 = s1.toLowerCase().trim();
+    const str2 = s2.toLowerCase().trim();
+    if (str1 === str2) return 1;
+    if (str1.length === 0 || str2.length === 0) return 0;
+
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix = Array.from({ length: len1 + 1 }, () => Array(len2 + 1).fill(0));
+
+    for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= len1; i++) {
+        for (let j = 1; j <= len2; j++) {
+            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j - 1] + cost
+            );
+        }
+    }
+    const distance = matrix[len1][len2];
+    return 1 - distance / Math.max(len1, len2);
+}
 
 export default {
     async fetch(request, env) {
@@ -487,6 +516,54 @@ Devuelve SOLO JSON válido.
         const rangoFuente = extractedData.rango_sugerido_min ? 'perplexity' : 'calculado';
         console.log(`Rango: $${rangoMin.toLocaleString()} - $${rangoMax.toLocaleString()} (fuente: ${rangoFuente})`);
 
+        // --- 5. DEDUPLICACIÓN Y FILTRADO (V10) ---
+        // A) Deduplicación Estricta: 3/3 condiciones (Precio ±1%, Área ±1%, Título ≥70%)
+        const uniqueComparables = [];
+        for (const comp of comparables) {
+            const isDuplicate = uniqueComparables.some(existing => {
+                // Precio robusto (usa precio_cop si existe, sino precio_publicado)
+                const precioBaseExisting = existing.precio_cop || existing.precio_publicado || 0;
+                const precioBaseComp = comp.precio_cop || comp.precio_publicado || 0;
+                const areaBaseExisting = existing.area_m2 || 0;
+                const areaBaseComp = comp.area_m2 || 0;
+
+                // Defensivo: evitar división por cero
+                const priceMatch = precioBaseExisting > 0
+                    ? Math.abs(precioBaseExisting - precioBaseComp) / precioBaseExisting < 0.01
+                    : false;
+                const areaMatch = areaBaseExisting > 0
+                    ? Math.abs(areaBaseExisting - areaBaseComp) / areaBaseExisting < 0.01
+                    : false;
+                const titleSim = getSimilarity(existing.titulo, comp.titulo);
+
+                // Solo es duplicado si las 3 condiciones se cumplen
+                return priceMatch && areaMatch && titleSim >= 0.7;
+            });
+            if (!isDuplicate) uniqueComparables.push(comp);
+        }
+        console.log(`Comparables después de deduplicación: ${uniqueComparables.length} (originales: ${comparables.length})`);
+
+        // B) Filtro de Área Estricto (Seguridad General)
+        // Eliminar propiedades con área < 50% o > 150% del objetivo (salvo que sea lote grande donde ya aplicamos otra lógica)
+        // Esto evita que Perplexity "alucine" bodegas de 500m² para apartamentos de 60m².
+        let comparablesFiltradosPorArea = uniqueComparables;
+        if (!esLote || area <= 1000) { // Para lotes grandes usamos la lógica específica de abajo
+            comparablesFiltradosPorArea = uniqueComparables.filter(c => {
+                const a = c.area_m2 || 0;
+                return a >= area * 0.5 && a <= area * 1.5;
+            });
+            console.log(`Comparables después de filtro de área (50-150%): ${comparablesFiltradosPorArea.length}`);
+        }
+
+        // C) Filtro de Relevancia (Solo para lotes grandes, tabla limpia)
+        let comparablesParaTabla = comparablesFiltradosPorArea;
+        if (esLote && area > 1000) {
+            const filtrados = comparablesFiltradosPorArea.filter(c => (c.area_m2 || 0) >= 500);
+            // Fallback: si quedan menos de 3, mantener originales deduplicados
+            comparablesParaTabla = filtrados.length >= 3 ? filtrados : comparablesFiltradosPorArea;
+            console.log(`Comparables filtrados para tabla (lote grande): ${comparablesParaTabla.length}`);
+        }
+
         const resultado = {
             resumen_busqueda: extractedData.resumen_mercado || 'Análisis de mercado realizado.',
             valor_final: valorFinal,
@@ -504,12 +581,12 @@ Devuelve SOLO JSON válido.
             yield_mensual_mercado: yieldFinal,
             yield_fuente: yieldFuente,
 
-            total_comparables: comparables.length,
+            total_comparables: comparablesParaTabla.length,
             total_comparables_venta: compsVenta.length,
             total_comparables_arriendo: compsArriendo.length,
             portales_consultados: portalesList,
 
-            comparables: comparables,
+            comparables: comparablesParaTabla,
             perplexity_full_text: perplexityContent,
         };
 
