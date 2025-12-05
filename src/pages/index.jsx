@@ -44,7 +44,7 @@ function PagesContent() {
                 <Route path="/AvaluoInmobiliario" element={<AvaluoInmobiliario />} />
 
                 <Route path="/AccesoClientes" element={<AccesoClientes />} />
-                <Route path="/MisAvaluos" element={<MisAvaluos />} />
+                <Route path="/mis-avaluos" element={<MisAvaluos />} />
 
             </Routes>
         </Layout>
