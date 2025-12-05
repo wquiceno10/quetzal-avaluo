@@ -148,139 +148,135 @@ export default function MisAvaluos() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-[#2C3D37] font-outfit">Mis Avalúos</h1>
-                    <p className="text-[#4F5B55] mt-2">Historial de tus valoraciones generadas</p>
-                </div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col min-h-[80vh]">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-[#2C3D37] font-outfit">Mis Avalúos</h1>
+                <p className="text-[#4F5B55] mt-2">Historial de tus valoraciones generadas</p>
+            </div>
+
+            <div className="flex-grow">
+                {error && (
+                    <Alert className="mb-6 bg-red-50 border-red-200">
+                        <AlertDescription className="text-red-800">{error}</AlertDescription>
+                    </Alert>
+                )}
+
+                {avaluos.length === 0 ? (
+                    <Card className="border-dashed border-2 border-[#B0BDB4] bg-[#F5F4F0]/50 h-64 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="bg-[#DEE8E9] p-4 rounded-full mb-4 inline-block">
+                                <FileText className="w-8 h-8 text-[#2C3D37]" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-[#2C3D37] mb-2">No tienes avalúos guardados</h3>
+                        </div>
+                    </Card>
+                ) : (
+                    <div className="grid gap-6">
+                        {avaluos.map((avaluo) => {
+                            const formDataForPDF = { ...avaluo, comparables_data: avaluo.comparables_data };
+                            const compData = avaluo.comparables_data || {};
+                            let valorMostrar = avaluo.valor_final;
+                            if (!valorMostrar) {
+                                const v1 = compData.valor_estimado_venta_directa;
+                                const v2 = compData.valor_estimado_rentabilidad;
+                                if (v1 && v2) valorMostrar = (v1 + v2) / 2;
+                                else valorMostrar = v1 || v2;
+                            }
+
+                            return (
+                                <Card key={avaluo.id} className="border-[#E0E5E2] hover:shadow-md transition-all duration-300">
+                                    <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <Badge variant="outline" className="bg-white text-[#2C3D37] border-[#B0BDB4]">
+                                                    {avaluo.codigo_avaluo || 'SIN CÓDIGO'}
+                                                </Badge>
+                                                <span className="text-xs text-[#7A8C85] flex items-center gap-1 uppercase tracking-wide">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {formatDate(avaluo.created_at)}
+                                                </span>
+                                            </div>
+                                            <Badge className="bg-[#DEE8E9] text-[#2C3D37] hover:bg-[#d0ddde]">
+                                                {avaluo.status || 'Completado'}
+                                            </Badge>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-6">
+                                        <div className="grid md:grid-cols-3 gap-6">
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-[#7A8C85] font-bold uppercase tracking-wider">Inmueble</p>
+                                                <div className="flex items-start gap-3">
+                                                    <div className="bg-[#F0F2F1] p-2 rounded-md">
+                                                        <Home className="w-5 h-5 text-[#2C3D37]" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-[#2C3D37] capitalize text-lg">{avaluo.tipo_inmueble}</p>
+                                                        <p className="text-sm text-[#4F5B55]">
+                                                            {avaluo.area_construida} m² • {avaluo.habitaciones || 0} Hab • {avaluo.banos || 0} Baños
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-[#7A8C85] font-bold uppercase tracking-wider">Ubicación</p>
+                                                <div className="flex items-start gap-3">
+                                                    <div className="bg-[#F0F2F1] p-2 rounded-md">
+                                                        <MapPin className="w-5 h-5 text-[#2C3D37]" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-[#2C3D37] text-lg">{avaluo.barrio}</p>
+                                                        <p className="text-sm text-[#4F5B55]">{avaluo.municipio}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <p className="text-xs text-[#7A8C85] font-bold uppercase tracking-wider">Valor Estimado</p>
+                                                <p className="text-3xl font-bold text-[#2C3D37] font-outfit">
+                                                    {formatCurrency(valorMostrar)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-4 mt-8 pt-6 border-t border-[#F0F2F1]">
+                                            <div className="flex-1">
+                                                <BotonPDF
+                                                    formData={formDataForPDF}
+                                                    className="w-full sm:w-auto bg-[#2C3D37] text-white hover:bg-[#1a2620]"
+                                                />
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => handleResendEmail(avaluo)}
+                                                disabled={sendingEmailId === avaluo.id}
+                                                className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6]"
+                                            >
+                                                {sendingEmailId === avaluo.id ? (
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                    <Mail className="w-4 h-4 mr-2" />
+                                                )}
+                                                Reenviar al Correo
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            <div className="mt-12 mb-[50px] flex justify-center">
                 <Button
                     onClick={() => window.location.href = '/AvaluoInmobiliario'}
-                    className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full"
+                    className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-10 py-6 text-lg font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
                 >
-                    <RefreshCw className="w-4 h-4 mr-2" />
+                    <RefreshCw className="w-5 h-5 mr-2" />
                     Nuevo Avalúo
                 </Button>
             </div>
-
-            {error && (
-                <Alert className="mb-6 bg-red-50 border-red-200">
-                    <AlertDescription className="text-red-800">{error}</AlertDescription>
-                </Alert>
-            )}
-
-            {avaluos.length === 0 ? (
-                <Card className="border-dashed border-2 border-[#B0BDB4] bg-[#F5F4F0]/50">
-                    <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="bg-[#DEE8E9] p-4 rounded-full mb-4">
-                            <FileText className="w-8 h-8 text-[#2C3D37]" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-[#2C3D37] mb-2">No tienes avalúos guardados</h3>
-                        <p className="text-[#4F5B55] mb-6 max-w-md">
-                            Genera tu primer avalúo inmobiliario para ver el historial de valoraciones y descargar los reportes.
-                        </p>
-                        <Button
-                            onClick={() => window.location.href = '/AvaluoInmobiliario'}
-                            className="bg-[#2C3D37] hover:bg-[#1a2620]"
-                        >
-                            Generar mi primer avalúo
-                        </Button>
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="grid gap-6">
-                    {avaluos.map((avaluo) => {
-                        // Reconstruct formData for PDF button
-                        const formDataForPDF = {
-                            ...avaluo,
-                            comparables_data: avaluo.comparables_data
-                        };
-
-                        // Calculate value to display
-                        const compData = avaluo.comparables_data || {};
-                        let valorMostrar = avaluo.valor_final;
-                        if (!valorMostrar) {
-                            const v1 = compData.valor_estimado_venta_directa;
-                            const v2 = compData.valor_estimado_rentabilidad;
-                            if (v1 && v2) valorMostrar = (v1 + v2) / 2;
-                            else valorMostrar = v1 || v2;
-                        }
-
-                        return (
-                            <Card key={avaluo.id} className="border-[#E0E5E2] hover:shadow-md transition-shadow">
-                                <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Badge variant="outline" className="bg-white text-[#2C3D37] border-[#B0BDB4]">
-                                                {avaluo.codigo_avaluo || 'SIN CÓDIGO'}
-                                            </Badge>
-                                            <span className="text-sm text-[#7A8C85] flex items-center gap-1">
-                                                <Calendar className="w-3 h-3" />
-                                                {formatDate(avaluo.created_at)}
-                                            </span>
-                                        </div>
-                                        <Badge className="bg-[#DEE8E9] text-[#2C3D37] hover:bg-[#d0ddde]">
-                                            {avaluo.status || 'Completado'}
-                                        </Badge>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="pt-6">
-                                    <div className="grid md:grid-cols-3 gap-6">
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-[#7A8C85] font-medium">Inmueble</p>
-                                            <div className="flex items-start gap-2">
-                                                <Home className="w-4 h-4 text-[#C9C19D] mt-1" />
-                                                <div>
-                                                    <p className="font-semibold text-[#2C3D37] capitalize">{avaluo.tipo_inmueble}</p>
-                                                    <p className="text-sm text-[#4F5B55]">
-                                                        {avaluo.area_construida} m² • {avaluo.habitaciones || 0} Hab • {avaluo.banos || 0} Baños
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-[#7A8C85] font-medium">Ubicación</p>
-                                            <div className="flex items-start gap-2">
-                                                <MapPin className="w-4 h-4 text-[#C9C19D] mt-1" />
-                                                <div>
-                                                    <p className="font-medium text-[#2C3D37]">{avaluo.barrio}</p>
-                                                    <p className="text-sm text-[#4F5B55]">{avaluo.municipio}, {avaluo.departamento}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1">
-                                            <p className="text-sm text-[#7A8C85] font-medium">Valor Estimado</p>
-                                            <p className="text-2xl font-bold text-[#2C3D37] font-outfit">
-                                                {formatCurrency(valorMostrar)}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap gap-3 mt-6 pt-4 border-t border-[#F0F2F1]">
-                                        <BotonPDF formData={formDataForPDF} label="Descargar PDF" variant="outline" className="border-[#B0BDB4] text-[#2C3D37]" />
-
-                                        <Button
-                                            variant="ghost"
-                                            onClick={() => handleResendEmail(avaluo)}
-                                            disabled={sendingEmailId === avaluo.id}
-                                            className="text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6]"
-                                        >
-                                            {sendingEmailId === avaluo.id ? (
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            ) : (
-                                                <Mail className="w-4 h-4 mr-2" />
-                                            )}
-                                            Reenviar Email
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
-                </div>
-            )}
         </div>
     );
 }
