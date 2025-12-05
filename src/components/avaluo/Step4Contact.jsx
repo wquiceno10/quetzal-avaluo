@@ -426,11 +426,21 @@ export default function Step4Contact({ formData, onUpdate, onReset, onBack }) {
 
       if (supabaseUrl && supabaseAnonKey) {
         const supabase = createClient(supabaseUrl, supabaseAnonKey);
-        const { error } = await supabase.from('avaluos').insert([completeData]);
+
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // Add user_id to completeData if user is authenticated
+        const dataToInsert = {
+          ...completeData,
+          user_id: user?.id || null
+        };
+
+        const { error } = await supabase.from('avaluos').insert([dataToInsert]);
         if (error) {
           console.error('Error creating avaluo in Supabase:', error);
         } else {
-          console.log('Avaluo guardado exitosamente en Supabase');
+          console.log('Avaluo guardado exitosamente en Supabase con user_id:', user?.id);
         }
       }
     } catch (error) {

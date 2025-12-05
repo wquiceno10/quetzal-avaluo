@@ -13,7 +13,7 @@ export default function BotonPDF({ formData }) {
       const valorRentabilidad = comparablesData.valor_estimado_rentabilidad;
       const rangoMin = comparablesData.rango_valor_min;
       const rangoMax = comparablesData.rango_valor_max;
-      
+
       let valorEstimadoFinal = comparablesData.valor_final;
       if (!valorEstimadoFinal) {
         if (rangoMin && rangoMax) valorEstimadoFinal = (rangoMin + rangoMax) / 2;
@@ -319,7 +319,7 @@ export default function BotonPDF({ formData }) {
                   <div class="info-row"><span>Habitaciones:</span> <strong>${formData.habitaciones || '—'}</strong></div>
                   <div class="info-row"><span>Baños:</span> <strong>${formData.banos || '—'}</strong></div>
                   <div class="info-row"><span>Parqueadero:</span> <strong>${formData.tipo_parqueadero || '—'}</strong></div>
-                  <div class="info-row"><span>Antigüedad:</span> <strong>${formData.antiguedad || '—'} años</strong></div>
+                  <div class="info-row"><span>Antigüedad:</span> <strong>${formData.antiguedad || '—'}</strong></div>
                 </div>
 
                 <div class="card">
@@ -352,9 +352,9 @@ export default function BotonPDF({ formData }) {
                 <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); border-bottom: 2px solid var(--secondary); display: inline-block; padding-bottom: 5px;">Análisis Detallado IA</h3>
                 <div class="analysis-text">
                   ${(comparablesData.perplexity_full_text || '')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/###/g, '')
-                    .replace(/\n/g, '<br/>')}
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/###/g, '')
+          .replace(/\n/g, '<br/>')}
                 </div>
               </div>
 
