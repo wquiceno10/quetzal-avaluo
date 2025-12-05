@@ -117,7 +117,7 @@ Para que el sistema procese la información correctamente, debes presentar el li
 **Título del inmueble**
 Tipo (Venta/Arriendo) | Precio
 Área (m2) | Habitaciones | Ubicación
-Fuente (solo nombre, sin extensión, ej: Fincaraiz)
+**Fuente** (solo nombre, sin extensión, ej: Fincaraiz)
 
 Ejemplo:
 **Apartamento en Condina, Pereira**
@@ -137,16 +137,19 @@ Escribe un análisis narrativo sobre ambos enfoques, sin hacer cálculos finales
 
 ### 2.2. Método de Rentabilidad (Yield Mensual)
 - Estima el Canon Mensual Promedio de Arriendo para ${areaConstruida || 'metros'} m² en la zona.
-- Estima el Yield mensual promedio del sector (ej: 0.4% - 0.6%).
+- Investiga y Estima el Yield mensual promedio del sector (ej: 0.4% - 0.6%).
+- Presenta el Yield mensual promedio del sector **Yield promedio mercado: 0.45%**
 
 ## 3. RESULTADOS FINALES Y AJUSTES
 Entrega de forma clara:
+- **Valor Recomendado de Venta: $XXX.XXX.XXX** (valor único, ajustado por todos los factores)
+- **Rango sugerido: $XXX.XXX.XXX - $XXX.XXX.XXX** (rango de publicación recomendado)
 - Resumen de la posición del inmueble en el mercado (liquidez).
 - Comentario sobre ajustes aplicados por antigüedad o características.
 - Menciona las limitaciones si se usaron promedios regionales.
 
 ## 4. RESUMEN EJECUTIVO
-Cierra con 1-2 párrafos claros con el valor recomendado y estrategia de venta.
+Cierra con 1-4 párrafos claros con el valor recomendado y estrategia de venta.
 
 FORMATO FINAL
 --------
@@ -223,7 +226,15 @@ INSTRUCCIONES DE EXTRACCIÓN:
 
 2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
 
-3. "yield_zona": Busca el porcentaje de rentabilidad/yield mencionado en el análisis (ej: 0.5%). Devuélvelo como decimal (0.005).
+3. "yield_zona": Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto.
+   Extrae SOLO el número como decimal (ej: si dice "0.45%", devuelve 0.0045).
+
+4. "valor_recomendado_venta": Busca "Valor Recomendado de Venta: $XXX.XXX.XXX".
+   Extrae el número (sin separadores de miles ni símbolo $).
+
+5. "rango_sugerido_min": Busca "Rango sugerido: $XXX.XXX.XXX - $YYY.YYY.YYY". Extrae el primer número.
+
+6. "rango_sugerido_max": Extrae el segundo número del rango sugerido.
 
 Devuelve SOLO JSON válido.
         `.trim();
@@ -276,9 +287,11 @@ Devuelve SOLO JSON válido.
         // --- 4. PROCESAMIENTO Y LÓGICA DE NEGOCIO ---
         const sanitizeNumber = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : null);
 
-        const yieldDefault = 0.0055;
+        const yieldDefault = 0.005;  // 0.5% mensual (6% anual) - solo fallback
         const yieldExtracted = sanitizeNumber(extractedData.yield_zona);
         const yieldFinal = yieldExtracted || yieldDefault;
+        console.log(`Yield usado: ${(yieldFinal * 100).toFixed(2)}% mensual (${yieldExtracted ? 'extraído de mercado' : 'fallback'})`);
+        const yieldFuente = yieldExtracted ? 'mercado' : 'fallback';
 
         // Portales
         const portalesUnicos = new Set(
@@ -378,21 +391,32 @@ Devuelve SOLO JSON válido.
             }
         }
 
-        // 3. Ponderación
-        let valorFinal = 0;
-        if (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0) {
-            valorFinal = Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4);
-        } else {
-            valorFinal = valorVentaDirecta || valorRentabilidad || 0;
-        }
+        // 3. Usar valor recomendado por Perplexity (o calcular como fallback)
+        const valorRecomendado = sanitizeNumber(extractedData.valor_recomendado_venta);
+        const valorPonderado = (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0)
+            ? Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4)
+            : null;
+
+        const valorFinal = valorRecomendado || valorVentaDirecta || valorRentabilidad || 0;
+        const valorFuente = valorRecomendado ? 'perplexity' : 'calculado';
+        console.log(`Valor final: $${valorFinal.toLocaleString()} (fuente: ${valorFuente})`);
 
         const precioM2Usado = precioM2Promedio || (valorFinal > 0 ? Math.round(valorFinal / area) : 0);
+
+        // 4. Usar rango sugerido por Perplexity (o calcular como fallback)
+        const rangoMin = sanitizeNumber(extractedData.rango_sugerido_min) || Math.round(valorFinal * 1.00);
+        const rangoMax = sanitizeNumber(extractedData.rango_sugerido_max) || Math.round(valorFinal * 1.04);
+        const rangoFuente = extractedData.rango_sugerido_min ? 'perplexity' : 'calculado';
+        console.log(`Rango: $${rangoMin.toLocaleString()} - $${rangoMax.toLocaleString()} (fuente: ${rangoFuente})`);
 
         const resultado = {
             resumen_busqueda: extractedData.resumen_mercado || 'Análisis de mercado realizado.',
             valor_final: valorFinal,
-            rango_valor_min: Math.round(valorFinal * 0.95),
-            rango_valor_max: Math.round(valorFinal * 1.05),
+            valor_fuente: valorFuente,
+            valor_ponderado_referencia: valorPonderado,
+            rango_valor_min: rangoMin,
+            rango_valor_max: rangoMax,
+            rango_fuente: rangoFuente,
 
             valor_estimado_venta_directa: valorVentaDirecta,
             precio_m2_usado: precioM2Usado,
@@ -400,6 +424,7 @@ Devuelve SOLO JSON válido.
             valor_estimado_rentabilidad: valorRentabilidad,
             canon_arriendo_promedio: canonPromedio,
             yield_mensual_mercado: yieldFinal,
+            yield_fuente: yieldFuente,
 
             total_comparables: comparables.length,
             total_comparables_venta: compsVenta.length,

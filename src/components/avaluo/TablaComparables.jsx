@@ -130,6 +130,10 @@ export default function TablaComparables({ comparables }) {
           ))}
         </TableBody>
       </Table>
+
+      <p className="text-xs text-gray-500 mt-3 px-4 pb-3">
+        * Para arriendos, el "Precio Venta (Est)" es el valor estimado por capitalización usando el yield de mercado investigado.
+      </p>
     </div>
   );
 }
