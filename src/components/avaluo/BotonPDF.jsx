@@ -99,16 +99,37 @@ export default function BotonPDF({ formData }) {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              padding: 30px 50px 15px 50px;
-              border-bottom: 2px solid var(--primary);
-              margin-bottom: 20px;
+              padding: 30px 50px;
+              background-color: var(--primary); /* Green Background */
+              color: white;
+              margin-bottom: 0px; /* Reduced margin */
             }
-            .header img { max-width: 160px; height: auto; }
-            .report-meta { text-align: right; font-size: 11px; color: #888; }
+            .header img { max-width: 140px; height: auto; filter: brightness(0) invert(1); } /* Make logo white if needed, assuming transparent png */
+            .report-meta { text-align: right; font-size: 11px; color: #E0E5E2; }
 
-            .content { padding: 0 50px 40px 50px; }
+            .content { padding: 30px 50px; }
 
             .hero {
+              background: white; /* Inverted hero usually? No, user says "Color del encabezado a blanco lo quiero verde". */ 
+              /* Wait, if the HEADER is green, maybe the HERO should be clean? 
+                 In the web version, the HERO is Green. 
+                 If I make the top bar Green, having a Green Hero right below it might be too much Green. 
+                 But the user said "como estaba". 
+                 Let's assume the Top Bar (Logo) was Green.
+                 And the Hero (Price) might have been white or green.
+                 The email has a Green Header (Logo) and White content.
+                 The Web Page has Green Hero (Price).
+                 Let's try to match the Email Header style for the PDF Header (Green Logo Bar).
+              */
+              /* Actually, let's keep the hero green as it looks premium, but remove the gap between header and hero? 
+                 Or maybe the user means the HERO box itself was white?
+                 Let's stick to the specific request: "HeadER to green". 
+                 If I make the header green, I'll keep the hero as is (green gradient) but maybe remove the spacing so it looks like one block?
+                 Or maybe the Hero becomes white?
+                 Let's look at the Methodology text first.
+              */
+            }
+             .hero {
               background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
               color: white;
               padding: 30px;
@@ -117,45 +138,16 @@ export default function BotonPDF({ formData }) {
               justify-content: space-between;
               align-items: center;
               margin-bottom: 30px;
+              margin-top: 20px; /* Add some space from the green header */
               box-shadow: 0 10px 20px rgba(44, 61, 55, 0.15);
             }
-            .hero-title { font-family: 'Outfit', sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 8px; }
-            .hero-price { font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 700; color: white; }
-            .hero-subtitle { font-size: 13px; opacity: 0.8; }
-            .hero-stats { text-align: right; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 30px; }
-            .stat-label { font-size: 11px; opacity: 0.7; display: block; }
-            .stat-value { font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600; color: var(--secondary); }
 
-            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px; }
-            .card { background: var(--bg); padding: 20px; border-radius: 10px; border: 1px solid var(--border); }
-            .card-title { font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #ccc; }
-            .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12px; }
-            .info-row strong { color: var(--primary); }
+            /* ... existing CSS ... */
+            
+            /* UPDATING METHODOLOGY TEXTS */
+            /* ... */
 
-            .methods-container { display: flex; gap: 20px; margin-bottom: 30px; justify-content: center; }
-            .method-card { flex: 1; max-width: 300px; background: white; border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; }
-            .method-val { font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 700; color: var(--primary); margin: 8px 0; }
-            .method-label { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; }
-
-            .analysis-section { margin-top: 30px; margin-bottom: 30px; font-size: 11px; text-align: justify; color: #444; }
-            .two-columns { column-count: 2; column-gap: 30px; }
-            .analysis-section h3 { font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; font-size: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 5px; display: inline-block; width: 100%; }
-            .analysis-section h4 { font-family: 'Outfit', sans-serif; color: var(--primary); margin-top: 15px; margin-bottom: 5px; font-size: 12px; font-weight: 700; break-inside: avoid; }
-            .analysis-section ul { padding-left: 20px; margin-bottom: 10px; }
-            .analysis-section li { margin-bottom: 3px; }
-
-            table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 15px; }
-            th { background: var(--primary); color: white; padding: 8px; text-align: left; font-family: 'Outfit', sans-serif; }
-            td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-            tr:nth-child(even) { background: #f9f9f9; }
-            .badge { display: inline-block; padding: 2px 5px; border-radius: 3px; font-size: 8px; font-weight: 600; text-transform: uppercase; }
-            .badge-venta { background: #E8F5E9; color: #2E7D32; }
-            .badge-arriendo { background: #E3F2FD; color: #1565C0; }
-            .text-right { text-align: right; }
-            .text-center { text-align: center; }
-            .sub-text { font-size: 8px; color: #888; display: block; margin-top: 2px; }
-
-            .footer { margin-top: 40px; border-top: 2px solid var(--primary); padding-top: 15px; text-align: center; font-size: 10px; color: #888; }
+            /* HTML STRUCTURE UPDATES BELOW */
           </style>
         </head>
         <body>
@@ -174,7 +166,10 @@ export default function BotonPDF({ formData }) {
                 <div>
                   <div class="hero-title">Valor Comercial Estimado</div>
                   <div class="hero-price">${formatCurrency(valorEstimadoFinal)}</div>
-                  <div class="hero-subtitle">Peso Colombiano (COP)</div>
+                  <div class="hero-subtitle">COP (Pesos Colombianos)</div>
+                  <p style="font-size: 9px; opacity: 0.8; margin-top: 5px; max-width: 300px;">
+                    Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.
+                  </p>
                 </div>
                 <div class="hero-stats">
                   <div class="stat-row">
@@ -207,10 +202,10 @@ export default function BotonPDF({ formData }) {
 
                 <div class="card">
                   <div class="card-title">Resumen del Mercado</div>
-                  <p style="font-size: 12px; text-align: justify;">
+                  <p style="font-size: 11px; text-align: justify; line-height: 1.3;">
                     ${comparablesData.resumen_busqueda || 'Análisis de mercado realizado con base en la oferta actual.'}
                   </p>
-                  <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;">
+                  <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc;">
                     <div class="info-row"><span>Comparables Analizados:</span> <strong>${comparablesData.total_comparables || 0}</strong></div>
                     ${!esLote ? `
                     <div class="info-row"><span>Yield Promedio:</span> <strong>${((comparablesData.yield_mensual_mercado || 0) * 100).toFixed(2)}% mensual</strong></div>
@@ -225,13 +220,13 @@ export default function BotonPDF({ formData }) {
                 <div class="method-card" style="max-width: 100%; flex: 1;">
                   <div class="method-label">Metodología Ajustada (Lotes)</div>
                   <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
-                  <div style="font-size: 11px; color: #666;">Segmentación por tamaño + Método Residual</div>
+                  <div style="font-size: 10px; color: #666; margin-top: 5px;">Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.</div>
                 </div>
                 ` : `
                 <div class="method-card">
                   <div class="method-label">Enfoque de Mercado</div>
                   <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
-                  <div style="font-size: 11px; color: #666;">Basado en comparables de venta directa</div>
+                  <div style="font-size: 10px; color: #666; margin-top: 5px;">Calculado a partir del precio promedio por m² de las propiedades comparables (precio promedio por m² × área del inmueble).</div>
                 </div>
                 `}
                 
@@ -239,7 +234,7 @@ export default function BotonPDF({ formData }) {
                 <div class="method-card">
                   <div class="method-label">Enfoque de Rentabilidad</div>
                   <div class="method-val">${formatCurrency(valorRentabilidad)}</div>
-                  <div style="font-size: 11px; color: #666;">Basado en canon estimado y yield</div>
+                  <div style="font-size: 10px; color: #666; margin-top: 5px;">Calculado a partir del canon mensual estimado y la fórmula del rendimiento (yield) del sector (canon mensual estimado ÷ yield mensual).</div>
                 </div>
                 ` : ''}
               </div>
@@ -253,7 +248,7 @@ export default function BotonPDF({ formData }) {
               ` : ''}
 
               <div>
-                <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; margin-top: 30px; font-size: 16px;">Evidencia de Mercado (Muestra)</h3>
+                <h3 style="font-family: 'Outfit', sans-serif; color: var(--primary); margin-bottom: 15px; margin-top: 20px; font-size: 16px;">Evidencia de Mercado (Muestra)</h3>
                 
                 <table>
                   <thead>

@@ -106,10 +106,12 @@ export default function Step4Contact({ formData, onBack, onReset }) {
             .methods-container { display: flex; gap: 10px; margin-bottom: 20px; }
             .method-card { flex: 1; background: #fff; border: 1px solid #eee; padding: 10px; text-align: center; border-radius: 6px; }
             .method-val { font-size: 16px; font-weight: bold; color: #2C3D37; margin: 5px 0; }
-            .method-label { font-size: 10px; text-transform: uppercase; color: #888; }
+            .method-label { font-size: 10px; text-transform: uppercase; color: #888; margin-bottom: 5px; font-weight: bold;}
+            .method-desc { font-size: 9px; color: #666; line-height: 1.3; }
 
             .btn { display: inline-block; background-color: #C9C19D; color: #2C3D37; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; }
-            .footer { background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 11px; color: #888; }
+            .footer { background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #ddd; }
+            .footer p { margin: 5px 0; }
           </style>
         </head>
         <body>
@@ -122,9 +124,12 @@ export default function Step4Contact({ formData, onBack, onReset }) {
               <div class="hero">
                 <div class="subtitle">Valor Comercial Estimado</div>
                 <div class="price-tag">${formatCurrency(valorEstimadoFinal)}</div>
-                <p style="font-size: 12px; color: #666;">
-                  Rango sugerido: ${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}
+                <p style="font-size: 11px; color: #666; max-width: 400px; margin: 0 auto 10px auto; line-height: 1.4;">
+                  Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.
                 </p>
+                <div style="font-size: 12px; color: #444; margin-top: 5px;">
+                  Rango sugerido: <strong>${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</strong>
+                </div>
               </div>
 
               <div class="grid-2">
@@ -144,7 +149,7 @@ export default function Step4Contact({ formData, onBack, onReset }) {
 
                 <div class="card">
                   <div class="card-title">Resumen del Mercado</div>
-                  <p style="font-size: 12px; text-align: justify; margin-bottom: 10px; color: #666;">
+                  <p style="font-size: 11px; text-align: justify; margin-bottom: 10px; color: #666; line-height: 1.3;">
                     ${comparablesData.resumen_busqueda || 'Análisis basado en oferta actual.'}
                   </p>
                   <div class="info-row"><span>Comparables:</span> <strong>${comparablesData.total_comparables || 0} inmuebles</strong></div>
@@ -155,18 +160,19 @@ export default function Step4Contact({ formData, onBack, onReset }) {
               </div>
 
               <!-- MÉTODOS -->
+              <h4 style="color: #2C3D37; margin-top: 5px; margin-bottom: 10px; font-size: 14px; text-align: center;">Metodología de Valoración</h4>
               <div class="methods-container">
                 ${esLote ? `
                 <div class="method-card" style="max-width: 100%; flex: 1;">
                   <div class="method-label">Metodología Ajustada (Lotes)</div>
                   <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
-                  <div style="font-size: 11px; color: #666;">Segmentación por tamaño + Método Residual</div>
+                  <div class="method-desc">Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.</div>
                 </div>
                 ` : `
                 <div class="method-card">
                   <div class="method-label">Enfoque de Mercado</div>
                   <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
-                  <div style="font-size: 11px; color: #666;">Comparables Venta</div>
+                  <div class="method-desc">Calculado a partir del precio promedio por m² de las propiedades comparables (precio promedio por m² × área del inmueble).</div>
                 </div>
                 `}
                 
@@ -174,7 +180,7 @@ export default function Step4Contact({ formData, onBack, onReset }) {
                 <div class="method-card">
                   <div class="method-label">Enfoque de Rentabilidad</div>
                   <div class="method-val">${formatCurrency(valorRentabilidad)}</div>
-                  <div style="font-size: 11px; color: #666;">Capitalización de Rentas</div>
+                  <div class="method-desc">Calculado a partir del canon mensual estimado y la fórmula del rendimiento (yield) del sector.</div>
                 </div>
                 ` : ''}
               </div>
@@ -196,6 +202,11 @@ export default function Step4Contact({ formData, onBack, onReset }) {
             <div class="footer">
               <p>Quetzal Hábitats - Inteligencia Inmobiliaria</p>
               <p>Este reporte es una estimación basada en datos de mercado.</p>
+              <div style="margin-top: 10px; font-size: 10px; color: #999;">
+                <p>¿Interesado en vender o comprar?</p>
+                <p>En Quetzal Hábitats te ayudamos a encontrar el comprador ideal o la propiedad perfecta para ti.</p>
+                <p>Contáctanos: +57 318 638 3809 | contacto@quetzalhabitats.com</p>
+              </div>
             </div>
           </div>
         </body>

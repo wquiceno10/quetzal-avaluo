@@ -154,6 +154,8 @@ INSTRUCCIONES GENERALES (GESTIÓN DE FALLBACK)
 5. NO incluyas hipervínculos ni enlaces. Solo textos descriptivos.
 6. Incluye precios, áreas y valores de mercado siempre en pesos colombianos.
 7. Responde SIEMPRE en español.
+8. IMPORTANTE: Todas las cifras deben escribirse COMPLETAS en pesos colombianos, sin abreviaciones.
+   Ejemplo: usar $4.200.000, NO 4.2M ni 4.200K.
 
 TAREAS
 ------

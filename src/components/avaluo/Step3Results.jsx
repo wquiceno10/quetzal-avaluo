@@ -118,7 +118,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 Valor Comercial Estimado
               </CardTitle>
               <p className="text-sm text-[#D3DDD6] mt-2 font-raleway max-w-lg">
-                Resultado del análisis de mercado basado en {totalComparables || 'múltiples'} puntos de datos y la tipología del inmueble.
+                Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.
               </p>
             </div>
             <span className="inline-flex self-start md:self-center items-center rounded-full bg-[#C9C19D]/90 px-4 py-1.5 text-xs md:text-sm font-semibold text-[#1a2620] shadow-sm">
@@ -178,8 +178,8 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
             </div>
             <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
               {esLote
-                ? 'Segmentación por tamaño + Método Residual para estimación de terreno.'
-                : 'Basado en el precio por m² de propiedades similares ofertadas en la zona.'}
+                ? 'Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.'
+                : 'Calculado a partir del precio promedio por m² de las propiedades comparables (precio promedio por m² × área del inmueble).'}
             </p>
             <div className="flex justify-between items-center pt-2 mt-1">
               <span className="text-sm text-[#7A8C85]">Precio m² estimado:</span>
@@ -206,7 +206,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 </div>
               </div>
               <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
-                Estimación basada en el canon de arrendamiento potencial y el yield del sector.
+                Calculado a partir del canon mensual estimado y la fórmula del rendimiento (yield) del sector (canon mensual estimado ÷ yield mensual).
               </p>
               <div className="flex justify-between items-center pt-2 mt-1">
                 <span className="text-sm text-[#7A8C85]">Precio m² implícito:</span>
