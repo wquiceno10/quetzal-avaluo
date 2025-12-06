@@ -99,7 +99,10 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
   const tieneComparables = Array.isArray(data.comparables) && data.comparables.length > 0;
   const tieneAnalisisCompleto = data.perplexity_full_text && data.perplexity_full_text.length > 50;
   const tieneResumen = data.resumen_busqueda && data.resumen_busqueda.length > 10;
-  const totalComparables = validarNumero(data.total_comparables);
+
+  // Corrección 3: Usar contadores consistentes del Worker
+  const totalComparables = validarNumero(data.comparables_usados_en_calculo) || validarNumero(data.total_comparables);
+  const totalEncontrados = validarNumero(data.comparables_totales_encontrados);
   const totalVenta = validarNumero(data.total_comparables_venta);
   const totalArriendo = validarNumero(data.total_comparables_arriendo);
   const portales = data.portales_consultados || [];
@@ -153,13 +156,25 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                   <span className="text-[#D3DDD6] text-sm">Muestra</span>
                   <div className="text-right">
                     <span className="font-semibold block">{totalComparables} inmuebles</span>
-                    <span className="text-[10px] text-[#A3B2AA] block">({totalVenta || 0} venta, {totalArriendo || 0} arriendo)</span>
+                    {totalEncontrados && totalEncontrados > totalComparables ? (
+                      <span className="text-[10px] text-[#A3B2AA] block">(de {totalEncontrados} encontrados)</span>
+                    ) : (
+                      <span className="text-[10px] text-[#A3B2AA] block">({totalVenta || 0} venta, {totalArriendo || 0} arriendo)</span>
+                    )}
                   </div>
                 </div>
               )}
             </div>
           </div>
         </CardContent>
+        {/* Corrección 4: Explicación del Valor Final */}
+        <div className="px-6 pb-6 relative z-10">
+          <p className="text-xs text-[#D3DDD6]/80 italic leading-relaxed">
+            El valor final es una recomendación técnica ponderada entre el enfoque de mercado y el de rentabilidad,
+            priorizando el método con datos más consistentes según la cantidad, homogeneidad y dispersión de los
+            comparables disponibles.
+          </p>
+        </div>
       </Card>
 
       {/* 2. MÉTODOS DESGLOSADOS (ADAPTATIVO) */}
@@ -210,6 +225,13 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
               <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
                 Calculado a partir del canon mensual estimado y la fórmula del rendimiento (yield) del sector (canon mensual estimado ÷ yield mensual).
               </p>
+              {/* Corrección 5: Nota sobre Yield */}
+              {data.yield_mensual_mercado && (
+                <p className="text-xs text-[#7A8C85] italic px-4 mt-2">
+                  El yield utilizado ({(data.yield_mensual_mercado * 100).toFixed(2)}% mensual) corresponde al promedio
+                  observado en arriendos residenciales del sector, ajustado automáticamente por zona y disponibilidad de comparables.
+                </p>
+              )}
               <div className="flex justify-between items-center pt-2 mt-1">
                 <span className="text-sm text-[#7A8C85]">Precio m² implícito:</span>
                 <span className="text-sm font-semibold text-[#2C3D37]">
