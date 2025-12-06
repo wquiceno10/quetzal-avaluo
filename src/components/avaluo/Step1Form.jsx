@@ -114,7 +114,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
 
   const isValid = localData.tipo_inmueble && localData.municipio &&
     localData.departamento && localData.area_construida &&
-    (isLote ? localData.uso_lote : (localData.barrio && localData.contexto_zona && localData.estado_inmueble && localData.antiguedad)) &&
+    (isLote ? localData.uso_lote : (localData.barrio && localData.contexto_zona && localData.estado_inmueble && localData.antiguedad && localData.estrato)) &&
     isRemodelacionValid &&
     (isLote || localData.contexto_zona !== 'conjunto_cerrado' || (localData.nombre_conjunto && localData.nombre_conjunto.trim().length >= 3));
 
@@ -303,6 +303,20 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                       <SelectItem value="11 a 15 años">11 a 15 años</SelectItem>
                       <SelectItem value="15 a 20 años">15 a 20 años</SelectItem>
                       <SelectItem value="Más de 20 años">Más de 20 años</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium">Estrato *</Label>
+                  <Select value={localData.estrato || ''} onValueChange={(value) => handleChange('estrato', value)}>
+                    <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6].map((est) => (
+                        <SelectItem key={est} value={est.toString()}>{est}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

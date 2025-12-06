@@ -390,6 +390,34 @@ export default function BotonPDF({ formData }) {
               font-size: 11px;
               text-align: justify;
             }
+
+            /* Hero Layout Update */
+            .hero-content-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              gap: 40px;
+              margin: 20px 0;
+              position: relative;
+              z-index: 1;
+            }
+            .hero-left-col {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+            }
+            .hero-description {
+              font-size: 13px;
+              color: #D3DDD6;
+              line-height: 1.5;
+              margin: 0 0 25px 0; /* Space between description and price */
+              font-family: 'Raleway', sans-serif;
+              text-align: justify;
+            }
+            .hero-value-block {
+              margin-top: auto;
+            }
           </style>
         </head>
 
@@ -399,25 +427,28 @@ export default function BotonPDF({ formData }) {
             <div class="hero-header">
               <div class="hero-decoration"></div>
               
-              <div class="hero-top">
-                <div class="hero-title-section">
-                  <div class="hero-icon-title">
-                    <div class="hero-icon">🏠</div>
-                    <h1 class="hero-title">Valor Comercial Estimado</h1>
-                  </div>
+              <!-- Title Row -->
+              <div class="hero-top" style="margin-bottom: 10px;">
+                <div class="hero-icon-title">
+                  <div class="hero-icon">🏠</div>
+                  <h1 class="hero-title">Valor Comercial Estimado</h1>
+                </div>
+                <div class="hero-badge">⚡ Estimación IA</div>
+              </div>
+
+              <!-- Content Row: Description+Price (Left) | Details (Right) -->
+              <div class="hero-content-row">
+                <div class="hero-left-col">
                   <p class="hero-description">
                     ${esLote
           ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
           : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
                   </p>
-                </div>
-                <div class="hero-badge">⚡ Estimación IA</div>
-              </div>
-
-              <div class="hero-value-section">
-                <div class="hero-main-value">
-                  <div class="hero-amount">${formatCurrency(valorEstimadoFinal)}</div>
-                  <div class="hero-currency">COP (Pesos Colombianos)</div>
+                  
+                  <div class="hero-value-block">
+                    <div class="hero-amount">${formatCurrency(valorEstimadoFinal)}</div>
+                    <div class="hero-currency">COP (Pesos Colombianos)</div>
+                  </div>
                 </div>
 
                 <div class="hero-details-box">
