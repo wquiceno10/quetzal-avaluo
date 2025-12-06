@@ -56,8 +56,22 @@ export default function BotonPDF({ formData }) {
       const formatNumber = (val) =>
         val ? Math.round(val).toLocaleString('es-CO') : '—';
 
+      // Helper para generar tablas HTML
+      const generateTableHtml = (rows) => {
+        if (!rows.length) return '';
+        const htmlRows = rows.map((row, i) => {
+          const cells = row.split('|').filter(c => c.trim() !== '');
+          if (cells.length === 0) return '';
+          const tag = i === 0 ? 'th' : 'td';
+          const inner = cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('');
+          return `<tr>${inner}</tr>`;
+        }).join('');
+        return `<div style="overflow-x:auto; margin: 15px 0;"><table border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:10px;">${htmlRows}</table></div>`;
+      };
+
       const formatText = (text) => {
         if (!text) return '';
+
         // 1. Limpiar LaTeX básico
         let cleanText = text
           .replace(/\\\(/g, '')
@@ -69,31 +83,39 @@ export default function BotonPDF({ formData }) {
           .replace(/\\sum/g, '∑')
           .replace(/\\approx/g, '≈');
 
-        // 2. Formatear Markdown básico
-        cleanText = cleanText
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/^#+\s*(.*?)$/gm, '<h4>$1</h4>')
-          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px;">$1</li>');
+        // 2. Detectar y Formatear Tablas Markdown
+        const lines = cleanText.split('\n');
+        let newLines = [];
+        let inTable = false;
+        let tableRows = [];
 
-        // 3. Tablas Markdown a HTML (Simple)
-        if (cleanText.includes('|')) {
-          cleanText = cleanText.replace(/\|(.+)\|/g, (match) => {
-            // Si parece una fila de tabla
-            const cells = match.split('|').filter(c => c.trim() !== '');
-            if (cells.length > 1 && !match.includes('---')) {
-              return '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>';
+        lines.forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('|')) {
+            if (!inTable) inTable = true;
+            if (!trimmed.includes('---')) {
+              tableRows.push(trimmed);
             }
-            return ''; // Eliminar líneas de separación |---|
-          });
-          // Envolver filas en tabla si hay muchas seguidas (heurística simple o mejor reemplazar saltos)
-          // Para simplificar, asumimos que Perplexity no devuelve tablas complejas anidadas, 
-          // pero si lo hace, es mejor pedirle Listas. 
-          // Aquí convertiremos filas de tabla detectadas en una tabla.
-          // Pero dado que es complejo regex, mejor dejamos las filas como líneas.
-          // Revertimos la lógica de tabla para evitar romper el layout si no es perfecto.
+          } else {
+            if (inTable) {
+              newLines.push(generateTableHtml(tableRows));
+              tableRows = [];
+              inTable = false;
+            }
+            newLines.push(line);
+          }
+        });
+        if (inTable) {
+          newLines.push(generateTableHtml(tableRows));
         }
 
+        cleanText = newLines.join('\n');
+
+        // 3. Formatear Markdown básico
         return cleanText
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/^#+\s*(.*?)$/gm, '<h4 style="margin-top:10px; margin-bottom:5px; color:#2C3D37;">$1</h4>')
+          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px; color:#2C3D37;">$1</li>')
           .replace(/\n\n/g, '<br><br>')
           .replace(/\n/g, '<br>');
       };

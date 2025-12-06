@@ -21,12 +21,22 @@ import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
 
 // --- COMPONENTE DE FORMATO DE TEXTO ---
+// --- COMPONENTE DE FORMATO DE TEXTO ---
 const AnalisisAI = ({ text }) => {
   if (!text) return null;
+
+  // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
   const cleanText = text
-    .replace(/\\\[([\s\S]*?)\\\]/g, '')
-    .replace(/\$([^$]+)\$/g, '$1')
+    .replace(/\\\(/g, '')
+    .replace(/\\\)/g, '')
+    .replace(/\\\[/g, '')
+    .replace(/\\\]/g, '')
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
+    .replace(/\\text\{([^}]+)\}/g, '$1')
+    .replace(/\\sum/g, '∑')
+    .replace(/\\approx/g, '≈')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
   const blocks = cleanText.split('\n\n');
 
   return (
@@ -34,6 +44,8 @@ const AnalisisAI = ({ text }) => {
       {blocks.map((block, index) => {
         const trimmed = block.trim();
         if (!trimmed) return null;
+
+        // HEADERS
         if (trimmed.startsWith('#')) {
           const title = trimmed.replace(/^#+\s*/, '');
           return (
@@ -42,21 +54,54 @@ const AnalisisAI = ({ text }) => {
             </h3>
           );
         }
+
+        // TABLAS MARKDOWN
+        if (trimmed.startsWith('|')) {
+          const rows = trimmed.split('\n').filter(r => r.trim());
+          return (
+            <div key={index} className="overflow-x-auto mb-4 break-inside-avoid shadow-sm rounded-lg border border-[#E0E5E2] bg-white">
+              <table className="w-full text-xs border-collapse">
+                <tbody>
+                  {rows.map((row, rIdx) => {
+                    if (row.includes('---')) return null; // Ignorar separadores
+                    const cells = row.split('|').filter(c => c.trim() !== '');
+                    if (cells.length === 0) return null;
+
+                    const isHeader = rIdx === 0;
+                    return (
+                      <tr key={rIdx} className={isHeader ? "bg-[#F0ECD9] text-[#2C3D37] font-bold" : "border-t border-[#f0f0f0] text-[#4F5B55]"}>
+                        {cells.map((cell, cIdx) => (
+                          <td key={cIdx} className="p-2 border-r border-[#f0f0f0] last:border-r-0 text-center last:text-right first:text-left">
+                            {cell.trim()}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+
+        // LISTAS
         if (trimmed.match(/^[-*•]|^\d+[\.\)]/)) {
           const items = trimmed.split('\n').map((line) => line.replace(/^[-*•\d+[\.\)]\s*/, ''));
           return (
             <ul key={index} className="list-none space-y-2 mb-4 break-inside-avoid">
               {items.map((item, i) => (
-                <li key={i} className="flex gap-2 text-sm leading-relaxed">
-                  <span className="text-[#C9C19D] font-bold mt-0.5">•</span>
+                <li key={i} className="flex gap-2 text-sm leading-relaxed text-[#4F5B55]">
+                  <span className="font-bold mt-0.5">•</span>
                   <span dangerouslySetInnerHTML={{ __html: item }} />
                 </li>
               ))}
             </ul>
           );
         }
+
+        // PARRAGRAFOS
         return (
-          <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid" dangerouslySetInnerHTML={{ __html: trimmed }} />
+          <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: trimmed }} />
         );
       })}
     </div>
