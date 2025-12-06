@@ -40,10 +40,11 @@ export default function MisAvaluos() {
                 return;
             }
 
+            // La tabla no tiene columna user_id, usamos email del usuario autenticado
             const { data, error } = await supabase
                 .from('avaluos')
                 .select('*')
-                .eq('user_id', user.id)
+                .eq('email', user.email)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;

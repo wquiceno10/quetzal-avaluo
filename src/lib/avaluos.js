@@ -26,33 +26,18 @@ export async function guardarAvaluoEnSupabase({
     codigoAvaluo,
     payloadJson,
 }) {
-    // Intentamos obtener el user_id del usuario autenticado (opcional)
-    let userId = null;
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) userId = user.id;
-    } catch (e) {
-        console.log('No authenticated user, saving without user_id');
-    }
-
-    const insertData = {
-        email,
-        tipo_inmueble: tipoInmueble,
-        barrio,
-        ciudad,
-        valor_final: valorFinal,
-        codigo_avaluo: codigoAvaluo,
-        payload_json: payloadJson
-    };
-
-    // Solo incluir user_id si existe (para evitar null constraint si la columna lo prohíbe)
-    if (userId) {
-        insertData.user_id = userId;
-    }
-
+    // La tabla 'avaluos' no tiene columna user_id, solo usamos email para identificar
     const { data, error } = await supabase
         .from("avaluos")
-        .insert(insertData)
+        .insert({
+            email,
+            tipo_inmueble: tipoInmueble,
+            barrio,
+            ciudad,
+            valor_final: valorFinal,
+            codigo_avaluo: codigoAvaluo,
+            payload_json: payloadJson
+        })
         .select("id")
         .single();
 
