@@ -53,8 +53,9 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
     },
     onSuccess: (data) => {
       // 2. Guardar datos y AVANZAR AUTOMÁTICAMENTE
+      // Pasamos los datos a onNext para evitar race conditions en AvaluoInmobiliario
       onUpdate({ comparables_data: data });
-      onNext();
+      onNext({ comparables_data: data });
     }
   });
 

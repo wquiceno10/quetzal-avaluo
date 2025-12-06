@@ -68,16 +68,23 @@ export default function AvaluoInmobiliario() {
     setAvaluoData(prev => ({ ...prev, ...newData }));
   };
 
-  const handleNext = async () => {
+  const handleNext = async (incomingData) => {
     const nextStep = Math.min(currentStep + 1, 4);
+
+    // Determine effective data (handle race condition from Step 2)
+    // If incomingData is an Event (click), ignore it. If it's an object with data, use it.
+    const isEvent = incomingData && incomingData.preventDefault;
+    const dataOverride = (incomingData && !isEvent) ? incomingData : {};
+
+    const effectiveAvaluoData = { ...avaluoData, ...dataOverride };
 
     // AUTO-SAVE LOGIC: If moving to Step 3 (Results) and user is logged in
     if (currentStep === 2 && nextStep === 3 && currentUser) {
       try {
-        const data = avaluoData.comparables_data || {};
+        const data = effectiveAvaluoData.comparables_data || {};
 
         // Generate Code if missing
-        const cod = avaluoData.codigo_avaluo || `QZ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
+        const cod = effectiveAvaluoData.codigo_avaluo || `QZ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
 
         // Calculate Value (Simple logic mirror)
         let valFinal = data.valor_final;
@@ -96,36 +103,35 @@ export default function AvaluoInmobiliario() {
           ...data,
           codigo_avaluo: cod,
           valor_final: valFinal,
-          tipo_inmueble: avaluoData.tipo_inmueble,
-          barrio: avaluoData.barrio,
-          municipio: avaluoData.municipio,
-          area_construida: avaluoData.area_construida,
-          habitaciones: avaluoData.habitaciones,
-          banos: avaluoData.banos,
+          tipo_inmueble: effectiveAvaluoData.tipo_inmueble,
+          barrio: effectiveAvaluoData.barrio,
+          municipio: effectiveAvaluoData.municipio,
+          area_construida: effectiveAvaluoData.area_construida,
+          habitaciones: effectiveAvaluoData.habitaciones,
+          banos: effectiveAvaluoData.banos,
         };
 
         const savedId = await guardarAvaluoEnSupabase({
           email: currentUser.email,
-          tipoInmueble: avaluoData.tipo_inmueble,
-          barrio: avaluoData.barrio,
-          ciudad: avaluoData.municipio,
+          tipoInmueble: effectiveAvaluoData.tipo_inmueble,
+          barrio: effectiveAvaluoData.barrio,
+          ciudad: effectiveAvaluoData.municipio,
           valorFinal: valFinal,
           codigoAvaluo: cod,
           payloadJson: payload,
         });
 
-        // Update local state with saved ID and Code
+        // Update local state with saved ID and Code AND the payload (to ensure Step 3 renders with data)
         handleUpdateData({
           id: savedId,
           codigo_avaluo: cod,
-          comparables_data: payload // ensure payload is synced
+          comparables_data: payload
         });
         console.log("Auto-saved avaluo:", savedId);
-        setHasAvaluos(true); // Ensure button shows up
+        setHasAvaluos(true);
 
       } catch (err) {
         console.error("Auto-save failed", err);
-        // Don't block flow if save fails
       }
     }
 
