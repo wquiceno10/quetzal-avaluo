@@ -288,8 +288,8 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - "titulo": Texto entre ** ** de la primera línea (sin etiquetas HTML)
    - "tipo_inmueble": Texto antes del | en la segunda línea (sin etiquetas HTML)
    - "tipo_operacion": Texto después del | en la segunda línea ("Venta" o "Arriendo")
-   - "precio_lista": Número después del símbolo $ en la tercera línea (sin puntos ni $)
-   - "area": Número antes de "m²" en la tercera línea
+   - "precio_lista": Número ENTERO (sin puntos, sin comas, sin $) extraído de la tercera línea.
+   - "area": Número (puede tener decimales) antes de "m²" en la tercera línea.
    - "habitaciones": Número antes de "hab" en la tercera línea
    - "banos": Número antes de "baños" en la tercera línea
    - "barrio": Texto antes del | en la cuarta línea (sin etiquetas HTML)
@@ -303,11 +303,11 @@ INSTRUCCIONES DE EXTRACCIÓN:
 3. "yield_zona": ${esLote ? 'IGNORAR (Devolver null)' : 'Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.45%", devuelve 0.0045).'}
 
 4. "valor_recomendado_venta": Busca "Valor Recomendado de Venta: $XXX.XXX.XXX".
-   Extrae el número (sin separadores de miles ni símbolo $).
+   Extrae el número ENTERO (elimina puntos y $).
 
-5. "rango_sugerido_min": Busca "Rango sugerido: $XXX.XXX.XXX - $YYY.YYY.YYY". Extrae el primer número.
+5. "rango_sugerido_min": Busca "Rango sugerido: $XXX.XXX.XXX - $YYY.YYY.YYY". Extrae el primer número (ENTERO).
 
-6. "rango_sugerido_max": Extrae el segundo número del rango sugerido.
+6. "rango_sugerido_max": Extrae el segundo número del rango sugerido (ENTERO).
 
 Devuelve SOLO JSON válido.
         `.trim();
@@ -323,7 +323,7 @@ Devuelve SOLO JSON válido.
                 body: JSON.stringify({
                     model: 'deepseek-chat',
                     messages: [
-                        { role: 'system', content: 'Eres un extractor JSON experto. Tu prioridad es la fidelidad a los datos de origen.' },
+                        { role: 'system', content: 'Eres un extractor JSON experto. Extrae numeros LIMPIOS (ej: 4200000, no 4.200.000).' },
                         { role: 'user', content: extractionPrompt },
                     ],
                     temperature: 0.0,
@@ -358,10 +358,32 @@ Devuelve SOLO JSON válido.
         }
 
         // --- 4. PROCESAMIENTO Y LÓGICA DE NEGOCIO ---
-        const sanitizeNumber = (n) => (typeof n === 'number' && Number.isFinite(n) ? n : null);
+        // Helpers robustos para parseo
+        const sanitizePrice = (n) => {
+            if (typeof n === 'number') return Number.isFinite(n) ? n : null;
+            if (typeof n === 'string') {
+                // Eliminar todo lo que no sea dígito (ignora puntos, comas, $, etc)
+                // Esto convierte "4.200.000" -> "4200000"
+                const clean = n.replace(/\D/g, '');
+                const val = parseInt(clean, 10);
+                return (Number.isFinite(val) && val > 0) ? val : null;
+            }
+            return null;
+        };
+
+        const sanitizeFloat = (n) => {
+            if (typeof n === 'number') return Number.isFinite(n) ? n : null;
+            if (typeof n === 'string') {
+                // Acepta "68,5" o "68.5"
+                const clean = n.replace(',', '.').replace(/[^\d.]/g, '');
+                const val = parseFloat(clean);
+                return Number.isFinite(val) ? val : null;
+            }
+            return null;
+        };
 
         const yieldDefault = 0.005;  // 0.5% mensual (6% anual) - solo fallback
-        const yieldExtracted = sanitizeNumber(extractedData.yield_zona);
+        const yieldExtracted = sanitizeFloat(extractedData.yield_zona);
         const yieldFinal = yieldExtracted || yieldDefault;
         console.log(`Yield usado: ${(yieldFinal * 100).toFixed(2)}% mensual (${yieldExtracted ? 'extraído de mercado' : 'fallback'})`);
         const yieldFuente = yieldExtracted ? 'mercado' : 'fallback';
@@ -380,8 +402,8 @@ Devuelve SOLO JSON válido.
         // Procesamiento de Comparables (SIN HEURÍSTICA)
         const comparables = (extractedData.comparables || [])
             .map((c) => {
-                const areaComp = sanitizeNumber(c.area);
-                const precioLista = sanitizeNumber(c.precio_lista);
+                const areaComp = sanitizeFloat(c.area);
+                const precioLista = sanitizePrice(c.precio_lista);
 
                 // --- CLASIFICACIÓN ESTRICTA ---
                 // Respetamos estrictamente lo que dice la fuente
@@ -417,8 +439,8 @@ Devuelve SOLO JSON válido.
                     barrio: c.barrio || c.ubicacion || formData.barrio,
                     municipio: c.ciudad || formData.municipio,
                     area_m2: areaComp,
-                    habitaciones: sanitizeNumber(c.habitaciones),
-                    banos: sanitizeNumber(c.banos),
+                    habitaciones: sanitizeFloat(c.habitaciones), // A veces ponen 2.5
+                    banos: sanitizeFloat(c.banos),
 
                     precio_publicado: precioLista,
                     precio_cop: precioVentaEstimado,
@@ -483,7 +505,7 @@ Devuelve SOLO JSON válido.
         }
 
         // 3. Usar valor recomendado por Perplexity (o calcular como fallback)
-        const valorRecomendado = sanitizeNumber(extractedData.valor_recomendado_venta);
+        const valorRecomendado = sanitizePrice(extractedData.valor_recomendado_venta);
 
         let valorPonderado = null;
         if (esLote) {
@@ -513,8 +535,8 @@ Devuelve SOLO JSON válido.
         const precioM2Usado = precioM2Promedio || (valorFinal > 0 ? Math.round(valorFinal / area) : 0);
 
         // 4. Usar rango sugerido por Perplexity (o calcular como fallback)
-        const rangoMin = sanitizeNumber(extractedData.rango_sugerido_min) || Math.round(valorFinal * 1.00);
-        const rangoMax = sanitizeNumber(extractedData.rango_sugerido_max) || Math.round(valorFinal * 1.04);
+        const rangoMin = sanitizePrice(extractedData.rango_sugerido_min) || Math.round(valorFinal * 1.00);
+        const rangoMax = sanitizePrice(extractedData.rango_sugerido_max) || Math.round(valorFinal * 1.04);
         const rangoFuente = extractedData.rango_sugerido_min ? 'perplexity' : 'calculado';
         console.log(`Rango: $${rangoMin.toLocaleString()} - $${rangoMax.toLocaleString()} (fuente: ${rangoFuente})`);
 
@@ -564,6 +586,33 @@ Devuelve SOLO JSON válido.
             // Fallback: si quedan menos de 3, mantener originales deduplicados
             comparablesParaTabla = filtrados.length >= 3 ? filtrados : comparablesFiltradosPorArea;
             console.log(`Comparables filtrados para tabla (lote grande): ${comparablesParaTabla.length}`);
+        }
+
+        // D) FILTRO IQR (Elimina outliers extremos de precio por m²)
+        // Esto evita que un comparable con $5.6M/m² (error de portal) distorsione el promedio.
+        if (comparablesParaTabla.length >= 5) {
+            const preciosM2 = comparablesParaTabla.map(c => c.precio_m2).filter(p => p > 0).sort((a, b) => a - b);
+            if (preciosM2.length >= 4) {
+                const q1Index = Math.floor(preciosM2.length * 0.25);
+                const q3Index = Math.floor(preciosM2.length * 0.75);
+                const q1 = preciosM2[q1Index];
+                const q3 = preciosM2[q3Index];
+                const iqr = q3 - q1;
+                const minThreshold = q1 - iqr * 1.5;
+                const maxThreshold = q3 + iqr * 1.5;
+
+                const filtradosIQR = comparablesParaTabla.filter(c =>
+                    c.precio_m2 >= minThreshold && c.precio_m2 <= maxThreshold
+                );
+
+                // Solo aplicar si no perdemos demasiados datos (mínimo 5)
+                if (filtradosIQR.length >= 5) {
+                    console.log(`Filtro IQR: ${comparablesParaTabla.length} -> ${filtradosIQR.length} (rango: ${minThreshold.toLocaleString()} - ${maxThreshold.toLocaleString()}/m²)`);
+                    comparablesParaTabla = filtradosIQR;
+                } else {
+                    console.log(`Filtro IQR no aplicado (quedarían ${filtradosIQR.length} comparables)`);
+                }
+            }
         }
 
         const resultado = {

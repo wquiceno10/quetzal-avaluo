@@ -26,19 +26,33 @@ export async function guardarAvaluoEnSupabase({
     codigoAvaluo,
     payloadJson,
 }) {
-    // Insertamos solo los campos requeridos explicitamente.
-    // user_id lo omitimos para evitar conflictos con usuarios anónimos o RLS.
+    // Intentamos obtener el user_id del usuario autenticado (opcional)
+    let userId = null;
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) userId = user.id;
+    } catch (e) {
+        console.log('No authenticated user, saving without user_id');
+    }
+
+    const insertData = {
+        email,
+        tipo_inmueble: tipoInmueble,
+        barrio,
+        ciudad,
+        valor_final: valorFinal,
+        codigo_avaluo: codigoAvaluo,
+        payload_json: payloadJson
+    };
+
+    // Solo incluir user_id si existe (para evitar null constraint si la columna lo prohíbe)
+    if (userId) {
+        insertData.user_id = userId;
+    }
+
     const { data, error } = await supabase
         .from("avaluos")
-        .insert({
-            email,
-            tipo_inmueble: tipoInmueble,
-            barrio,
-            ciudad,
-            valor_final: valorFinal,
-            codigo_avaluo: codigoAvaluo,
-            payload_json: payloadJson
-        })
+        .insert(insertData)
         .select("id")
         .single();
 

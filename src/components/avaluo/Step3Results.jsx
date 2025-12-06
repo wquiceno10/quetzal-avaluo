@@ -118,7 +118,9 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 Valor Comercial Estimado
               </CardTitle>
               <p className="text-sm text-[#D3DDD6] mt-2 font-raleway max-w-lg">
-                Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.
+                {esLote
+                  ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
+                  : 'Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.'}
               </p>
             </div>
             <span className="inline-flex self-start md:self-center items-center rounded-full bg-[#C9C19D]/90 px-4 py-1.5 text-xs md:text-sm font-semibold text-[#1a2620] shadow-sm">

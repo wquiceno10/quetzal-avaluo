@@ -71,6 +71,7 @@ export default function BotonPDF({ formData }) {
               margin: 0;
               padding: 20px;
               line-height: 1.4;
+              font-size: 11px;
             }
 
             .container {
@@ -84,13 +85,8 @@ export default function BotonPDF({ formData }) {
             }
 
             @media print {
-              body { background: white; padding: 0; }
-              .container { 
-                max-width: 100%; 
-                width: 100%; 
-                box-shadow: none; 
-                margin: 0;
-              }
+              body { background: white; padding: 0; font-size: 10px; }
+              .container { max-width: 100%; width: 100%; box-shadow: none; margin: 0; }
               .page-break { page-break-before: always; }
               .avoid-break { page-break-inside: avoid; }
             }
@@ -99,55 +95,66 @@ export default function BotonPDF({ formData }) {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              padding: 30px 50px;
-              background-color: var(--primary); /* Green Background */
+              padding: 20px 40px;
+              background-color: var(--primary);
               color: white;
-              margin-bottom: 0px; /* Reduced margin */
             }
-            .header img { max-width: 140px; height: auto; filter: brightness(0) invert(1); } /* Make logo white if needed, assuming transparent png */
-            .report-meta { text-align: right; font-size: 11px; color: #E0E5E2; }
+            .header img { max-width: 120px; height: auto; filter: brightness(0) invert(1); }
+            .report-meta { text-align: right; font-size: 10px; color: #E0E5E2; }
 
-            .content { padding: 30px 50px; }
+            .content { padding: 25px 40px; }
 
             .hero {
-              background: white; /* Inverted hero usually? No, user says "Color del encabezado a blanco lo quiero verde". */ 
-              /* Wait, if the HEADER is green, maybe the HERO should be clean? 
-                 In the web version, the HERO is Green. 
-                 If I make the top bar Green, having a Green Hero right below it might be too much Green. 
-                 But the user said "como estaba". 
-                 Let's assume the Top Bar (Logo) was Green.
-                 And the Hero (Price) might have been white or green.
-                 The email has a Green Header (Logo) and White content.
-                 The Web Page has Green Hero (Price).
-                 Let's try to match the Email Header style for the PDF Header (Green Logo Bar).
-              */
-              /* Actually, let's keep the hero green as it looks premium, but remove the gap between header and hero? 
-                 Or maybe the user means the HERO box itself was white?
-                 Let's stick to the specific request: "HeadER to green". 
-                 If I make the header green, I'll keep the hero as is (green gradient) but maybe remove the spacing so it looks like one block?
-                 Or maybe the Hero becomes white?
-                 Let's look at the Methodology text first.
-              */
-            }
-             .hero {
               background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
               color: white;
-              padding: 30px;
-              border-radius: 12px;
+              padding: 25px;
+              border-radius: 10px;
               display: flex;
               justify-content: space-between;
               align-items: center;
-              margin-bottom: 30px;
-              margin-top: 20px; /* Add some space from the green header */
-              box-shadow: 0 10px 20px rgba(44, 61, 55, 0.15);
+              margin-bottom: 25px;
+              box-shadow: 0 8px 16px rgba(44, 61, 55, 0.15);
             }
+            .hero-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
+            .hero-price { font-size: 28px; font-weight: bold; font-family: 'Outfit', sans-serif; margin: 5px 0; }
+            .hero-subtitle { font-size: 10px; opacity: 0.7; }
+            .hero-stats { background: rgba(255,255,255,0.1); padding: 12px 15px; border-radius: 8px; min-width: 200px; }
+            .stat-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+            .stat-row:last-child { border-bottom: none; }
+            .stat-label { font-size: 9px; opacity: 0.8; }
+            .stat-value { font-size: 10px; font-weight: 600; }
 
-            /* ... existing CSS ... */
-            
-            /* UPDATING METHODOLOGY TEXTS */
-            /* ... */
+            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+            .card { background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); }
+            .card-title { font-family: 'Outfit', sans-serif; font-weight: 600; color: var(--primary); font-size: 12px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+            .info-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px; }
+            .info-row span { color: #7A8C85; }
+            .info-row strong { color: var(--primary); }
 
-            /* HTML STRUCTURE UPDATES BELOW */
+            .methods-container { display: flex; gap: 12px; margin-bottom: 20px; }
+            .method-card { flex: 1; background: var(--bg); border: 1px solid var(--border); padding: 12px; text-align: center; border-radius: 8px; }
+            .method-label { font-size: 9px; text-transform: uppercase; color: #888; font-weight: 600; letter-spacing: 0.5px; }
+            .method-val { font-size: 16px; font-weight: bold; color: var(--primary); margin: 5px 0; font-family: 'Outfit', sans-serif; }
+
+            .analysis-section { margin-top: 20px; }
+            .analysis-section h3 { font-family: 'Outfit', sans-serif; color: var(--primary); font-size: 14px; margin-bottom: 12px; }
+            .two-columns { column-count: 2; column-gap: 25px; font-size: 10px; line-height: 1.5; text-align: justify; }
+            .two-columns h4 { font-family: 'Outfit', sans-serif; color: var(--primary); font-size: 11px; margin: 12px 0 5px 0; column-span: none; break-after: avoid; }
+            .two-columns li { margin-bottom: 3px; }
+
+            table { width: 100%; border-collapse: collapse; font-size: 9px; margin-top: 10px; }
+            th { background: var(--primary); color: white; padding: 6px 8px; text-align: left; font-size: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+            td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.3; }
+            tr:nth-child(even) { background: #FAFBFA; }
+            .text-right { text-align: right; }
+            .text-center { text-align: center; }
+            .sub-text { font-size: 8px; color: #888; display: block; }
+            .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 7px; font-weight: 600; text-transform: uppercase; }
+            .badge-venta { background: #E8F5E9; color: #2E7D32; }
+            .badge-arriendo { background: #E3F2FD; color: #1565C0; }
+
+            .footer { margin-top: 30px; padding: 20px; text-align: center; font-size: 9px; color: #888; border-top: 1px solid var(--border); }
+            .footer p { margin: 3px 0; }
           </style>
         </head>
         <body>
@@ -168,7 +175,9 @@ export default function BotonPDF({ formData }) {
                   <div class="hero-price">${formatCurrency(valorEstimadoFinal)}</div>
                   <div class="hero-subtitle">COP (Pesos Colombianos)</div>
                   <p style="font-size: 9px; opacity: 0.8; margin-top: 5px; max-width: 300px;">
-                    Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.
+                    ${esLote
+          ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
+          : 'Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.'}
                   </p>
                 </div>
                 <div class="hero-stats">
@@ -263,13 +272,13 @@ export default function BotonPDF({ formData }) {
                   </thead>
                   <tbody>
                     ${(comparablesData.comparables || []).map(item => {
-        const esArriendo = item.tipo_origen === 'arriendo';
-        const badgeClass = esArriendo ? 'badge-arriendo' : 'badge-venta';
-        const tipoLabel = esArriendo ? 'Arriendo' : 'Venta';
-        const notaArriendo = esArriendo
-          ? `<span class="sub-text">Estimado por rentabilidad (Yield ${(item.yield_mensual * 100).toFixed(2)}%)</span>`
-          : '';
-        return `
+            const esArriendo = item.tipo_origen === 'arriendo';
+            const badgeClass = esArriendo ? 'badge-arriendo' : 'badge-venta';
+            const tipoLabel = esArriendo ? 'Arriendo' : 'Venta';
+            const notaArriendo = esArriendo
+              ? `<span class="sub-text">Estimado por rentabilidad (Yield ${(item.yield_mensual * 100).toFixed(2)}%)</span>`
+              : '';
+            return `
                         <tr>
                           <td>
                             <strong>${item.titulo || 'Inmueble'}</strong><br>
@@ -290,7 +299,7 @@ export default function BotonPDF({ formData }) {
                           </td>
                         </tr>
                       `;
-      }).join('')}
+          }).join('')}
                   </tbody>
                 </table>
                 ${esLote ? `

@@ -125,7 +125,9 @@ export default function Step4Contact({ formData, onBack, onReset }) {
                 <div class="subtitle">Valor Comercial Estimado</div>
                 <div class="price-tag">${formatCurrency(valorEstimadoFinal)}</div>
                 <p style="font-size: 11px; color: #666; max-width: 400px; margin: 0 auto 10px auto; line-height: 1.4;">
-                  Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.
+                  ${esLote
+          ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
+          : 'Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.'}
                 </p>
                 <div style="font-size: 12px; color: #444; margin-top: 5px;">
                   Rango sugerido: <strong>${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</strong>
@@ -217,10 +219,9 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: [email], // Array de destinatarios
+          to: email, // String, not array
           subject: `Reporte de Avalúo: ${data.tipo_inmueble} en ${data.barrio}`,
-          html: emailHtml,
-          text: `Tu avalúo está listo. Valor estimado: ${formatCurrency(valorEstimadoFinal)}`
+          htmlBody: emailHtml // Worker expects "htmlBody", not "html"
         }),
       });
 
