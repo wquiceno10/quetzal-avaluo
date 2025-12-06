@@ -1,10 +1,11 @@
 /**
- * avaluos-api-analysis V9 (Dynamic Area & Fallback Logic)
+ * avaluos-api-analysis V10 (Robust + IQR + Deduplication + Normalization)
  * - Prompt V2 (Recomendado): Lógica de área dinámica + Fallback robusto
- * - Extracción estricta (V7 logic maintained)
- * - Resumen conciso (V8 logic maintained)
+ * - Extracción estricta (V7 logic)
+ * - Resumen conciso (V8 logic)
+ * - Filtro IQR y Normalización (V10 logic)
  */
-console.log("Deploy V10 (Dedup + Filtering) - " + new Date().toISOString());
+console.log("Deploy V10 (Refined Logic) - " + new Date().toISOString());
 
 // --- HELPER: Similitud de Texto (Levenshtein simplificado -> Ratio) ---
 function getSimilarity(s1, s2) {
@@ -94,9 +95,6 @@ export default {
         let areaBase = parseInt(formData.area_construida);
         if (!Number.isFinite(areaBase) || areaBase <= 0) areaBase = 60;
         const area = areaBase;
-
-        const minArea = Math.round(area * 0.7); // -30%
-        const maxArea = Math.round(area * 1.3); // +30%
 
         // --- VARIABLES V9 ---
         const areaConstruida = area;
@@ -362,8 +360,6 @@ Devuelve SOLO JSON válido.
         const sanitizePrice = (n) => {
             if (typeof n === 'number') return Number.isFinite(n) ? n : null;
             if (typeof n === 'string') {
-                // Eliminar todo lo que no sea dígito (ignora puntos, comas, $, etc)
-                // Esto convierte "4.200.000" -> "4200000"
                 const clean = n.replace(/\D/g, '');
                 const val = parseInt(clean, 10);
                 return (Number.isFinite(val) && val > 0) ? val : null;
@@ -374,7 +370,6 @@ Devuelve SOLO JSON válido.
         const sanitizeFloat = (n) => {
             if (typeof n === 'number') return Number.isFinite(n) ? n : null;
             if (typeof n === 'string') {
-                // Acepta "68,5" o "68.5"
                 const clean = n.replace(',', '.').replace(/[^\d.]/g, '');
                 const val = parseFloat(clean);
                 return Number.isFinite(val) ? val : null;
@@ -405,10 +400,7 @@ Devuelve SOLO JSON válido.
                 const areaComp = sanitizeFloat(c.area);
                 const precioLista = sanitizePrice(c.precio_lista);
 
-                // --- CLASIFICACIÓN ESTRICTA ---
-                // Respetamos estrictamente lo que dice la fuente
                 const esArriendo = c.tipo_operacion?.toLowerCase().includes('arriendo');
-                // ---------------------------
 
                 // SI ES LOTE, IGNORAR ARRIENDOS
                 if (esLote && esArriendo) return null;
@@ -439,7 +431,7 @@ Devuelve SOLO JSON válido.
                     barrio: c.barrio || c.ubicacion || formData.barrio,
                     municipio: c.ciudad || formData.municipio,
                     area_m2: areaComp,
-                    habitaciones: sanitizeFloat(c.habitaciones), // A veces ponen 2.5
+                    habitaciones: sanitizeFloat(c.habitaciones),
                     banos: sanitizeFloat(c.banos),
 
                     precio_publicado: precioLista,
@@ -471,13 +463,11 @@ Devuelve SOLO JSON válido.
         let precioM2Promedio = 0;
 
         if (compsVenta.length > 0) {
-            // Ordenar por precio m2
             const sortedByM2 = [...compsVenta].sort((a, b) => a.precio_m2 - b.precio_m2);
-
-            // Poda del 10% superior e inferior (si hay suficientes datos)
+            // Poda del 10%
             let filteredComps = sortedByM2;
             if (sortedByM2.length >= 5) {
-                const cut = Math.floor(sortedByM2.length * 0.1); // 10%
+                const cut = Math.floor(sortedByM2.length * 0.1);
                 filteredComps = sortedByM2.slice(cut, sortedByM2.length - cut);
             }
 
@@ -490,13 +480,12 @@ Devuelve SOLO JSON válido.
         let valorRentabilidad = null;
         let canonPromedio = 0;
 
-        if (!esLote) { // SOLO SI NO ES LOTE
+        if (!esLote) {
             if (compsArriendo.length > 0) {
                 const sumCanon = compsArriendo.reduce((acc, c) => acc + c.precio_publicado, 0);
                 canonPromedio = Math.round(sumCanon / compsArriendo.length);
                 valorRentabilidad = Math.round(canonPromedio / yieldFinal);
             } else {
-                // Fallback
                 if (valorVentaDirecta) {
                     valorRentabilidad = valorVentaDirecta;
                     canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
@@ -504,15 +493,13 @@ Devuelve SOLO JSON válido.
             }
         }
 
-        // 3. Usar valor recomendado por Perplexity (o calcular como fallback)
+        // 3. Valor Recomendado Perplexity
         const valorRecomendado = sanitizePrice(extractedData.valor_recomendado_venta);
 
         let valorPonderado = null;
         if (esLote) {
-            // Para lotes, solo mercado
             valorPonderado = valorVentaDirecta;
         } else {
-            // Para otros, ponderado
             valorPonderado = (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0)
                 ? Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4)
                 : null;
@@ -521,10 +508,7 @@ Devuelve SOLO JSON válido.
         const valorFinal = valorRecomendado || valorVentaDirecta || valorRentabilidad || 0;
         const valorFuente = valorRecomendado ? 'perplexity' : 'calculado';
 
-        // CORRECCIÓN PARA LOTES:
-        // Si es lote y tenemos un valor recomendado por IA (que usa segmentación/residual),
-        // forzamos que el valorVentaDirecta sea ese y RECALCULAMOS el precio m2 promedio
-        // para evitar que el promedio simple (que mezcla lotes pequeños y grandes) infle el resultado.
+        // Corrección Lotes
         if (esLote && valorRecomendado) {
             valorVentaDirecta = valorRecomendado;
             precioM2Promedio = Math.round(valorRecomendado / area);
@@ -534,24 +518,20 @@ Devuelve SOLO JSON válido.
 
         const precioM2Usado = precioM2Promedio || (valorFinal > 0 ? Math.round(valorFinal / area) : 0);
 
-        // 4. Usar rango sugerido por Perplexity (o calcular como fallback)
+        // 4. Rangos
         const rangoMin = sanitizePrice(extractedData.rango_sugerido_min) || Math.round(valorFinal * 1.00);
         const rangoMax = sanitizePrice(extractedData.rango_sugerido_max) || Math.round(valorFinal * 1.04);
         const rangoFuente = extractedData.rango_sugerido_min ? 'perplexity' : 'calculado';
-        console.log(`Rango: $${rangoMin.toLocaleString()} - $${rangoMax.toLocaleString()} (fuente: ${rangoFuente})`);
 
         // --- 5. DEDUPLICACIÓN Y FILTRADO (V10) ---
-        // A) Deduplicación Estricta: 3/3 condiciones (Precio ±1%, Área ±1%, Título ≥70%)
         const uniqueComparables = [];
         for (const comp of comparables) {
             const isDuplicate = uniqueComparables.some(existing => {
-                // Precio robusto (usa precio_cop si existe, sino precio_publicado)
                 const precioBaseExisting = existing.precio_cop || existing.precio_publicado || 0;
                 const precioBaseComp = comp.precio_cop || comp.precio_publicado || 0;
                 const areaBaseExisting = existing.area_m2 || 0;
                 const areaBaseComp = comp.area_m2 || 0;
 
-                // Defensivo: evitar división por cero
                 const priceMatch = precioBaseExisting > 0
                     ? Math.abs(precioBaseExisting - precioBaseComp) / precioBaseExisting < 0.01
                     : false;
@@ -560,36 +540,28 @@ Devuelve SOLO JSON válido.
                     : false;
                 const titleSim = getSimilarity(existing.titulo, comp.titulo);
 
-                // Solo es duplicado si las 3 condiciones se cumplen
                 return priceMatch && areaMatch && titleSim >= 0.7;
             });
             if (!isDuplicate) uniqueComparables.push(comp);
         }
-        console.log(`Comparables después de deduplicación: ${uniqueComparables.length} (originales: ${comparables.length})`);
 
-        // B) Filtro de Área Estricto (Seguridad General)
-        // Eliminar propiedades con área < 50% o > 150% del objetivo (salvo que sea lote grande donde ya aplicamos otra lógica)
-        // Esto evita que Perplexity "alucine" bodegas de 500m² para apartamentos de 60m².
+        // Filtro Area
         let comparablesFiltradosPorArea = uniqueComparables;
-        if (!esLote || area <= 1000) { // Para lotes grandes usamos la lógica específica de abajo
+        if (!esLote || area <= 1000) {
             comparablesFiltradosPorArea = uniqueComparables.filter(c => {
                 const a = c.area_m2 || 0;
                 return a >= area * 0.5 && a <= area * 1.5;
             });
-            console.log(`Comparables después de filtro de área (50-150%): ${comparablesFiltradosPorArea.length}`);
         }
 
-        // C) Filtro de Relevancia (Solo para lotes grandes, tabla limpia)
+        // Filtro Lote Grande
         let comparablesParaTabla = comparablesFiltradosPorArea;
         if (esLote && area > 1000) {
             const filtrados = comparablesFiltradosPorArea.filter(c => (c.area_m2 || 0) >= 500);
-            // Fallback: si quedan menos de 3, mantener originales deduplicados
             comparablesParaTabla = filtrados.length >= 3 ? filtrados : comparablesFiltradosPorArea;
-            console.log(`Comparables filtrados para tabla (lote grande): ${comparablesParaTabla.length}`);
         }
 
-        // D) FILTRO IQR (Elimina outliers extremos de precio por m²)
-        // Esto evita que un comparable con $5.6M/m² (error de portal) distorsione el promedio.
+        // D) FILTRO IQR (New V10 Logic)
         if (comparablesParaTabla.length >= 5) {
             const preciosM2 = comparablesParaTabla.map(c => c.precio_m2).filter(p => p > 0).sort((a, b) => a - b);
             if (preciosM2.length >= 4) {
@@ -605,15 +577,24 @@ Devuelve SOLO JSON válido.
                     c.precio_m2 >= minThreshold && c.precio_m2 <= maxThreshold
                 );
 
-                // Solo aplicar si no perdemos demasiados datos (mínimo 5)
                 if (filtradosIQR.length >= 5) {
-                    console.log(`Filtro IQR: ${comparablesParaTabla.length} -> ${filtradosIQR.length} (rango: ${minThreshold.toLocaleString()} - ${maxThreshold.toLocaleString()}/m²)`);
+                    console.log(`Filtro IQR aplicado.`);
                     comparablesParaTabla = filtradosIQR;
-                } else {
-                    console.log(`Filtro IQR no aplicado (quedarían ${filtradosIQR.length} comparables)`);
                 }
             }
         }
+
+        // Normalización Nombres
+        comparablesParaTabla = comparablesParaTabla.map(c => {
+            let fuente = c.fuente || 'Portal Inmobiliario';
+            if (typeof fuente === 'string') {
+                fuente = fuente.replace(/Clencuadras/i, 'Ciencuadras')
+                    .replace(/Fincaraiz/i, 'FincaRaíz')
+                    .replace(/MetroCuadrado/i, 'Metrocuadrado')
+                    .replace(/Mercadolibre/i, 'MercadoLibre');
+            }
+            return { ...c, fuente };
+        });
 
         const resultado = {
             resumen_busqueda: extractedData.resumen_mercado || 'Análisis de mercado realizado.',
@@ -625,20 +606,30 @@ Devuelve SOLO JSON válido.
             rango_fuente: rangoFuente,
 
             valor_estimado_venta_directa: valorVentaDirecta,
-            precio_m2_usado: precioM2Usado,
-
             valor_estimado_rentabilidad: valorRentabilidad,
-            canon_arriendo_promedio: canonPromedio,
-            yield_mensual_mercado: yieldFinal,
-            yield_fuente: yieldFuente,
 
-            total_comparables: comparablesParaTabla.length,
-            total_comparables_venta: compsVenta.length,
-            total_comparables_arriendo: compsArriendo.length,
-            portales_consultados: portalesList,
+            // ERROR 2
+            precio_m2_final: precioM2Usado,
+
+            // ERROR 3
+            metodo_mercado_label: 'Enfoque de Mercado (promedio real)',
+            metodo_ajuste_label: valorRecomendado ? 'Ajuste de Perplexity (criterio técnico)' : 'Promedio de Mercado',
 
             comparables: comparablesParaTabla,
-            perplexity_full_text: perplexityContent,
+            total_comparables: comparablesParaTabla.length,
+
+            // ERROR 1: Defaults
+            ficha_tecnica_defaults: {
+                habitaciones: 'No especificado',
+                banos: 'No especificado',
+                garajes: 'No especificado',
+                estrato: 'No especificado',
+                antiguedad: 'No especificado'
+            },
+
+            yield_mensual_mercado: yieldFinal,
+            area_construida: area,
+            perplexity_full_text: perplexityContent
         };
 
         return new Response(JSON.stringify(resultado), {

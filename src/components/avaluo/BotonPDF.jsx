@@ -9,7 +9,7 @@ export default function BotonPDF({ formData }) {
       const comparablesData = data.comparables_data || {};
       const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
 
-      // Cálculos de valores (Lógica espejo del frontend)
+      // Cálculos de valores (Prioridad a datos de backend V10)
       const valorVentaDirecta = comparablesData.valor_estimado_venta_directa;
       const valorRentabilidad = comparablesData.valor_estimado_rentabilidad;
       const rangoMin = comparablesData.rango_valor_min;
@@ -24,7 +24,9 @@ export default function BotonPDF({ formData }) {
 
       // Área para cálculos
       const area = parseFloat(formData.area_construida || comparablesData.area_construida || 0);
-      const precioM2 = valorEstimadoFinal && area ? valorEstimadoFinal / area : 0;
+      const precioM2 = comparablesData.precio_m2_final || (valorEstimadoFinal && area ? valorEstimadoFinal / area : 0);
+
+      const defaults = comparablesData.ficha_tecnica_defaults || {};
 
       // Formateadores
       const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
@@ -177,7 +179,7 @@ export default function BotonPDF({ formData }) {
                   <p style="font-size: 9px; opacity: 0.8; margin-top: 5px; max-width: 300px;">
                     ${esLote
           ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
-          : 'Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.'}
+          : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
                   </p>
                 </div>
                 <div class="hero-stats">
@@ -199,10 +201,10 @@ export default function BotonPDF({ formData }) {
                   <div class="info-row"><span>Ubicación:</span> <strong>${formData.barrio || '—'}, ${formData.municipio || '—'}</strong></div>
                   <div class="info-row"><span>Área Construida:</span> <strong>${formData.area_construida || 0} m²</strong></div>
                   ${!esLote ? `
-                  <div class="info-row"><span>Habitaciones:</span> <strong>${formData.habitaciones || '—'}</strong></div>
-                  <div class="info-row"><span>Baños:</span> <strong>${formData.banos || '—'}</strong></div>
-                  <div class="info-row"><span>Parqueadero:</span> <strong>${formData.tipo_parqueadero || '—'}</strong></div>
-                  <div class="info-row"><span>Antigüedad:</span> <strong>${formData.antiguedad || '—'}</strong></div>
+                  <div class="info-row"><span>Habitaciones:</span> <strong>${formData.habitaciones || defaults.habitaciones || 'No especificado'}</strong></div>
+                  <div class="info-row"><span>Baños:</span> <strong>${formData.banos || defaults.banos || 'No especificado'}</strong></div>
+                  <div class="info-row"><span>Parqueadero:</span> <strong>${formData.tipo_parqueadero || defaults.garajes || 'No especificado'}</strong></div>
+                  <div class="info-row"><span>Antigüedad:</span> <strong>${formData.antiguedad || defaults.antiguedad || 'No especificado'}</strong></div>
                   ` : ''}
                   ${esLote ? `
                   <div class="info-row"><span>Uso del Lote:</span> <strong>${formData.uso_lote || '—'}</strong></div>
@@ -218,6 +220,7 @@ export default function BotonPDF({ formData }) {
                     <div class="info-row"><span>Comparables Analizados:</span> <strong>${comparablesData.total_comparables || 0}</strong></div>
                     ${!esLote ? `
                     <div class="info-row"><span>Yield Promedio:</span> <strong>${((comparablesData.yield_mensual_mercado || 0) * 100).toFixed(2)}% mensual</strong></div>
+                    <div style="font-size: 8px; color: #888; font-style: italic; margin-top: 2px;">* Yield promedio observado en Pereira (0.45%)</div>
                     ` : ''}
                   </div>
                 </div>

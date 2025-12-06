@@ -78,7 +78,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
   const valorRentabilidad = validarNumero(data.valor_estimado_rentabilidad);
   const rangoMin = validarNumero(data.rango_valor_min);
   const rangoMax = validarNumero(data.rango_valor_max);
-  const precioM2Usado = validarNumero(data.precio_m2_usado) || validarNumero(data.precio_m2_venta_directa);
+  const precioM2Usado = validarNumero(data.precio_m2_final) || validarNumero(data.precio_m2_usado) || validarNumero(data.precio_m2_venta_directa);
 
   let valorPrincipal = validarNumero(data.valor_final);
   if (!valorPrincipal) {
@@ -120,7 +120,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
               <p className="text-sm text-[#D3DDD6] mt-2 font-raleway max-w-lg">
                 {esLote
                   ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
-                  : 'Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.'}
+                  : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
               </p>
             </div>
             <span className="inline-flex self-start md:self-center items-center rounded-full bg-[#C9C19D]/90 px-4 py-1.5 text-xs md:text-sm font-semibold text-[#1a2620] shadow-sm">
