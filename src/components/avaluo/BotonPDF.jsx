@@ -148,28 +148,30 @@ export default function BotonPDF({ formData }) {
             }
             .info-grid {
               display: grid;
-              grid-template-columns: 1fr 1fr;
+              grid-template-columns: repeat(2, 1fr);
               gap: 15px;
-              margin-top: 15px;
             }
             .info-item {
-              padding: 10px;
-              background: white;
-              border-radius: 8px;
-              border: 1px solid #E0E5E2;
+              display: flex;
+              align-items: baseline;
+              gap: 8px;
+              padding: 5px 0;
+              border-bottom: 1px solid #eee;
+            }
+            .info-item:last-child {
+              border-bottom: none;
             }
             .info-label {
-              font-size: 10px;
-              color: #7A8C85;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
               font-weight: 600;
-              margin-bottom: 4px;
+              color: #7A8C85;
+              font-size: 10px;
+              text-transform: uppercase;
+              min-width: 120px;
             }
             .info-value {
-              font-size: 14px;
-              color: #2C3D37;
               font-weight: 600;
+              color: #2C3D37;
+              font-size: 11px;
             }
             .footer {
               margin-top: 40px;
@@ -395,7 +397,7 @@ export default function BotonPDF({ formData }) {
             .hero-content-row {
               display: flex;
               justify-content: space-between;
-              align-items: flex-end;
+              align-items: center; /* Centrado vertical */
               gap: 40px;
               margin: 20px 0;
               position: relative;
@@ -516,57 +518,59 @@ export default function BotonPDF({ formData }) {
               ` : ''}
             </div>
 
-            <!-- INFORMACIÓN DETALLADA -->
+            <!-- INFORMACIÓN DETALLADA (Inline Style) -->
             <div class="info-section">
               <h3 style="margin-top: 0; color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Información Detallada</h3>
               <div class="info-grid">
                 <div class="info-item">
-                  <div class="info-label">Tipo de Inmueble</div>
-                  <div class="info-value">${formData.tipo_inmueble || '—'}</div>
+                  <span class="info-label">Tipo de Inmueble:</span>
+                  <span class="info-value">${formData.tipo_inmueble || '—'}</span>
                 </div>
                 <div class="info-item">
-                  <div class="info-label">Ubicación</div>
-                  <div class="info-value">${formData.barrio || '—'}, ${formData.municipio || formData.ciudad || '—'}</div>
+                  <span class="info-label">Ubicación:</span>
+                  <span class="info-value">${formData.barrio || '—'}, ${formData.municipio || formData.ciudad || '—'}</span>
                 </div>
                 <div class="info-item">
-                  <div class="info-label">Área Construida</div>
-                  <div class="info-value">${formatNumber(area)} m²</div>
+                  <span class="info-label">Área Construida:</span>
+                  <span class="info-value">${formatNumber(area)} m²</span>
                 </div>
                 <div class="info-item">
-                  <div class="info-label">Precio por m²</div>
-                  <div class="info-value">${formatCurrency(precioM2)}/m²</div>
+                  <span class="info-label">Precio por m²:</span>
+                  <span class="info-value">${formatCurrency(precioM2)}/m²</span>
                 </div>
                 ${!esLote ? `
                 <div class="info-item">
-                  <div class="info-label">Habitaciones</div>
-                  <div class="info-value">${formData.habitaciones || comparablesData.habitaciones || defaults.habitaciones || '—'}</div>
+                  <span class="info-label">Habitaciones:</span>
+                  <span class="info-value">${formData.habitaciones || comparablesData.habitaciones || defaults.habitaciones || '—'}</span>
                 </div>
                 <div class="info-item">
-                  <div class="info-label">Baños</div>
-                  <div class="info-value">${formData.banos || comparablesData.banos || defaults.banos || '—'}</div>
+                  <span class="info-label">Baños:</span>
+                  <span class="info-value">${formData.banos || comparablesData.banos || defaults.banos || '—'}</span>
                 </div>
                 <div class="info-item">
-                  <div class="info-label">Estrato</div>
-                  <div class="info-value">${formData.estrato || comparablesData.estrato || defaults.estrato || 'No especificado'}</div>
+                  <span class="info-label">Estrato:</span>
+                  <span class="info-value">${formData.estrato || comparablesData.estrato || defaults.estrato || 'No especificado'}</span>
                 </div>
                 <div class="info-item">
-                  <div class="info-label">Estado</div>
-                  <div class="info-value">${formData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || '—'}</div>
+                  <span class="info-label">Estado:</span>
+                  <span class="info-value" style="text-transform: capitalize;">
+                    ${(formData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || '—').replace(/_/g, ' ')}
+                  </span>
                 </div>
                 ` : `
                 <div class="info-item">
-                  <div class="info-label">Uso del Lote</div>
-                  <div class="info-value">${formData.uso_lote || '—'}</div>
+                  <span class="info-label">Uso del Lote:</span>
+                  <span class="info-value">${formData.uso_lote || '—'}</span>
                 </div>
                 `}
                 <div class="info-item">
-                  <div class="info-label">Comparables Analizados</div>
-                  <div class="info-value">${totalComparables} inmuebles</div>
+                  <span class="info-label">Comparables:</span>
+                  <span class="info-value">${totalComparables} inmuebles</span>
                 </div>
                 ${!esLote && yieldMensual ? `
                 <div class="info-item">
-                  <div class="info-label">Yield Mensual</div>
-                  <div class="info-value">${(yieldMensual * 100).toFixed(2)}%</div>
+                  <span class="info-label">Yield Mensual:</span>
+                  <span class="info-value">${(yieldMensual * 100).toFixed(2)}%</span>
                 </div>
                 ` : ''}
               </div>
@@ -631,11 +635,11 @@ export default function BotonPDF({ formData }) {
             ` : ''}
 
             <!-- ANÁLISIS DETALLADO DEL MODELO -->
-            ${data.perplexity_full_text ? `
+            ${comparablesData.perplexity_full_text ? `
             <div class="analysis-section">
               <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Análisis Detallado del Modelo</h3>
               <div class="analysis-content">
-                ${formatText(data.perplexity_full_text)}
+                ${formatText(comparablesData.perplexity_full_text)}
               </div>
             </div>
             ` : ''}
