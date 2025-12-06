@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
-  Globe
+  Globe,
+  Download
 } from 'lucide-react';
 import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
@@ -262,6 +263,14 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
           </p>
         </div>
       )}
+
+      {/* AVISO DE DESCARGA PDF */}
+      <Alert className="border-[#C9C19D]/30 bg-[#FFFDF5] text-[#2C3D37]">
+        <Download className="h-4 w-4 text-[#C9C19D]" />
+        <AlertDescription className="text-sm">
+          <strong>Descarga el reporte completo en PDF</strong> para compartir o guardar esta valoración con todos los detalles y comparables.
+        </AlertDescription>
+      </Alert>
 
       {/* 4. PORTALES CONSULTADOS (BLOQUE DESTACADO TIPO ALERTA) */}
       {portales.length > 0 && (
