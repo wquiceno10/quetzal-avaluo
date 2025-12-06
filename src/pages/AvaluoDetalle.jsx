@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import Step3Results from '../components/avaluo/Step3Results';
+import Step4Contact from '../components/avaluo/Step4Contact';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
@@ -11,6 +12,7 @@ export default function AvaluoDetalle() {
     const [avaluo, setAvaluo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showContact, setShowContact] = useState(false);
 
     useEffect(() => {
         fetchAvaluo();
@@ -27,8 +29,6 @@ export default function AvaluoDetalle() {
 
             const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-            // Fetch avaluo by ID (or code if you prefer, but ID is safer for routing)
-            // We'll assume ID for now as it's standard. If using code, we'd query by codigo_avaluo
             const { data, error } = await supabase
                 .from('avaluos')
                 .select('*')
@@ -72,16 +72,14 @@ export default function AvaluoDetalle() {
     }
 
     // Prepare data for Step3Results
-    // Step3Results expects formData with comparables_data
-    // Our saved avaluo has fields at top level and comparables_data as JSON
     const formData = {
         ...avaluo,
         // Ensure comparables_data is populated from payload_json
         comparables_data: avaluo.payload_json || {},
-        // Map top-level fields if needed by Step3Results
+        // Map top-level fields if needed
         tipo_inmueble: avaluo.tipo_inmueble,
         barrio: avaluo.barrio,
-        municipio: avaluo.municipio || avaluo.ciudad, // ciudad vs municipio handling
+        municipio: avaluo.municipio || avaluo.ciudad,
         area_construida: avaluo.area_construida,
         habitaciones: avaluo.habitaciones,
         banos: avaluo.banos,
@@ -89,6 +87,19 @@ export default function AvaluoDetalle() {
         edad_inmueble: avaluo.edad_inmueble,
         estado_inmueble: avaluo.estado_inmueble
     };
+
+    // Si mostramos la vista de contacto (Finalizar Informe)
+    if (showContact) {
+        return (
+            <div className="container mx-auto px-4 py-8 max-w-4xl">
+                <Button onClick={() => setShowContact(false)} variant="ghost" className="mb-6 pl-0 hover:bg-transparent hover:text-[#2C3D37]/70 text-[#2C3D37]">
+                    <ArrowLeft className="w-5 h-5 mr-2" />
+                    Volver al reporte
+                </Button>
+                <Step4Contact formData={formData.comparables_data || formData} />
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -110,8 +121,7 @@ export default function AvaluoDetalle() {
                 formData={formData}
                 onBack={() => navigate('/mis-avaluos')}
                 onReset={() => navigate('/AvaluoInmobiliario')}
-                // onNext and onUpdate are not needed for read-only view
-                onNext={() => { }}
+                onNext={() => setShowContact(true)}
                 onUpdate={() => { }}
             />
         </div>

@@ -123,7 +123,8 @@ ${formData.informacion_complementaria ? `- NOTAS ADICIONALES: ${formData.informa
         // --- INSTRUCCIONES ESPECÍFICAS PARA LOTES ---
         const instruccionesLote = esLote ? `
 INSTRUCCIONES ESPECIALES PARA LOTES:
-1. OMITIR POR COMPLETO EL ENFOQUE DE RENTABILIDAD. No busques arriendos.
+1. OMITIR POR COMPLETO EL ENFOQUE DE RENTABILIDAD.
+   - PROHIBIDO BUSCAR O INCLUIR ARRIENDOS. SOLO VENTA.
 2. Busca SOLO comparables de VENTA de lotes con uso ${usoLote}.
 3. Si no encuentras suficientes lotes comparables en venta en la zona:
    - Puedes considerar inmuebles ${usoLote === 'comercial' ? 'comerciales' : 'residenciales'} construidos en el mismo sector.
@@ -131,6 +132,9 @@ INSTRUCCIONES ESPECIALES PARA LOTES:
    - Por ejemplo, un lote puede valer entre 25% y 40% del valor de una propiedad construida si el terreno es el activo principal.
    - Explica claramente si usas esta lógica de "proxy" en el análisis.
 4. Evita comparar con fincas productivas o proyectos de gran escala si el lote es pequeño/urbano.
+5. METODOLOGÍA:
+   - NUNCA uses la frase "Punto de equilibrio" ni "Enfoque de ingresos".
+   - USA EXACTAMENTE ESTA FRASE en tu resumen: "Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad".
 ` : '';
 
         // --- PROMPT V9 (ROBUSTO + FALLBACK) ---
@@ -155,13 +159,20 @@ INSTRUCCIONES GENERALES (GESTIÓN DE FALLBACK)
 3. Si un dato no aparece directamente, GENERA una estimación razonable basada en promedios municipales.
 4. Siempre entrega comparables suficientes:
    - Entrega idealmente entre 15 y 20 comparables en total.
-   - ${esLote ? 'SOLO incluye propiedades en VENTA.' : 'Incluye propiedades en arriendo (mínimo 3).'}
+   - ${esLote ? 'SOLO incluye propiedades en VENTA (Estrictamente prohibido arriendos).' : 'Incluye AL MENOS 6 propiedades en ARRIENDO en barrios similares para enriquecer el análisis.'}
    - Incluye propiedades de barrios similares.
 5. NO incluyas hipervínculos ni enlaces. Solo textos descriptivos.
 6. Incluye precios, áreas y valores de mercado siempre en pesos colombianos.
 7. Responde SIEMPRE en español.
 8. IMPORTANTE: Todas las cifras deben escribirse COMPLETAS en pesos colombianos, sin abreviaciones.
    Ejemplo: usar $4.200.000, NO 4.2M ni 4.200K.
+9. VALIDACIÓN DE URLS:
+   - Para cada comparable, incluye el campo "url: ..." y "url_estado: ...".
+   - Si la URL es real y verificable, url_estado = "real".
+   - Si no puedes verificarla o es inferida, url_estado = "estimado" y url = null.
+   - NUNCA inventes URLs.
+10. Sincronización de Conteos:
+    - Ajusta el campo "total_comparables" mencionado en el texto para que COINCIDA EXACTAMENTE con el número de items listados.
 
 TAREAS
 ------
@@ -176,14 +187,18 @@ Luego presenta un listado de **entre 15 a 20 comparables** usando EXACTAMENTE es
 [Tipo de inmueble] | [Venta/Arriendo]<br>
 $[Precio] | [Área] m² | [Hab] hab | [Baños] baños<br>
 [Barrio] | [Ciudad]<br>
-**[Fuente]**
+**[Fuente]**<br>
+url: [Enlace directo o null]<br>
+url_estado: [real/estimado]
 
 Ejemplo:
 **Apartamento en Condina, Pereira**<br>
 Apartamento | Venta<br>
 $245.000.000 | 68 m² | 3 hab | 2 baños<br>
 Condina | Pereira<br>
-**Fincaraiz**
+**Fincaraiz**<br>
+url: https://fincaraiz.com.co/ejemplo<br>
+url_estado: real
 
 IMPORTANTE: 
 - Respeta EXACTAMENTE este formato.
@@ -300,7 +315,9 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - "banos": Número antes de "baños" en la tercera línea
    - "barrio": Texto antes del | en la cuarta línea (sin etiquetas HTML)
    - "ciudad": Texto después del | en la cuarta línea (sin etiquetas HTML)
-   - "fuente": Texto entre ** ** de la última línea
+   - "fuente": Texto entre ** ** (usualmente antepenúltima línea)
+   - "url": Texto después de "url: " (penúltima línea, o null si no existe)
+   - "url_estado": Texto después de "url_estado: " (última línea)
 
    IMPORTANTE: Elimina cualquier etiqueta HTML (como <br>) de los valores extraídos.
 
@@ -446,6 +463,9 @@ Devuelve SOLO JSON válido.
                     precio_cop: precioVentaEstimado,
                     precio_m2: precioM2,
                     yield_mensual: esArriendo ? yieldFinal : null,
+
+                    url: c.url,
+                    url_estado: c.url_estado
                 };
             })
             .filter((c) => c && c.precio_cop > 0 && c.area_m2 > 0);
@@ -604,8 +624,16 @@ Devuelve SOLO JSON válido.
             return { ...c, fuente };
         });
 
+        // Sincronización de Conteos
+        const totalReal = comparablesParaTabla.length;
+        let finalPerplexityText = perplexityContent || '';
+        finalPerplexityText = finalPerplexityText.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
+
+        let resumenFinal = extractedData.resumen_mercado || 'Análisis de mercado realizado.';
+        resumenFinal = resumenFinal.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
+
         const resultado = {
-            resumen_busqueda: extractedData.resumen_mercado || 'Análisis de mercado realizado.',
+            resumen_busqueda: resumenFinal,
             valor_final: valorFinal,
             valor_fuente: valorFuente,
             valor_ponderado_referencia: valorPonderado,
@@ -637,7 +665,7 @@ Devuelve SOLO JSON válido.
 
             yield_mensual_mercado: yieldFinal,
             area_construida: area,
-            perplexity_full_text: perplexityContent
+            perplexity_full_text: finalPerplexityText
         };
 
         return new Response(JSON.stringify(resultado), {

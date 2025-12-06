@@ -9,7 +9,7 @@ export default function BotonPDF({ formData }) {
       const comparablesData = data.comparables_data || {};
       const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
 
-      // Cálculos de valores (Prioridad a datos de backend V10)
+      // Valores de backend
       const valorVentaDirecta = comparablesData.valor_estimado_venta_directa;
       const valorRentabilidad = comparablesData.valor_estimado_rentabilidad;
       const rangoMin = comparablesData.rango_valor_min;
@@ -17,15 +17,21 @@ export default function BotonPDF({ formData }) {
 
       let valorEstimadoFinal = comparablesData.valor_final;
       if (!valorEstimadoFinal) {
-        if (rangoMin && rangoMax) valorEstimadoFinal = (rangoMin + rangoMax) / 2;
-        else if (valorVentaDirecta && valorRentabilidad) valorEstimadoFinal = (valorVentaDirecta * 0.8 + valorRentabilidad * 0.2);
-        else valorEstimadoFinal = valorVentaDirecta || valorRentabilidad;
+        if (rangoMin && rangoMax) {
+          valorEstimadoFinal = (rangoMin + rangoMax) / 2;
+        } else if (valorVentaDirecta && valorRentabilidad) {
+          valorEstimadoFinal = valorVentaDirecta * 0.8 + valorRentabilidad * 0.2;
+        } else {
+          valorEstimadoFinal = valorVentaDirecta || valorRentabilidad || 0;
+        }
       }
 
-      // Área
-      const area = parseFloat(formData.area_construida || comparablesData.area_construida || 0);
+      const area = parseFloat(
+        formData.area_construida ||
+        comparablesData.area_construida ||
+        0
+      );
 
-      // ✔ CORRECCIÓN 1: Variables nuevas y contadores consistentes
       const precioM2 =
         comparablesData.precio_m2_final ||
         comparablesData.precio_m2_usado ||
@@ -40,224 +46,191 @@ export default function BotonPDF({ formData }) {
         comparablesData.total_comparables ||
         comparables.length;
 
-      const totalEncontrados = comparablesData.comparables_totales_encontrados;
+      const totalEncontrados =
+        comparablesData.comparables_totales_encontrados || totalComparables;
+
       const yieldMensual = comparablesData.yield_mensual_mercado;
 
       const fecha = new Date().toLocaleDateString('es-CO', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       });
 
-      // Formateadores
       const formatCurrency = (val) =>
         val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
 
       const formatNumber = (val) =>
         val ? Math.round(val).toLocaleString('es-CO') : '—';
 
-      // Helper para generar tablas HTML
+      // ---------- Limpieza y formateo del análisis Perplexity ----------
+
       const generateTableHtml = (rows) => {
         if (!rows.length) return '';
         const htmlRows = rows.map((row, i) => {
-          const cells = row.split('|').filter(c => c.trim() !== '');
+          const cells = row.split('|').filter((c) => c.trim() !== '');
           if (cells.length === 0) return '';
           const tag = i === 0 ? 'th' : 'td';
-          const inner = cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('');
-          return `<tr>${inner}</tr>`;
-        }).join('');
-        return `<div style="overflow-x:auto; margin: 15px 0;"><table border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:10px;">${htmlRows}</table></div>`;
+          const rowHtml = cells
+            .map((cell) => `<${tag}>${cell.trim()}</${tag}>`)
+            .join('');
+          return `<tr>${rowHtml}</tr>`;
+        });
+        return `
+          <table>
+            <tbody>
+              ${htmlRows.join('')}
+            </tbody>
+          </table>
+        `;
       };
 
       const formatText = (text) => {
         if (!text) return '';
 
-        // 1. Limpiar LaTeX básico
+        // 1. Limpieza Inicial (Artefactos y LaTeX)
         let cleanText = text
+          // Eliminar líneas horizontales MD (reforzado)
+          .replace(/^-{3,}\s*$/gm, '')
+          .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
+          // Eliminar saltos de línea excesivos
+          .replace(/\n{3,}/g, '\n\n')
+          // Limpiar LaTeX básico
           .replace(/\\\(/g, '')
           .replace(/\\\)/g, '')
           .replace(/\\\[/g, '')
           .replace(/\\\]/g, '')
-          .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
           .replace(/\\text\{([^}]+)\}/g, '$1')
+          // LaTeX \frac con soporte de espacios
+          .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1 / $2')
           .replace(/\\sum/g, '∑')
-          .replace(/\\approx/g, '≈');
+          .replace(/\\approx/g, '≈')
+          // Limpiar unidades duplicadas
+          .replace(/\s+COP\/m²/g, ' COP/m²');
 
-        // 2. Detectar y Formatear Tablas Markdown
+        // Normalizar "Promedio precio..."
+        cleanText = cleanText.replace(
+          /Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi,
+          'Promedio precio por m² ≈ $1 COP/m²'
+        );
+
+        // 2. Procesar tablas markdown
         const lines = cleanText.split('\n');
-        let newLines = [];
-        let inTable = false;
-        let tableRows = [];
+        const processedLines = [];
+        let currentTable = [];
 
-        lines.forEach(line => {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('|')) {
-            if (!inTable) inTable = true;
-            if (!trimmed.includes('---')) {
-              tableRows.push(trimmed);
-            }
-          } else {
-            if (inTable) {
-              newLines.push(generateTableHtml(tableRows));
-              tableRows = [];
-              inTable = false;
-            }
-            newLines.push(line);
+        const flushTable = () => {
+          if (currentTable.length > 0) {
+            processedLines.push(generateTableHtml(currentTable));
+            currentTable.length = 0;
           }
-        });
-        if (inTable) {
-          newLines.push(generateTableHtml(tableRows));
+        };
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+
+          // Detectar fila de tabla | a | b |
+          if (
+            trimmed.startsWith('|') &&
+            trimmed.endsWith('|') &&
+            trimmed.includes('|')
+          ) {
+            currentTable.push(trimmed);
+          } else if (
+            currentTable.length > 0 &&
+            /^[-|:\s]+$/.test(trimmed)
+          ) {
+            continue; // fila separadora de markdown
+          } else {
+            flushTable();
+            // Limpieza de títulos con puntos/números "1. Título" o ". Título"
+            let msgLine = line;
+            // Regex detecta inicio de línea con num/punto seguidos de Texto Mayuscula
+            if (/^[ \t]*[\d\.]+[ \t]+(?=[A-ZÀ-ÿ])/.test(msgLine)) {
+              msgLine = msgLine.replace(/^[ \t]*[\d\.]+[ \t]+/, '');
+              // Forzamos que sea un título si parece importante
+              if (msgLine.length < 50) msgLine = `#### ${msgLine}`;
+            }
+
+            processedLines.push(msgLine);
+          }
         }
+        flushTable();
 
-        cleanText = newLines.join('\n');
+        cleanText = processedLines.join('\n');
 
-        // 3. Formatear Markdown básico
+        // 3. Convertir markdown a HTML simple
         return cleanText
+          // Negritas (asegurar que cierra)
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/^#+\s*(.*?)$/gm, '<h4 style="margin-top:10px; margin-bottom:5px; color:#2C3D37;">$1</h4>')
-          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px; color:#2C3D37;">$1</li>')
-          .replace(/\n\n/g, '<br><br>')
-          .replace(/\n/g, '<br>');
+          // Encabezados MD "# Título" o "#### Título"
+          .replace(
+            /^#+\s*(.*?)$/gm,
+            '<h4 style="font-size: 13px; margin: 16px 0 4px 0; color: #2C3D37; font-weight:700;">$1</h4>'
+          )
+          // Listas
+          .replace(
+            /^\s*[-*•]\s+(.*?)$/gm,
+            '<li style="margin-left: 18px; font-size: 11px; margin-bottom: 2px;">$1</li>'
+          )
+          // Párrafos (líneas sueltas que no son tags HTML)
+          .replace(
+            /^(?!<(h4|li|table|div))(.+)$/gm,
+            '<p style="font-size: 11px; line-height: 1.5; margin: 4px 0; text-align: justify;">$1</p>'
+          );
       };
 
-      // -----------------------------------------------------------------------------------
-      // HTML DEL REPORTE
-      // -----------------------------------------------------------------------------------
+      // ---------- HTML PDF ----------
 
       const htmlContent = `
-        <!DOCTYPE html>
-        <html lang="es">
+        <html>
         <head>
-          <meta charset="UTF-8">
+          <meta charSet="utf-8" />
           <title>Reporte de Avalúo - Quetzal Hábitats</title>
-
+          <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Raleway:wght@300;400;500;600&display=swap');
-
+            * { box-sizing: border-box; }
             body {
-              font-family: 'Outfit', sans-serif;
               margin: 0;
-              padding: 0;
-              background: white;
+              padding: 24px;
+              font-family: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+              background: #F3F4F0;
               color: #2C3D37;
             }
             .container {
-              max-width: 960px;
+              max-width: 900px;
               margin: 0 auto;
-              padding: 40px 20px;
+              background: #FFFFFF;
+              border-radius: 16px;
+              padding: 32px;
+              box-shadow: 0 12px 30px rgba(0,0,0,0.08);
             }
-            @media (max-width: 1024px) {
-              .container {
-                max-width: 768px;
-              }
-            }
-            @media (max-width: 768px) {
-              .container {
-                max-width: 100%;
-                padding: 20px 15px;
-              }
+            h1, h2, h3, h4 {
+              margin: 0;
             }
             .header {
-              background: #2C3D37;
-              padding: 30px;
-              text-align: center;
-              margin: -40px -20px 30px -20px;
-              color: white;
-            }
-            .header-logo {
-              height: 50px;
-              margin-bottom: 15px;
-              filter: brightness(0) invert(1);
-            }
-            .header-title {
-              font-size: 28px;
-              font-weight: 700;
-              margin-bottom: 8px;
-            }
-            .header-subtitle {
-              font-size: 14px;
-              opacity: 0.9;
-            }
-            h1 { font-size: 26px; font-weight: 700; margin-bottom: 5px; }
-            h2 { font-size: 20px; font-weight: 600; margin: 12px 0 4px; }
-            h3 { font-size: 16px; font-weight: 600; margin: 10px 0 6px; }
-            .grid-2 {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin-top: 20px;
-            }
-            .box {
-              background: #F8F6EF;
-              padding: 16px;
-              border-radius: 12px;
-              border: 1px solid #e6e0c7;
-            }
-            .info-section {
-              background: #F9FAF9;
-              border: 1px solid #E0E5E2;
-              border-radius: 12px;
-              padding: 20px;
-              margin: 25px 0;
-            }
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 15px;
-            }
-            .info-item {
               display: flex;
-              align-items: baseline;
-              gap: 8px;
-              padding: 5px 0;
-              border-bottom: 1px solid #eee;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 24px;
             }
-            .info-item:last-child {
-              border-bottom: none;
+            .logo-block {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
             }
-            .info-label {
+            .logo-title {
+              font-size: 20px;
               font-weight: 600;
+            }
+            .logo-subtitle {
+              font-size: 12px;
               color: #7A8C85;
-              font-size: 10px;
-              text-transform: uppercase;
-              min-width: 120px;
             }
-            .info-value {
-              font-weight: 600;
-              color: #2C3D37;
+            .date {
               font-size: 11px;
+              color: #7A8C85;
             }
-            .footer {
-              margin-top: 40px;
-              font-size: 10px;
-              text-align: center;
-              color: #666;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 15px;
-            }
-            th, td {
-              padding: 8px;
-              border-bottom: 1px solid #ddd;
-              font-size: 11px;
-            }
-            th { background: #F0ECD9; font-weight: 600; }
-            .badge {
-              padding: 3px 7px;
-              border-radius: 6px;
-              font-size: 10px;
-              color: white;
-            }
-            .badge-venta { background: #4B7F52; }
-            .badge-arriendo { background: #2C3D37; }
-            .sub-text {
-              font-size: 9px;
-              color: #777;
-            }
-
-            /* Hero Header Styles */
             .hero-header {
               background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
               color: white;
@@ -274,7 +247,7 @@ export default function BotonPDF({ formData }) {
               right: -20px;
               width: 120px;
               height: 120px;
-              background: rgba(201, 193, 157, 0.1);
+              background: rgba(201,193,157,0.1);
               border-radius: 50%;
               filter: blur(40px);
             }
@@ -286,9 +259,7 @@ export default function BotonPDF({ formData }) {
               position: relative;
               z-index: 1;
             }
-            .hero-title-section {
-              flex: 1;
-            }
+            .hero-title-section { flex: 1; }
             .hero-icon-title {
               display: flex;
               align-items: center;
@@ -296,7 +267,7 @@ export default function BotonPDF({ formData }) {
               margin-bottom: 12px;
             }
             .hero-icon {
-              background: rgba(255, 255, 255, 0.1);
+              background: rgba(255,255,255,0.1);
               padding: 8px;
               border-radius: 8px;
               font-size: 24px;
@@ -311,298 +282,236 @@ export default function BotonPDF({ formData }) {
               font-size: 14px;
               line-height: 1.4;
               opacity: 0.9;
-              margin-bottom: 20px;
-              max-width: 90%; 
+              max-width: 90%;
               font-weight: 300;
               margin: 0;
-              font-family: 'Raleway', sans-serif;
             }
-            .analysis-section {
-              background: #F9FAF9;
-              border: 1px solid #E0E5E2;
-              border-radius: 12px;
-              padding: 20px;
-              margin: 25px 0;
-            }
-            .analysis-content {
-              column-count: 2;
-              column-gap: 30px;
-              font-size: 11px;
-              line-height: 1.5;
-              text-align: justify;
-            }
-             .analysis-content h4 {
-              column-span: all;
-              margin-top: 0;
-            }
-            .hero-badge {
-              background: rgba(201, 193, 157, 0.9);
-              color: #1a2620;
-              padding: 6px 16px;
-              border-radius: 20px;
-              font-size: 13px;
-              font-weight: 600;
-              white-space: nowrap;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            .hero-value-section {
+            .hero-main {
               display: flex;
-              justify-content: space-between;
-              align-items: flex-end;
-              gap: 30px;
-              margin: 24px 0;
+              gap: 24px;
               position: relative;
               z-index: 1;
             }
-            .hero-main-value {
-              flex: 1;
-            }
-            .hero-amount {
-              font-size: 36px;
-              font-weight: 700;
-              line-height: 1;
-              margin-bottom: 8px;
-            }
-            .hero-currency {
-              font-size: 12px;
-              color: #D3DDD6;
-              opacity: 0.8;
-            }
-            .hero-details-box {
-              background: rgba(255, 255, 255, 0.1);
-              border: 1px solid rgba(255, 255, 255, 0.1);
-              border-radius: 12px;
-              padding: 16px;
-              min-width: 280px;
-            }
-            .hero-detail-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 8px 0;
-              border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            .hero-detail-row:last-child {
-              border-bottom: none;
-            }
-            .hero-detail-label {
-              color: #D3DDD6;
-              font-size: 13px;
-            }
-            .hero-detail-value {
-              font-weight: 600;
-              text-align: right;
-              font-size: 13px;
-            }
-            .hero-detail-sub {
-              font-size: 10px;
-              color: #A3B2AA;
-              display: block;
-              margin-top: 2px;
-            }
-            .hero-footer {
-              font-size: 11px;
-              color: rgba(211, 221, 214, 0.8);
-              font-style: italic;
-              line-height: 1.5;
-              margin-top: 16px;
-              position: relative;
-              z-index: 1;
-            }
-
-            /* Print Styles */
-            @media print {
-              body {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-              }
-              .hero-header {
-                background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              .hero-details-box {
-                background: rgba(255, 255, 255, 0.1) !important;
-                -webkit-print-color-adjust: exact !important;
-              }
-              .hero-badge {
-                background: #C9C19D !important;
-                -webkit-print-color-adjust: exact !important;
-              }
-              .info-section {
-                page-break-inside: avoid;
-              }
-              table {
-                page-break-inside: auto;
-              }
-              tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-              }
-              thead {
-                display: table-header-group;
-              }
-            }
-            @page {
-              margin: 1.5cm;
-            }
-            /* Analysis Styles */
-            .analysis-section {
-              margin-top: 30px;
-              border-top: 2px solid #E0E5E2;
-              padding-top: 20px;
-            }
-            .analysis-content h4 {
+            .value-card {
+              background: #FFFFFF;
               color: #2C3D37;
-              font-size: 14px;
-              margin: 15px 0 8px 0;
+              border-radius: 14px;
+              padding: 18px 20px;
+              min-width: 220px;
             }
-            .analysis-content li {
-              margin-bottom: 5px;
+            .value-label {
               font-size: 11px;
+              text-transform: uppercase;
+              letter-spacing: 0.04em;
+              color: #7A8C85;
+              margin-bottom: 6px;
             }
-            .analysis-content p {
-              margin-bottom: 10px;
+            .value-amount {
+              font-size: 24px;
+              font-weight: 600;
+              margin-bottom: 4px;
+            }
+            .value-range {
               font-size: 11px;
-              text-align: justify;
+              color: #4b7f52;
             }
-
-            /* Hero Layout Update */
-            .hero-content-row {
-              display: flex;
-              justify-content: space-between;
-              align-items: center; /* Centrado vertical */
-              gap: 40px;
-              margin: 20px 0;
-              position: relative;
-              z-index: 1;
+            .value-badge {
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              margin-top: 8px;
+              font-size: 10px;
+              padding: 4px 8px;
+              border-radius: 999px;
+              background: rgba(44,61,55,0.08);
             }
-            .hero-left-col {
+            .value-badge span {
+              font-weight: 500;
+            }
+            .hero-side {
               flex: 1;
               display: flex;
               flex-direction: column;
-              justify-content: space-between;
+              gap: 10px;
             }
-            .hero-description {
-              font-size: 13px;
-              color: #D3DDD6;
+            .mini-summary {
+              font-size: 11px;
               line-height: 1.5;
-              margin: 0 0 25px 0; /* Space between description and price */
-              font-family: 'Raleway', sans-serif;
-              text-align: justify;
+              opacity: 0.9;
             }
-            .hero-value-block {
-              margin-top: auto;
+            .pill-row {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 6px;
+            }
+            .pill {
+              font-size: 10px;
+              padding: 4px 10px;
+              border-radius: 999px;
+              background: rgba(255,255,255,0.08);
+            }
+            .section {
+              margin-bottom: 24px;
+            }
+            .section-title {
+              font-size: 14px;
+              font-weight: 600;
+              margin-bottom: 8px;
+              color: #2C3D37;
+            }
+            .section-sub {
+              font-size: 11px;
+              color: #7A8C85;
+              margin-bottom: 4px;
+            }
+            .info-grid {
+              display: grid;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 8px 24px;
+            }
+            .info-item {
+              display: flex;
+              justify-content: space-between;
+              border-bottom: 1px solid #E2E4DD;
+              padding-bottom: 4px;
+              font-size: 11px;
+            }
+            .info-item:last-child { border-bottom: none; }
+            .info-label {
+              font-weight: 600;
+              color: #7A8C85;
+              font-size: 10px;
+              text-transform: uppercase;
+              min-width: 120px;
+            }
+            .info-value {
+              font-weight: 600;
+              color: #2C3D37;
+              font-size: 11px;
+            }
+            .sub-text {
+              font-size: 9px;
+              color: #777;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 15px;
+            }
+            th, td {
+              padding: 8px;
+              border-bottom: 1px solid #ddd;
+              font-size: 11px;
+            }
+            th {
+              background: #F0ECD9;
+              font-weight: 600;
+            }
+            .badge {
+              padding: 3px 7px;
+              border-radius: 6px;
+              font-size: 10px;
+              color: #fff;
+            }
+            .badge-venta { background: #4B7F52; }
+            .badge-arriendo { background: #2C3D37; }
+            .analysis-section {
+              background: #F9FAF9;
+              border-radius: 14px;
+              padding: 20px;
+              margin-top: 24px;
+              border: 1px solid #E2E4DD;
+            }
+            .analysis-content {
+              font-size: 11px;
+              line-height: 1.5;
+              color: #37474f;
+            }
+            .footer {
+              margin-top: 40px;
+              font-size: 10px;
+              text-align: center;
+              color: #666;
             }
           </style>
         </head>
-
         <body>
           <div class="container">
-            <!-- HERO HEADER - Diseño de la página -->
+            <div class="header">
+              <div class="logo-block">
+                <div class="logo-title">Quetzal Hábitats</div>
+                <div class="logo-subtitle">Inteligencia Inmobiliaria</div>
+              </div>
+              <div class="date">Generado el ${fecha}</div>
+            </div>
+
             <div class="hero-header">
               <div class="hero-decoration"></div>
-              
-              <!-- Title Row -->
-              <div class="hero-top" style="margin-bottom: 10px;">
-                <div class="hero-icon-title">
-                  <div class="hero-icon">🏠</div>
-                  <h1 class="hero-title">Valor Comercial Estimado</h1>
-                </div>
-                <div class="hero-badge">⚡ Estimación IA</div>
-              </div>
-
-              <!-- Content Row: Description+Price (Left) | Details (Right) -->
-              <div class="hero-content-row">
-                <div class="hero-left-col">
-                  <p class="hero-description">
-                    ${esLote
-          ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
-          : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
-                  </p>
-                  
-                  <div class="hero-value-block">
-                    <div class="hero-amount">${formatCurrency(valorEstimadoFinal)}</div>
-                    <div class="hero-currency">COP (Pesos Colombianos)</div>
+              <div class="hero-top">
+                <div class="hero-title-section">
+                  <div class="hero-icon-title">
+                    <div class="hero-icon">🦜</div>
+                    <div>
+                      <h1 class="hero-title">Valor Comercial Estimado</h1>
+                      <p class="hero-description">
+                        Determinación del valor comercial basada en un análisis técnico
+                        ponderado del mercado local y la validación experta de la IA.
+                      </p>
+                    </div>
                   </div>
-                </div>
-
-                <div class="hero-details-box">
-                  <div class="hero-detail-row">
-                    <span class="hero-detail-label">Rango Sugerido</span>
-                    <span class="hero-detail-value">
-                      ${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}
-                    </span>
-                  </div>
-                  <div class="hero-detail-row">
-                    <span class="hero-detail-label">Precio m² Ref.</span>
-                    <span class="hero-detail-value">${formatCurrency(precioM2)}/m²</span>
-                  </div>
-                  ${totalComparables ? `
-                  <div class="hero-detail-row">
-                    <span class="hero-detail-label">Muestra</span>
-                    <span class="hero-detail-value">
-                      ${totalComparables} inmuebles
-                      ${totalEncontrados && totalEncontrados > totalComparables
-            ? `<span class="hero-detail-sub">(de ${totalEncontrados} encontrados)</span>`
-            : `<span class="hero-detail-sub">(${comparablesData.total_comparables_venta || 0} venta, ${comparablesData.total_comparables_arriendo || 0} arriendo)</span>`
-          }
-                    </span>
-                  </div>
-                  ` : ''}
                 </div>
               </div>
 
-              <div class="hero-footer">
-                El valor final es una recomendación técnica ponderada entre el enfoque de mercado
-                y el de rentabilidad, priorizando el método con datos más consistentes según la
-                cantidad, homogeneidad y dispersión de los comparables disponibles.
+              <div class="hero-main">
+                <div class="value-card">
+                  <div class="value-label">Estimación IA</div>
+                  <div class="value-amount">${formatCurrency(valorEstimadoFinal)}</div>
+                  <div class="value-range">
+                    Rango sugerido: ${formatCurrency(rangoMin)} - ${formatCurrency(
+        rangoMax
+      )}
+                  </div>
+                  <div style="margin-top: 10px; font-size: 10px; color: #555;">
+                    Precio m² Ref.: <strong>${formatCurrency(precioM2)}/m²</strong>
+                  </div>
+                  <div class="value-badge">
+                    <span>⚡ Estimación técnica ponderada</span>
+                  </div>
+                </div>
+
+                <div class="hero-side">
+                  <div class="section-sub">Información del inmueble analizado</div>
+                  <div class="mini-summary">
+                    <strong>${formData.tipo_inmueble || comparablesData.tipo_inmueble || 'Inmueble'}</strong><br/>
+                    ${formData.barrio || comparablesData.barrio || ''}, ${formData.municipio || comparablesData.municipio || ''
+        }<br/>
+                    Área construida: <strong>${formatNumber(area)} m²</strong>.
+                  </div>
+                  <div class="pill-row">
+                    <div class="pill">
+                      ${totalComparables} comparables usados (de ${totalEncontrados} encontrados)
+                    </div>
+                    ${!esLote && yieldMensual
+          ? `<div class="pill">
+                             Yield mensual de referencia: ${(yieldMensual * 100).toFixed(2)}%
+                           </div>`
+          : ''
+        }
+                  </div>
+                </div>
               </div>
             </div>
 
-            <!-- MÉTODOS DE VALORACIÓN -->
-            <div class="grid-2">
-              <div class="box">
-                <h3>${esLote ? 'Metodología Ajustada (Lotes)' : 'Enfoque de Mercado'}</h3>
-                <p style="font-size: 22px; font-weight: 700;">
-                  ${formatCurrency(valorVentaDirecta)}
-                </p>
-                <p style="font-size: 11px; margin-top: 8px;">
-                  ${esLote
-          ? 'Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.'
-          : 'Basado en precio promedio por m² × área construida.'}
-                </p>
-              </div>
-
-              ${valorRentabilidad ? `
-              <div class="box">
-                <h3>Enfoque de Rentabilidad</h3>
-                <p style="font-size: 22px; font-weight: 700;">
-                  ${formatCurrency(valorRentabilidad)}
-                </p>
-                <p style="font-size: 11px; margin-top: 8px;">
-                  Canon mensual estimado ÷ yield mensual del sector.
-                </p>
-                ${yieldMensual ? `
-                <p style="font-size: 10px; color: #7A8C85; font-style: italic; margin-top: 8px;">
-                  Yield utilizado: ${(yieldMensual * 100).toFixed(2)}% mensual
-                </p>
-                ` : ''}
-              </div>
-              ` : ''}
-            </div>
-
-            <!-- INFORMACIÓN DETALLADA (Inline Style) -->
-            <div class="info-section">
-              <h3 style="margin-top: 0; color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Información Detallada</h3>
+            <div class="section">
+              <div class="section-title">Información Detallada</div>
               <div class="info-grid">
                 <div class="info-item">
                   <span class="info-label">Tipo de Inmueble:</span>
-                  <span class="info-value">${formData.tipo_inmueble || '—'}</span>
+                  <span class="info-value">${formData.tipo_inmueble || comparablesData.tipo_inmueble || '—'}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Ubicación:</span>
-                  <span class="info-value">${formData.barrio || '—'}, ${formData.municipio || formData.ciudad || '—'}</span>
+                  <span class="info-value">${formData.barrio || comparablesData.barrio || '—'}, ${formData.municipio || comparablesData.municipio || '—'}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Área Construida:</span>
@@ -612,14 +521,15 @@ export default function BotonPDF({ formData }) {
                   <span class="info-label">Precio por m²:</span>
                   <span class="info-value">${formatCurrency(precioM2)}/m²</span>
                 </div>
-                ${!esLote ? `
+                ${!esLote
+          ? `
                 <div class="info-item">
                   <span class="info-label">Habitaciones:</span>
-                  <span class="info-value">${formData.habitaciones || comparablesData.habitaciones || defaults.habitaciones || '—'}</span>
+                  <span class="info-value">${formData.habitaciones || comparablesData.habitaciones || defaults.habitaciones || 'No especificado'}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Baños:</span>
-                  <span class="info-value">${formData.banos || comparablesData.banos || defaults.banos || '—'}</span>
+                  <span class="info-value">${formData.banos || comparablesData.banos || defaults.banos || 'No especificado'}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Estrato:</span>
@@ -628,31 +538,34 @@ export default function BotonPDF({ formData }) {
                 <div class="info-item">
                   <span class="info-label">Estado:</span>
                   <span class="info-value" style="text-transform: capitalize;">
-                    ${(formData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || '—').replace(/_/g, ' ')}
+                    ${(formData.estado_inmueble || formData.estado || comparablesData.estado_inmueble || comparablesData.estado || defaults.estado_inmueble || defaults.estrato || '—').replace(/_/g, ' ')}
                   </span>
                 </div>
-                ` : `
+                `
+          : `
                 <div class="info-item">
                   <span class="info-label">Uso del Lote:</span>
                   <span class="info-value">${formData.uso_lote || '—'}</span>
                 </div>
-                `}
+                `
+        }
                 <div class="info-item">
                   <span class="info-label">Comparables:</span>
                   <span class="info-value">${totalComparables} inmuebles</span>
                 </div>
-                ${!esLote && yieldMensual ? `
+                ${!esLote && yieldMensual
+          ? `
                 <div class="info-item">
                   <span class="info-label">Yield Mensual:</span>
                   <span class="info-value">${(yieldMensual * 100).toFixed(2)}%</span>
                 </div>
-                ` : ''}
+                `
+          : ''
+        }
               </div>
             </div>
 
-            <!-- Tabla de comparables -->
             <h2 style="margin-top: 30px;">Propiedades Comparables</h2>
-
             <table>
               <thead>
                 <tr>
@@ -664,9 +577,9 @@ export default function BotonPDF({ formData }) {
                   <th>Precio m²</th>
                 </tr>
               </thead>
-
               <tbody>
-                ${(comparables || []).map(item => {
+                ${(comparables || [])
+          .map((item) => {
             const esArriendo = item.tipo_origen === 'arriendo';
             const badgeClass = esArriendo ? 'badge-arriendo' : 'badge-venta';
             const tipoLabel = esArriendo ? 'Arriendo' : 'Venta';
@@ -675,48 +588,54 @@ export default function BotonPDF({ formData }) {
               : '';
 
             return `
-                    <tr>
-                      <td>
-                        <strong>${item.titulo || 'Inmueble'}</strong><br>
-                        <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
-                      </td>
-                      <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-                      <td class="text-center">${formatNumber(item.area_m2)} m²</td>
-                      <td class="text-right">${formatCurrency(item.precio_publicado)} ${esArriendo ? '<span class="sub-text">/mes</span>' : ''}</td>
-                      <td class="text-right">
-                        <strong>${formatCurrency(item.precio_cop)}</strong>
-                        ${notaArriendo}
-                      </td>
-                      <td class="text-right">
-                        ${formatCurrency(item.precio_m2)}
-                      </td>
-                    </tr>
-                  `;
-          }).join('')}
+                      <tr>
+                        <td>
+                          <strong>${item.titulo || 'Inmueble'}</strong><br/>
+                          <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
+                        </td>
+                        <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+                        <td class="text-center">${formatNumber(item.area_m2)} m²</td>
+                        <td class="text-right">${formatCurrency(item.precio_publicado)} ${esArriendo ? '<span class="sub-text">/mes</span>' : ''
+              }</td>
+                        <td class="text-right">
+                          <strong>${formatCurrency(item.precio_cop)}</strong>
+                          ${notaArriendo}
+                        </td>
+                        <td class="text-right">${formatCurrency(item.precio_m2)}</td>
+                      </tr>
+                    `;
+          })
+          .join('')}
               </tbody>
             </table>
 
-            <!-- ✔ CORRECCIÓN 3: Nota sobre Yield -->
             <p style="font-size: 10px; color: #666; margin-top: 15px; font-style: italic;">
-              Yield mensual utilizado: ${yieldMensual ? (yieldMensual * 100).toFixed(2) + '%' : '0.45%'}.
-              Este yield corresponde al promedio observado en arriendos residenciales del mercado local.
+              Yield mensual utilizado: ${yieldMensual ? (yieldMensual * 100).toFixed(2) + '%' : '0.45%'
+        }. Este yield corresponde al promedio observado en arriendos residenciales del mercado local.
             </p>
 
-            ${esLote ? `
-              <p style="font-size: 10px; color: #888; margin-top: 15px; font-style: italic; text-align: justify;">
-                Nota: Ante la escasez de oferta comercial idéntica, se han utilizado lotes campestres y urbanos como referencia base, ajustando sus valores por factores de localización, escala y uso comercial. Se aplicó ajuste por factor de comercialización.
-              </p>
-            ` : ''}
+            ${esLote
+          ? `
+            <p style="font-size: 10px; color: #888; margin-top: 15px; font-style: italic; text-align: justify;">
+              Nota: Ante la escasez de oferta comercial idéntica, se han utilizado lotes campestres y urbanos como referencia base, ajustando sus valores por factores de localización, escala y uso comercial. Se aplicó ajuste por factor de comercialización.
+            </p>
+            `
+          : ''
+        }
 
-            <!-- ANÁLISIS DETALLADO DEL MODELO -->
-            ${comparablesData.perplexity_full_text ? `
+            ${comparablesData.perplexity_full_text
+          ? `
             <div class="analysis-section">
-              <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Análisis Detallado del Modelo</h3>
+              <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px; margin-top: 0;">
+                Análisis Detallado del Modelo
+              </h3>
               <div class="analysis-content">
                 ${formatText(comparablesData.perplexity_full_text)}
               </div>
             </div>
-            ` : ''}
+            `
+          : ''
+        }
 
             <div class="footer">
               <p>Quetzal Hábitats - Inteligencia Inmobiliaria</p>
@@ -728,7 +647,6 @@ export default function BotonPDF({ formData }) {
         </html>
       `;
 
-      // Abrir PDF
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(htmlContent);
@@ -739,7 +657,7 @@ export default function BotonPDF({ formData }) {
       }
 
       return { success: true };
-    }
+    },
   });
 
   return (
