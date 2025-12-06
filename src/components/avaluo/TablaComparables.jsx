@@ -36,7 +36,7 @@ export default function TablaComparables({ comparables }) {
               Hab<br /><span className="text-xs font-normal">Baños</span>
             </TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio Publicado</TableHead>
-            <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio Venta (Est)</TableHead>
+            <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio de Venta</TableHead>
             {/* CORRECCIÓN: Columna ancha para que quepa en una línea */}
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right w-[120px]">$/m²</TableHead>
           </TableRow>

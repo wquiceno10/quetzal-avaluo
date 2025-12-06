@@ -282,7 +282,7 @@ export default function BotonPDF({ formData }) {
               flex: 1;
             }
             .hero-amount {
-              font-size: 48px;
+              font-size: 36px;
               font-weight: 700;
               line-height: 1;
               margin-bottom: 8px;
@@ -508,19 +508,19 @@ export default function BotonPDF({ formData }) {
                 ${!esLote ? `
                 <div class="info-item">
                   <div class="info-label">Habitaciones</div>
-                  <div class="info-value">${formData.habitaciones || '—'}</div>
+                  <div class="info-value">${formData.habitaciones || comparablesData.habitaciones || defaults.habitaciones || '—'}</div>
                 </div>
                 <div class="info-item">
                   <div class="info-label">Baños</div>
-                  <div class="info-value">${formData.banos || '—'}</div>
+                  <div class="info-value">${formData.banos || comparablesData.banos || defaults.banos || '—'}</div>
                 </div>
                 <div class="info-item">
                   <div class="info-label">Estrato</div>
-                  <div class="info-value">${formData.estrato || defaults.estrato || '—'}</div>
+                  <div class="info-value">${formData.estrato || comparablesData.estrato || defaults.estrato || 'No especificado'}</div>
                 </div>
                 <div class="info-item">
                   <div class="info-label">Estado</div>
-                  <div class="info-value">${formData.estado_inmueble || defaults.estado_inmueble || '—'}</div>
+                  <div class="info-value">${formData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || '—'}</div>
                 </div>
                 ` : `
                 <div class="info-item">
@@ -551,7 +551,7 @@ export default function BotonPDF({ formData }) {
                   <th>Tipo</th>
                   <th>Área</th>
                   <th>Precio Publicado</th>
-                  <th>Precio Estimado</th>
+                  <th>Precio de Venta</th>
                   <th>Precio m²</th>
                 </tr>
               </thead>
