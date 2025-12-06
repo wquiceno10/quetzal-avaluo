@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +21,31 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
   const [localData, setLocalData] = useState(formData);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [hasAvaluos, setHasAvaluos] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAvaluos = async () => {
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        if (!supabaseUrl || !supabaseAnonKey) return;
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { count } = await supabase
+          .from('avaluos')
+          .select('*', { count: 'exact', head: true })
+          .eq('email', user.email);
+
+        if (count && count > 0) setHasAvaluos(true);
+      } catch (e) {
+        console.error("Error checking avaluos:", e);
+      }
+    };
+    checkAvaluos();
+  }, []);
 
   const handleChange = (field, value) => {
     const updated = { ...localData, [field]: value };
@@ -95,12 +122,26 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
     <div className="space-y-6">
       <Card className="border-[#B0BDB4]">
         <CardHeader>
-          <CardTitle className="text-2xl text-[#2C3D37]">
-            Datos del Inmueble
-          </CardTitle>
-          <CardDescription className="text-base">
-            Completa la información de tu propiedad para realizar el avalúo comercial.
-          </CardDescription>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-2xl text-[#2C3D37]">
+                Datos del Inmueble
+              </CardTitle>
+              <CardDescription className="text-base">
+                Completa la información de tu propiedad para realizar el avalúo comercial.
+              </CardDescription>
+            </div>
+            {hasAvaluos && (
+              <Button
+                onClick={() => navigate('/mis-avaluos')}
+                variant="outline"
+                className="border-[#2C3D37] text-[#2C3D37] hover:bg-[#F0F2F1] rounded-full"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Mis Avalúos
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
 

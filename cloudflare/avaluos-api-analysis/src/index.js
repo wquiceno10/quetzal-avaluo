@@ -102,7 +102,15 @@ export default {
 - Tipo: ${tipoInmueble}
 ${esLote ? `- Uso del Lote: ${usoLote}` : ''}
 - Ubicación: ${ubicacion}
-- Habitaciones: ${formData.habitaciones || '?'}
+${formData.nombre_conjunto ? `- Conjunto/Edificio: ${formData.nombre_conjunto}` : ''}
+${!esLote ? `- Habitaciones: ${formData.habitaciones || '?'}` : ''}
+${!esLote ? `- Baños: ${formData.banos || '?'}` : ''}
+${!esLote ? `- Parqueadero: ${formData.tipo_parqueadero || 'No indicado'}` : ''}
+${!esLote ? `- Antigüedad: ${formData.antiguedad || 'No indicada'}` : ''}
+${!esLote ? `- Estado: ${formData.estado_inmueble || 'No especificado'}` : ''}
+${!esLote && formData.tipo_remodelacion ? `- Remodelación: ${formData.tipo_remodelacion} (${formData.valor_remodelacion || 'Valor no indicado'})` : ''}
+${!esLote && formData.descripcion_mejoras ? `- Mejoras: ${formData.descripcion_mejoras}` : ''}
+${formData.informacion_complementaria ? `- NOTAS ADICIONALES: ${formData.informacion_complementaria}` : ''}
 `.trim();
 
         const areaInstruction = areaConstruida

@@ -90,125 +90,108 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         <head>
           <style>
             body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; line-height: 1.6; background-color: #f4f4f4; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-            .header { background-color: #2C3D37; padding: 30px; text-align: center; }
-            .header img { max-width: 150px; }
+            .container { max-width: 600px; margin: 0 auto; background: #ffffff; overflow: hidden; font-size: 14px; }
+            .header { background-color: #2C3D37; padding: 40px 20px; text-align: center; color: white; }
+            .header-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+            .header-code { font-size: 14px; opacity: 0.8; }
+            
             .content { padding: 30px; }
-            .hero { text-align: center; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
-            .price-tag { font-size: 32px; font-weight: bold; color: #2C3D37; margin: 10px 0; }
-            .subtitle { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
             
-            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-            .card { background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
-            .card-title { font-size: 14px; font-weight: bold; color: #2C3D37; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; }
-            .info-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+            .value-box { background-color: #F9FAF9; border: 1px solid #E0E5E2; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 30px; }
+            .value-label { color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+            .value-amount { color: #2C3D37; font-size: 36px; font-weight: bold; margin: 5px 0; }
+            .value-range { color: #888; font-size: 12px; }
             
-            .methods-container { display: flex; gap: 10px; margin-bottom: 20px; }
-            .method-card { flex: 1; background: #fff; border: 1px solid #eee; padding: 10px; text-align: center; border-radius: 6px; }
-            .method-val { font-size: 16px; font-weight: bold; color: #2C3D37; margin: 5px 0; }
-            .method-label { font-size: 10px; text-transform: uppercase; color: #888; margin-bottom: 5px; font-weight: bold;}
-            .method-desc { font-size: 9px; color: #666; line-height: 1.3; }
-
-            .btn { display: inline-block; background-color: #C9C19D; color: #2C3D37; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; }
-            .footer { background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #ddd; }
-            .footer p { margin: 5px 0; }
+            .section-title { color: #2C3D37; font-size: 16px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; margin-top: 30px; }
+            
+            .data-grid { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .data-grid td { padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 13px; }
+            .data-label { color: #666; width: 40%; }
+            .data-val { color: #333; font-weight: bold; text-align: right; }
+            
+            .cta-box { background-color: #E8ECE9; padding: 30px; text-align: center; margin-top: 30px; border-radius: 8px; }
+            .cta-title { color: #2C3D37; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+            .cta-text { color: #4F5B55; font-size: 13px; margin-bottom: 20px; line-height: 1.5; }
+            .cta-btn { background-color: #2C3D37; color: white; text-decoration: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; font-size: 14px; display: inline-block; }
+            
+            .alert-box { background-color: #FFFDF5; border-left: 4px solid #FBC02D; padding: 15px; margin-top: 30px; font-size: 12px; color: #555; text-align: justify; }
+            
+            .footer-contact { background-color: #E8ECE9; padding: 30px; text-align: center; margin-top: 20px; }
+            .contact-title { font-size: 16px; font-weight: bold; color: #2C3D37; margin-bottom: 10px; }
+            
+            .footer-dark { background-color: #2C3D37; padding: 30px; text-align: center; color: #8FA396; font-size: 11px; }
+            .footer-dark p { margin: 5px 0; }
           </style>
         </head>
         <body>
           <div class="container">
+            <!-- DARK HEADER -->
             <div class="header">
-              <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal Hábitats">
+              <div class="header-title">Reporte de Avalúo</div>
+              <div class="header-code">Código: ${codigoAvaluo}</div>
             </div>
             
             <div class="content">
-              <div class="hero">
-                <div class="subtitle">Valor Comercial Estimado</div>
-                <div class="price-tag">${formatCurrency(valorEstimadoFinal)}</div>
-                <p style="font-size: 11px; color: #666; max-width: 400px; margin: 0 auto 10px auto; line-height: 1.4;">
-                  ${esLote
-          ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
-          : 'Punto de equilibrio entre el enfoque de mercado y el enfoque de rentabilidad, reflejando tanto las condiciones del inmueble como el comportamiento actual de la demanda.'}
-                </p>
-                <div style="font-size: 12px; color: #444; margin-top: 5px;">
-                  Rango sugerido: <strong>${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</strong>
-                </div>
+              <p>Hola <strong>${formData.contacto_nombre || data.contacto_nombre || 'Usuario'}</strong>,</p>
+              <p>Adjunto encontrarás el detalle de la valoración para tu inmueble en <strong>${data.barrio}, ${data.municipio}</strong>.</p>
+              
+              <!-- VALUE BOX -->
+              <div class="value-box">
+                <div class="value-label">Valor Comercial Estimado</div>
+                <div class="value-amount">${formatCurrency(valorEstimadoFinal)}</div>
+                <div class="value-range">Rango sugerido: ${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</div>
               </div>
 
-              <div class="grid-2">
-                <div class="card">
-                  <div class="card-title">Ficha Técnica</div>
-                  <div class="info-row"><span>Inmueble:</span> <strong>${data.tipo_inmueble}</strong></div>
-                  <div class="info-row"><span>Ubicación:</span> <strong>${data.barrio}, ${data.municipio}</strong></div>
-                  <div class="info-row"><span>Área:</span> <strong>${data.area_construida} m²</strong></div>
-                  ${!esLote ? `
-                  <div class="info-row"><span>Habitaciones:</span> <strong>${data.habitaciones || '-'}</strong></div>
-                  <div class="info-row"><span>Baños:</span> <strong>${data.banos || '-'}</strong></div>
-                  ` : ''}
-                  ${esLote ? `
-                  <div class="info-row"><span>Uso:</span> <strong>${data.uso_lote || '-'}</strong></div>
-                  ` : ''}
-                </div>
-
-                <div class="card">
-                  <div class="card-title">Resumen del Mercado</div>
-                  <p style="font-size: 11px; text-align: justify; margin-bottom: 10px; color: #666; line-height: 1.3;">
-                    ${comparablesData.resumen_busqueda || 'Análisis basado en oferta actual.'}
-                  </p>
-                  <div class="info-row"><span>Comparables:</span> <strong>${comparablesData.total_comparables || 0} inmuebles</strong></div>
-                  ${!esLote ? `
-                  <div class="info-row"><span>Yield Estimado:</span> <strong>${((comparablesData.yield_mensual_mercado || 0) * 100).toFixed(2)}% mensual</strong></div>
-                  ` : ''}
-                </div>
-              </div>
-
-              <!-- MÉTODOS -->
-              <h4 style="color: #2C3D37; margin-top: 5px; margin-bottom: 10px; font-size: 14px; text-align: center;">Metodología de Valoración</h4>
-              <div class="methods-container">
-                ${esLote ? `
-                <div class="method-card" style="max-width: 100%; flex: 1;">
-                  <div class="method-label">Metodología Ajustada (Lotes)</div>
-                  <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
-                  <div class="method-desc">Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.</div>
-                </div>
+              <!-- FICHA TÉCNICA -->
+              <div class="section-title">Ficha Técnica</div>
+              <table class="data-grid">
+                <tr><td class="data-label">Tipo Inmueble:</td><td class="data-val">${data.tipo_inmueble}</td></tr>
+                <tr><td class="data-label">Ubicación:</td><td class="data-val">${data.barrio}, ${data.municipio}</td></tr>
+                <tr><td class="data-label">Área:</td><td class="data-val">${data.area_construida} m²</td></tr>
+                ${!esLote ? `
+                <tr><td class="data-label">Habitaciones:</td><td class="data-val">${data.habitaciones || '-'}</td></tr>
+                <tr><td class="data-label">Baños:</td><td class="data-val">${data.banos || '-'}</td></tr>
                 ` : `
-                <div class="method-card">
-                  <div class="method-label">Enfoque de Mercado</div>
-                  <div class="method-val">${formatCurrency(valorVentaDirecta)}</div>
-                  <div class="method-desc">Calculado a partir del precio promedio por m² de las propiedades comparables (precio promedio por m² × área del inmueble).</div>
-                </div>
+                <tr><td class="data-label">Uso:</td><td class="data-val">${data.uso_lote || '-'}</td></tr>
                 `}
-                
-                ${valorRentabilidad && !esLote ? `
-                <div class="method-card">
-                  <div class="method-label">Enfoque de Rentabilidad</div>
-                  <div class="method-val">${formatCurrency(valorRentabilidad)}</div>
-                  <div class="method-desc">Calculado a partir del canon mensual estimado y la fórmula del rendimiento (yield) del sector.</div>
-                </div>
-                ` : ''}
-              </div>
+              </table>
 
-              <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-                <h3 style="font-size: 16px; color: #2C3D37; margin-bottom: 15px;">Análisis Detallado</h3>
-                <div style="font-size: 13px; color: #444; text-align: justify;">
-                  ${markdownToHtml(comparablesData.perplexity_full_text)}
-                </div>
-              </div>
+              <!-- RESUMEN MERCADO -->
+              <div class="section-title">Resumen del Mercado</div>
+               <p style="font-size: 13px; text-align: justify; color: #555; line-height: 1.5;">
+                  ${comparablesData.resumen_busqueda || 'Análisis basado en la oferta actual del mercado.'}
+               </p>
+               <table class="data-grid" style="margin-top: 15px;">
+                  <tr><td class="data-label">Comparables:</td><td class="data-val">${comparablesData.total_comparables || 0} inmuebles</td></tr>
+                  ${!esLote ? `<tr><td class="data-label">Yield Estimado:</td><td class="data-val">${((comparablesData.yield_mensual_mercado || 0) * 100).toFixed(2)}% mensual</td></tr>` : ''}
+               </table>
 
-              <div style="text-align: center; margin-top: 30px;">
-                <a href="${detalleUrl}" class="btn" style="background-color: #2C3D37; color: white; margin-right: 10px;">Ver Reporte Interactivo</a>
-                <a href="https://quetzalhabitats.com" class="btn">Ver más servicios</a>
-                <p style="margin-top: 20px;"><a href="https://quetzalhabitats.com" style="color: #2C3D37; text-decoration: none; font-size: 12px;">Volver a Quetzal Hábitats</a></p>
+              <!-- AVISO LEGAL -->
+              <div class="alert-box">
+                <strong>⚠️ Aviso Legal:</strong><br>
+                Este avalúo comercial es una estimación basada en el análisis de propiedades comparables en el mercado inmobiliario actual y no constituye un avalúo oficial o catastral. Los valores presentados son aproximados. Para transacciones legales o financieras, se recomienda obtener un avalúo oficial realizado por un perito avaluador certificado.
+              </div>
+              
+              <!-- CTA COMPRA/VENTA -->
+              <div class="cta-box">
+                <div class="cta-title">¿Interesado en vender o comprar?</div>
+                <div class="cta-text">En Quetzal Hábitats te ayudamos a encontrar el comprador ideal o la propiedad perfecta para ti. Contáctanos para una asesoría personalizada.</div>
+                <a href="https://wa.me/573186383809" class="cta-btn">Contactar Asesor</a>
               </div>
             </div>
 
-            <div class="footer">
-              <p>Quetzal Hábitats - Inteligencia Inmobiliaria</p>
-              <p>Este reporte es una estimación basada en datos de mercado.</p>
-              <div style="margin-top: 10px; font-size: 10px; color: #999;">
-                <p>¿Interesado en vender o comprar?</p>
-                <p>En Quetzal Hábitats te ayudamos a encontrar el comprador ideal o la propiedad perfecta para ti.</p>
-                <p>Contáctanos: +57 318 638 3809 | contacto@quetzalhabitats.com</p>
-              </div>
+            <!-- FOOTER INFO -->
+            <div class="footer-contact">
+               <div class="contact-title">¿Necesitas más información?</div>
+               <p style="font-size: 14px; margin: 5px 0;">📞 +57 318 638 3809</p>
+               <p style="font-size: 14px; margin: 5px 0;">✉️ contacto@quetzalhabitats.com</p>
+            </div>
+
+            <!-- DARK FOOTER COPYRIGHT -->
+            <div class="footer-dark">
+               <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal" style="filter: brightness(0) invert(1); opacity: 0.5; height: 30px; margin-bottom: 10px;">
+               <p>© 2025 Quetzal Hábitats - Todos los derechos reservados</p>
+               <p>Código: ${codigoAvaluo}</p>
             </div>
           </div>
         </body>
