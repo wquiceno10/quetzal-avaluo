@@ -370,6 +370,26 @@ export default function BotonPDF({ formData }) {
             @page {
               margin: 1.5cm;
             }
+            /* Analysis Styles */
+            .analysis-section {
+              margin-top: 30px;
+              border-top: 2px solid #E0E5E2;
+              padding-top: 20px;
+            }
+            .analysis-content h4 {
+              color: #2C3D37;
+              font-size: 14px;
+              margin: 15px 0 8px 0;
+            }
+            .analysis-content li {
+              margin-bottom: 5px;
+              font-size: 11px;
+            }
+            .analysis-content p {
+              margin-bottom: 10px;
+              font-size: 11px;
+              text-align: justify;
+            }
           </style>
         </head>
 
@@ -579,12 +599,21 @@ export default function BotonPDF({ formData }) {
               </p>
             ` : ''}
 
+            <!-- ANÁLISIS DETALLADO DEL MODELO -->
+            ${data.perplexity_full_text ? `
+            <div class="analysis-section">
+              <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Análisis Detallado del Modelo</h3>
+              <div class="analysis-content">
+                ${formatText(data.perplexity_full_text)}
+              </div>
+            </div>
+            ` : ''}
+
             <div class="footer">
               <p>Quetzal Hábitats - Inteligencia Inmobiliaria</p>
               <p>Este documento es una estimación estadística y no constituye un avalúo certificado.</p>
               <p>Generado el ${fecha}</p>
             </div>
-
           </div>
         </body>
         </html>
