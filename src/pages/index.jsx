@@ -47,7 +47,7 @@ function PagesContent() {
 
                 <Route path="/AccesoClientes" element={<AccesoClientes />} />
                 <Route path="/mis-avaluos" element={<MisAvaluos />} />
-                <Route path="/avaluo/:id" element={<AvaluoDetalle />} />
+                <Route path="/resultados/:id" element={<AvaluoDetalle />} />
 
             </Routes>
         </Layout>

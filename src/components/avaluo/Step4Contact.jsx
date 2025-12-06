@@ -4,9 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, Send, CheckCircle, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import { guardarAvaluoEnSupabase } from '@/lib/avaluos';
 
 export default function Step4Contact({ formData, onBack, onReset }) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -31,6 +34,36 @@ export default function Step4Contact({ formData, onBack, onReset }) {
 
       // Formateadores
       const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
+
+      // GENERAR CODIGO AVALUO SI NO EXISTE
+      const codigoAvaluo = formData.codigo_avaluo || `QZ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
+
+      // 1. GUARDAR EN SUPABASE
+      // Preparamos el payload_json con TODO el análisis (comparables_data tiene casi todo, pero aseguramos el objeto completo)
+      const payloadJson = {
+        ...comparablesData,
+        codigo_avaluo: codigoAvaluo,
+        valor_final: valorEstimadoFinal,
+        // Incluimos datos básicos también por si acaso
+        tipo_inmueble: formData.tipo_inmueble,
+        barrio: formData.barrio,
+        municipio: formData.municipio,
+        area_construida: formData.area_construida,
+        habitaciones: formData.habitaciones,
+        banos: formData.banos,
+      };
+
+      const avaluoId = await guardarAvaluoEnSupabase({
+        email: data.contacto_email,
+        tipoInmueble: formData.tipo_inmueble,
+        barrio: formData.barrio,
+        ciudad: formData.municipio,
+        valorFinal: valorEstimadoFinal,
+        codigoAvaluo: codigoAvaluo,
+        payloadJson: payloadJson
+      });
+
+      const detalleUrl = `${window.location.origin}/resultados/${avaluoId}`;
 
       // Helper para convertir markdown básico a HTML
       const esLote = (data.tipo_inmueble || '').toLowerCase().includes('lote');
@@ -149,7 +182,9 @@ export default function Step4Contact({ formData, onBack, onReset }) {
               </div>
 
               <div style="text-align: center; margin-top: 30px;">
+                <a href="${detalleUrl}" class="btn" style="background-color: #2C3D37; color: white; margin-right: 10px;">Ver Reporte Interactivo</a>
                 <a href="https://quetzalhabitats.com" class="btn">Ver más servicios</a>
+                <p style="margin-top: 20px;"><a href="https://quetzalhabitats.com" style="color: #2C3D37; text-decoration: none; font-size: 12px;">Volver a Quetzal Hábitats</a></p>
               </div>
             </div>
 
@@ -178,14 +213,20 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         throw new Error(errorData.error || 'Error al enviar el correo');
       }
 
-      return response.json();
+      return { success: true, id: avaluoId };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setEnviado(true);
+      // Redirigir después de un momento para que el usuario vea el mensaje de éxito
+      setTimeout(() => {
+        navigate(`/resultados/${data.id}`);
+      }, 3500); // Damos un poco más de tiempo para que lean el mensaje de éxito
+      // También podríamos dejar el botón "Ver Reporte" en la UI de éxito para ir manualmente
     },
     onError: (error) => {
-      console.error("Error enviando correo:", error);
-      alert("Hubo un error al enviar el correo. Por favor intenta de nuevo.");
+      console.error("Error en proceso de avalúo:", error);
+      alert(`Hubo un error al procesar tu solicitud: ${error.message}. Por favor intenta de nuevo.`);
+      setEnviado(false);
     }
   });
 

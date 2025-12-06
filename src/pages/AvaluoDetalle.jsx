@@ -76,12 +76,12 @@ export default function AvaluoDetalle() {
     // Our saved avaluo has fields at top level and comparables_data as JSON
     const formData = {
         ...avaluo,
-        // Ensure comparables_data is populated
-        comparables_data: avaluo.comparables_data || {},
-        // Map top-level fields if needed by Step3Results (it mostly uses comparables_data or formData fallback)
+        // Ensure comparables_data is populated from payload_json
+        comparables_data: avaluo.payload_json || {},
+        // Map top-level fields if needed by Step3Results
         tipo_inmueble: avaluo.tipo_inmueble,
         barrio: avaluo.barrio,
-        municipio: avaluo.municipio,
+        municipio: avaluo.municipio || avaluo.ciudad, // ciudad vs municipio handling
         area_construida: avaluo.area_construida,
         habitaciones: avaluo.habitaciones,
         banos: avaluo.banos,

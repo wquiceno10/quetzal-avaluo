@@ -175,8 +175,11 @@ export default function MisAvaluos() {
                 ) : (
                     <div className="grid gap-6">
                         {avaluos.map((avaluo) => {
-                            const formDataForPDF = { ...avaluo, comparables_data: avaluo.comparables_data };
-                            const compData = avaluo.comparables_data || {};
+                            const formDataForPDF = {
+                                ...avaluo,
+                                comparables_data: avaluo.payload_json || {}
+                            };
+                            const compData = avaluo.payload_json || {};
                             let valorMostrar = avaluo.valor_final;
                             if (!valorMostrar) {
                                 const v1 = compData.valor_estimado_venta_directa;
@@ -228,7 +231,7 @@ export default function MisAvaluos() {
                                                     </div>
                                                     <div>
                                                         <p className="font-semibold text-[#2C3D37] text-lg">{avaluo.barrio}</p>
-                                                        <p className="text-sm text-[#4F5B55]">{avaluo.municipio}</p>
+                                                        <p className="text-sm text-[#4F5B55]">{avaluo.municipio || avaluo.ciudad}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -244,7 +247,7 @@ export default function MisAvaluos() {
                                         <div className="flex flex-wrap items-center gap-4 mt-8 pt-6 border-t border-[#F0F2F1]">
                                             <div className="flex-1 flex gap-3">
                                                 <Button
-                                                    onClick={() => navigate(`/avaluo/${avaluo.id}`)}
+                                                    onClick={() => navigate(`/resultados/${avaluo.id}`)}
                                                     className="bg-[#2C3D37] text-white hover:bg-[#1a2620]"
                                                 >
                                                     <ArrowRight className="w-4 h-4 mr-2" />
@@ -298,7 +301,7 @@ function generateEmailBody(data) {
         return '$ ' + Math.round(val).toLocaleString('es-CO');
     };
 
-    const comparablesData = data.comparables_data || {};
+    const comparablesData = data.payload_json || data.comparables_data || {};
 
     // Calculate value
     let valorEstimadoFinal = null;
