@@ -320,6 +320,8 @@ function generateEmailBody(data) {
     // Formateadores
     const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
     const formatNumber = (val) => val ? Math.round(val).toLocaleString('es-CO') : '—';
+    // Estado formatting
+    const estado = (data.estado_inmueble || comparablesData.estado_inmueble || '—').replace(/_/g, ' ');
     const formatText = (text) => {
         if (!text) return '';
         return text
@@ -410,7 +412,7 @@ function generateEmailBody(data) {
                 ${!esLote ? `
                 <tr><td class="data-label">Habitaciones</td><td class="data-val">${data.habitaciones || comparablesData.habitaciones || '-'}</td></tr>
                 <tr><td class="data-label">Baños</td><td class="data-val">${data.banos || comparablesData.banos || '-'}</td></tr>
-                <tr><td class="data-label">Estrato</td><td class="data-val">${data.estrato || comparablesData.estrato || 'No especificado'}</td></tr>
+                <tr><td class="data-label">Estado</td><td class="data-val" style="text-transform: capitalize;">${estado}</td></tr>
                 ` : `
                 <tr><td class="data-label">Uso del Lote</td><td class="data-val">${data.uso_lote || '-'}</td></tr>
                 `}
@@ -421,14 +423,10 @@ function generateEmailBody(data) {
                <p style="font-size: 13px; text-align: justify; color: #555; line-height: 1.5; margin-bottom: 15px;">
                   ${comparablesData.resumen_busqueda || 'Análisis basado en la oferta actual del mercado.'}
                </p>
-
-               <!-- ANÁLISIS DETALLADO -->
-               ${comparablesData.perplexity_full_text ? `
-               <div class="section-title">Análisis Detallado del Modelo</div>
-               <div style="font-size: 13px; text-align: justify; color: #555; line-height: 1.5;">
-                  ${formatText(comparablesData.perplexity_full_text)}
+               
+               <div style="background-color: #FFFDF5; border: 1px solid #E6E0C7; padding: 15px; border-radius: 8px; font-size: 12px; color: #555;">
+                  <strong>💡 Tip:</strong> Descarga el reporte PDF completo desde la plataforma para ver gráficas detalladas y el análisis técnico completo.
                </div>
-               ` : ''}
               
               <!-- CTA DESCARGA PDF -->
               <div class="cta-box">
@@ -480,6 +478,7 @@ function generateEmailBody(data) {
             </div>
 
             <div class="footer-dark">
+               <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal" style="height: 40px; margin-bottom: 15px;">
                <p style="color: #8FA396; margin: 5px 0;">© 2025 Quetzal Hábitats - Todos los derechos reservados</p>
                <p style="color: #5A6D66; margin: 5px 0;">Código: ${data.codigo_avaluo}</p>
             </div>

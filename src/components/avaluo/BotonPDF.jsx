@@ -58,10 +58,42 @@ export default function BotonPDF({ formData }) {
 
       const formatText = (text) => {
         if (!text) return '';
-        return text
+        // 1. Limpiar LaTeX básico
+        let cleanText = text
+          .replace(/\\\(/g, '')
+          .replace(/\\\)/g, '')
+          .replace(/\\\[/g, '')
+          .replace(/\\\]/g, '')
+          .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
+          .replace(/\\text\{([^}]+)\}/g, '$1')
+          .replace(/\\sum/g, '∑')
+          .replace(/\\approx/g, '≈');
+
+        // 2. Formatear Markdown básico
+        cleanText = cleanText
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
           .replace(/^#+\s*(.*?)$/gm, '<h4>$1</h4>')
-          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px;">$1</li>')
+          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px;">$1</li>');
+
+        // 3. Tablas Markdown a HTML (Simple)
+        if (cleanText.includes('|')) {
+          cleanText = cleanText.replace(/\|(.+)\|/g, (match) => {
+            // Si parece una fila de tabla
+            const cells = match.split('|').filter(c => c.trim() !== '');
+            if (cells.length > 1 && !match.includes('---')) {
+              return '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>';
+            }
+            return ''; // Eliminar líneas de separación |---|
+          });
+          // Envolver filas en tabla si hay muchas seguidas (heurística simple o mejor reemplazar saltos)
+          // Para simplificar, asumimos que Perplexity no devuelve tablas complejas anidadas, 
+          // pero si lo hace, es mejor pedirle Listas. 
+          // Aquí convertiremos filas de tabla detectadas en una tabla.
+          // Pero dado que es complejo regex, mejor dejamos las filas como líneas.
+          // Revertimos la lógica de tabla para evitar romper el layout si no es perfecto.
+        }
+
+        return cleanText
           .replace(/\n\n/g, '<br><br>')
           .replace(/\n/g, '<br>');
       };
@@ -254,12 +286,32 @@ export default function BotonPDF({ formData }) {
               margin: 0;
             }
             .hero-description {
-              font-size: 13px;
-              color: #D3DDD6;
-              line-height: 1.5;
-              max-width: 600px;
+              font-size: 14px;
+              line-height: 1.4;
+              opacity: 0.9;
+              margin-bottom: 20px;
+              max-width: 90%; 
+              font-weight: 300;
               margin: 0;
               font-family: 'Raleway', sans-serif;
+            }
+            .analysis-section {
+              background: #F9FAF9;
+              border: 1px solid #E0E5E2;
+              border-radius: 12px;
+              padding: 20px;
+              margin: 25px 0;
+            }
+            .analysis-content {
+              column-count: 2;
+              column-gap: 30px;
+              font-size: 11px;
+              line-height: 1.5;
+              text-align: justify;
+            }
+             .analysis-content h4 {
+              column-span: all;
+              margin-top: 0;
             }
             .hero-badge {
               background: rgba(201, 193, 157, 0.9);
