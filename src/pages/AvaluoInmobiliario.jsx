@@ -5,6 +5,7 @@ import Step2Analysis from '../components/avaluo/Step2Analysis';
 import Step3Results from '../components/avaluo/Step3Results';
 import Step4Contact from '../components/avaluo/Step4Contact';
 import { createClient } from '@supabase/supabase-js';
+import { guardarAvaluoEnSupabase } from '@/lib/avaluos';
 
 const initialState = {
   tipo_inmueble: '',
@@ -30,6 +31,7 @@ export default function AvaluoInmobiliario() {
   const contentRef = useRef(null);
   const [avaluoData, setAvaluoData] = useState(initialState);
   const [hasAvaluos, setHasAvaluos] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const isDevMode = import.meta.env.MODE === 'development';
 
@@ -45,10 +47,11 @@ export default function AvaluoInmobiliario() {
           const { data: { user } } = await supabase.auth.getUser();
 
           if (user) {
+            setCurrentUser(user);
             const { count } = await supabase
               .from('avaluos')
               .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id);
+              .eq('user_id', user.id); // Note: We stopped saving user_id in insert for safety, but if we wanted to list them we might need it. For now, this checks strictly owned ones.
 
             setHasAvaluos(count > 0);
           }
@@ -65,11 +68,71 @@ export default function AvaluoInmobiliario() {
     setAvaluoData(prev => ({ ...prev, ...newData }));
   };
 
-  const handleNext = () => {
-    setCurrentStep(prev => Math.min(prev + 1, 4));
+  const handleNext = async () => {
+    const nextStep = Math.min(currentStep + 1, 4);
 
-    // If moving to step 4 (contact/email), mark that user will have an avalúo
-    if (currentStep === 3) {
+    // AUTO-SAVE LOGIC: If moving to Step 3 (Results) and user is logged in
+    if (currentStep === 2 && nextStep === 3 && currentUser) {
+      try {
+        const data = avaluoData.comparables_data || {};
+
+        // Generate Code if missing
+        const cod = avaluoData.codigo_avaluo || `QZ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
+
+        // Calculate Value (Simple logic mirror)
+        let valFinal = data.valor_final;
+        if (!valFinal) {
+          const v1 = data.valor_estimado_venta_directa;
+          const v2 = data.valor_estimado_rentabilidad;
+          const min = data.rango_valor_min;
+          const max = data.rango_valor_max;
+
+          if (min && max) valFinal = (min + max) / 2;
+          else if (v1 && v2) valFinal = (v1 * 0.8 + v2 * 0.2);
+          else valFinal = v1 || v2 || 0;
+        }
+
+        const payload = {
+          ...data,
+          codigo_avaluo: cod,
+          valor_final: valFinal,
+          tipo_inmueble: avaluoData.tipo_inmueble,
+          barrio: avaluoData.barrio,
+          municipio: avaluoData.municipio,
+          area_construida: avaluoData.area_construida,
+          habitaciones: avaluoData.habitaciones,
+          banos: avaluoData.banos,
+        };
+
+        const savedId = await guardarAvaluoEnSupabase({
+          email: currentUser.email,
+          tipoInmueble: avaluoData.tipo_inmueble,
+          barrio: avaluoData.barrio,
+          ciudad: avaluoData.municipio,
+          valorFinal: valFinal,
+          codigoAvaluo: cod,
+          payloadJson: payload,
+        });
+
+        // Update local state with saved ID and Code
+        handleUpdateData({
+          id: savedId,
+          codigo_avaluo: cod,
+          comparables_data: payload // ensure payload is synced
+        });
+        console.log("Auto-saved avaluo:", savedId);
+        setHasAvaluos(true); // Ensure button shows up
+
+      } catch (err) {
+        console.error("Auto-save failed", err);
+        // Don't block flow if save fails
+      }
+    }
+
+    setCurrentStep(nextStep);
+
+    // If moving to step 3 (Resultados) or 4, mark that we have content for "Mis Avaluos"
+    if (nextStep >= 3) {
       setHasAvaluos(true);
     }
   };

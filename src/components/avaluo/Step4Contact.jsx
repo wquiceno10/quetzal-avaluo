@@ -53,15 +53,20 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         banos: formData.banos,
       };
 
-      const avaluoId = await guardarAvaluoEnSupabase({
-        email: data.contacto_email,
-        tipoInmueble: formData.tipo_inmueble,
-        barrio: formData.barrio,
-        ciudad: formData.municipio,
-        valorFinal: valorEstimadoFinal,
-        codigoAvaluo: codigoAvaluo,
-        payloadJson: payloadJson
-      });
+      let avaluoId = formData.id;
+
+      if (!avaluoId) {
+        const avaluoIdRes = await guardarAvaluoEnSupabase({
+          email: data.contacto_email,
+          tipoInmueble: formData.tipo_inmueble,
+          barrio: formData.barrio,
+          ciudad: formData.municipio,
+          valorFinal: valorEstimadoFinal,
+          codigoAvaluo: codigoAvaluo,
+          payloadJson: payloadJson
+        });
+        avaluoId = avaluoIdRes;
+      }
 
       const detalleUrl = `${window.location.origin}/resultados/${avaluoId}`;
 
