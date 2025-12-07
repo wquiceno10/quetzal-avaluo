@@ -434,8 +434,8 @@ function generateEmailBody(data) {
                   <div style="font-size: 13px; color: #D3DDD6; margin-bottom: 15px;">
                     Para ver todas las gráficas y guardar el informe oficial, descarga el PDF.
                   </div>
-                  <a href="https://avaluo.quetzalhabitats.com/resultados/${data.id}" class="btn-download">
-                    Ver y Descargar PDF
+                  <a href="https://avaluo.quetzalhabitats.com/resultados/${data.id}" class="btn-download" style="background-color: #C9C19D; color: #2C3D37; text-decoration: none; padding: 12px 30px; border-radius: 25px; font-weight: bold; display: inline-block; margin-top: 15px;">
+                    Descargar PDF
                   </a>
               </div>
 
