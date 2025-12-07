@@ -149,6 +149,12 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
         return '$ ' + Math.round(num).toLocaleString('es-CO');
     };
 
+    const formatNumber = (value) => {
+        const num = validarNumero(value);
+        if (num === null) return '—';
+        return Math.round(num).toLocaleString('es-CO');
+    };
+
     const tieneComparables = Array.isArray(data.comparables) && data.comparables.length > 0;
     const tieneAnalisisCompleto = data.perplexity_full_text && data.perplexity_full_text.length > 50;
     const tieneResumen = data.resumen_busqueda && data.resumen_busqueda.length > 10;

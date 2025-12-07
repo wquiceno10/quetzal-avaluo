@@ -248,7 +248,7 @@ export default function MisAvaluos() {
                                         <div className="flex flex-col gap-3 mt-8 pt-6 border-t border-[#F0F2F1]">
                                             <div className="flex flex-col sm:flex-row gap-3">
                                                 <Button
-                                                    onClick={() => navigate(`/avaluo-detalle/${avaluo.id}`)}
+                                                    onClick={() => navigate(`/resultados/${avaluo.id}`)}
                                                     className="bg-[#2C3D37] text-white hover:bg-[#1a2620] rounded-full py-6 flex-1"
                                                 >
                                                     <ArrowRight className="w-4 h-4 mr-2" />
