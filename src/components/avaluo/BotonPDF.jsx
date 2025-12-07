@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 
-export default function BotonPDF({ formData }) {
+const BotonPDF = forwardRef(({ formData }, ref) => {
   const generatePDFMutation = useMutation({
     mutationFn: async (data) => {
       const comparablesData = data.comparables_data || {};
@@ -811,6 +811,7 @@ export default function BotonPDF({ formData }) {
 
   return (
     <Button
+      ref={ref}
       onClick={() => generatePDFMutation.mutate(formData)}
       disabled={generatePDFMutation.isPending}
       className="flex-1 bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] rounded-full py-6 text-lg font-medium"
@@ -828,4 +829,8 @@ export default function BotonPDF({ formData }) {
       )}
     </Button>
   );
-}
+});
+
+BotonPDF.displayName = 'BotonPDF';
+
+export default BotonPDF;

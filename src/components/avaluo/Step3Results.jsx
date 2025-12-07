@@ -115,8 +115,29 @@ const AnalisisAI = ({ text }) => {
     );
 };
 
-export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset }) {
+import React, { useState, useRef, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Home, TrendingUp, DollarSign, FileText, X } from 'lucide-react';
+import BotonPDF from './BotonPDF';
+
+// ... (renderError y AnalisisAI helper functions)
+
+export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF }) {
     const [mostrarComparables, setMostrarComparables] = useState(false);
+    const pdfButtonRef = useRef(null);
+
+    // Auto-download PDF cuando viene desde email
+    useEffect(() => {
+        if (autoDownloadPDF && pdfButtonRef.current) {
+            // Esperar un momento para que la página cargue completamente
+            const timer = setTimeout(() => {
+                pdfButtonRef.current?.click();
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [autoDownloadPDF]);
 
     if (!formData) return renderErrorState('Datos del formulario no disponibles', onBack);
 
@@ -444,7 +465,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                     </Button>
                 </div>
                 <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-                    <BotonPDF formData={formData} />
+                    <BotonPDF ref={pdfButtonRef} formData={formData} />
                     {onReset && (
                         <Button variant="outline" onClick={onReset} className="text-[#7A8C85] border-[#B0BDB4] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-6">
                             Nuevo Avalúo

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import Step3Results from '../components/avaluo/Step3Results';
 import Step4Contact from '../components/avaluo/Step4Contact';
@@ -9,6 +9,9 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 export default function AvaluoDetalle() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const autoDownload = searchParams.get('download') === 'pdf';
+
     const [avaluo, setAvaluo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -123,6 +126,7 @@ export default function AvaluoDetalle() {
                 onReset={() => navigate('/AvaluoInmobiliario')}
                 onNext={() => setShowContact(true)}
                 onUpdate={() => { }}
+                autoDownloadPDF={autoDownload}
             />
         </div>
     );
