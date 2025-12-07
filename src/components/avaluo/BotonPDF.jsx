@@ -351,7 +351,7 @@ export default function BotonPDF({ formData }) {
               line-height: 1.3;
               opacity: 0.9;
               margin-bottom: 20px;
-              max-width: 60%; 
+              max-width: 85%; 
               font-weight: 300;
               margin: 0;
               font-family: 'Raleway', sans-serif;
