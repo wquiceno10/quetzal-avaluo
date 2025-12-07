@@ -192,6 +192,56 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                 {formatCurrency(valorPrincipal)}
                             </div>
                             <p className="text-xs md:text-sm text-[#D3DDD6] mt-2 opacity-80">COP (Pesos Colombianos)</p>
+
+                            {/* Ficha Técnica Resumida */}
+                            <div className="flex flex-wrap gap-2 mt-4">
+                                {esLote ? (
+                                    <>
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                            📐 {formatNumber(areaInmueble)} m²
+                                        </span>
+                                        {formData.uso_lote && (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                                🏗️ {formData.uso_lote}
+                                            </span>
+                                        )}
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                            📍 {formData.municipio || formData.ciudad || '—'}
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        {formData.tipo_inmueble && (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                                🏠 {formData.tipo_inmueble}
+                                            </span>
+                                        )}
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                            📐 {formatNumber(areaInmueble)} m²
+                                        </span>
+                                        {(formData.habitaciones || data.habitaciones) && (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                                🛏️ {formData.habitaciones || data.habitaciones} hab
+                                            </span>
+                                        )}
+                                        {(formData.banos || data.banos) && (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                                🚿 {formData.banos || data.banos} baños
+                                            </span>
+                                        )}
+                                        {(formData.estado_inmueble || formData.estado || data.estado_inmueble || data.estado) && (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                                ✨ {(formData.estado_inmueble || formData.estado || data.estado_inmueble || data.estado || '').replace(/_/g, ' ')}
+                                            </span>
+                                        )}
+                                        {(formData.estrato || data.estrato) && (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
+                                                📊 Estrato {formData.estrato || data.estrato}
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div className="bg-[#FFFFFF]/10 backdrop-blur-sm border border-[#FFFFFF]/10 rounded-xl p-4 w-full lg:w-auto min-w-[280px] space-y-3">
                             <div className="flex justify-between items-center border-b border-white/10 pb-2">

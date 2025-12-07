@@ -347,11 +347,11 @@ export default function BotonPDF({ formData }) {
               margin: 0;
             }
             .hero-description {
-              font-size: 14px;
-              line-height: 1.4;
+              font-size: 13px;
+              line-height: 1.3;
               opacity: 0.9;
               margin-bottom: 20px;
-              max-width: 90%; 
+              max-width: 60%; 
               font-weight: 300;
               margin: 0;
               font-family: 'Raleway', sans-serif;
@@ -410,8 +410,9 @@ export default function BotonPDF({ formData }) {
               flex: 1;
             }
             .hero-amount {
-              font-size: 36px;
+              font-size: 28px;
               font-weight: 700;
+              font-family: 'Outfit', sans-serif;
               line-height: 1;
               margin-bottom: 8px;
             }
@@ -538,7 +539,7 @@ export default function BotonPDF({ formData }) {
             .hero-description {
               font-size: 13px;
               color: #D3DDD6;
-              line-height: 1.5;
+              line-height: 1.3;
               margin: 0 0 25px 0; /* Space between description and price */
               font-family: 'Raleway', sans-serif;
               text-align: justify;
@@ -680,7 +681,7 @@ export default function BotonPDF({ formData }) {
                 <div class="info-item">
                   <span class="info-label">Estado:</span>
                   <span class="info-value" style="text-transform: capitalize;">
-                    ${(formData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || '—').replace(/_/g, ' ')}
+                    ${(formData.estado_inmueble || formData.estado || comparablesData.estado_inmueble || comparablesData.estado || defaults.estado_inmueble || defaults.estado || '—').replace(/_/g, ' ')}
                   </span>
                 </div>
                 ` : `
