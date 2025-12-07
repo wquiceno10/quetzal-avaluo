@@ -354,9 +354,9 @@ export default function MisAvaluos() {
                             </div>
 
                             <div className="space-y-2 mb-6 text-sm text-gray-600 flex-1">
-                                <div className="flex items-center"><Ruler className="w-4 h-4 mr-2 opacity-70" /> {avaluo.area_construida} m²</div>
+                                <div className="flex items-center"><Ruler className="w-4 h-4 mr-2 opacity-70" /> {avaluo.area_construida || avaluo.payload_json?.area_construida || '-'} m²</div>
                                 {!avaluo.tipo_inmueble.toLowerCase().includes('lote') && (
-                                    <div className="flex items-center"><Building2 className="w-4 h-4 mr-2 opacity-70" /> {avaluo.habitaciones} hab • {avaluo.banos} baños</div>
+                                    <div className="flex items-center"><Building2 className="w-4 h-4 mr-2 opacity-70" /> {avaluo.habitaciones || avaluo.payload_json?.habitaciones || '-'} hab • {avaluo.banos || avaluo.payload_json?.banos || '-'} baños</div>
                                 )}
                             </div>
 
@@ -366,7 +366,7 @@ export default function MisAvaluos() {
                                 </Button>
 
                                 {/* Botón de PDF */}
-                                <div className='hidden'>
+                                <div>
                                     <BotonPDF
                                         targetId={`reporte-${avaluo.id}`}
                                         filename={`Avaluo_${avaluo.codigo_avaluo}.pdf`}

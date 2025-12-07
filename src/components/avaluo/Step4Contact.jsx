@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Send, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, Send, CheckCircle, ArrowLeft, Building2, TrendingUp, Info } from 'lucide-react'; // Added icons
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { guardarAvaluoEnSupabase } from '@/lib/avaluos';
@@ -15,25 +15,59 @@ export default function Step4Contact({ formData, onBack, onReset }) {
   const [telefono, setTelefono] = useState('');
   const [enviado, setEnviado] = useState(false);
 
+  // --- LÓGICA DE CÁLCULO (IGUAL QUE SIEMPRE) ---
+  const comparablesData = formData.comparables_data || {};
+  const valorVentaDirecta = comparablesData.valor_estimado_venta_directa;
+  const valorRentabilidad = comparablesData.valor_estimado_rentabilidad;
+  const rangoMin = comparablesData.rango_valor_min;
+  const rangoMax = comparablesData.rango_valor_max;
+
+  let valorEstimadoFinal = comparablesData.valor_final;
+  if (!valorEstimadoFinal) {
+    if (rangoMin && rangoMax) valorEstimadoFinal = (rangoMin + rangoMax) / 2;
+    else if (valorVentaDirecta && valorRentabilidad) valorEstimadoFinal = (valorVentaDirecta * 0.8 + valorRentabilidad * 0.2);
+    else valorEstimadoFinal = valorVentaDirecta || valorRentabilidad;
+  }
+
+  const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
+
+  const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
+  const formatNumber = (val) => val ? Math.round(val).toLocaleString('es-CO') : '—';
+
   const sendEmailMutation = useMutation({
     mutationFn: async (data) => {
-      const comparablesData = formData.comparables_data || {};
+      // --- PLANTILLA PREMIUM HERO EMAIL (CODIGO EXISTENTE) ---
+      const codigoAvaluo = formData.codigo_avaluo || `QZ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
 
-      // Cálculos de valores (Lógica espejo del frontend)
-      const valorVentaDirecta = comparablesData.valor_estimado_venta_directa;
-      const valorRentabilidad = comparablesData.valor_estimado_rentabilidad;
-      const rangoMin = comparablesData.rango_valor_min;
-      const rangoMax = comparablesData.rango_valor_max;
+      const payloadJson = {
+        ...comparablesData,
+        codigo_avaluo: codigoAvaluo,
+        valor_final: valorEstimadoFinal,
+        tipo_inmueble: formData.tipo_inmueble,
+        barrio: formData.barrio,
+        municipio: formData.municipio,
+        area_construida: formData.area_construida,
+        habitaciones: formData.habitaciones,
+        banos: formData.banos,
+      };
 
-      let valorEstimadoFinal = comparablesData.valor_final;
-      if (!valorEstimadoFinal) {
-        if (rangoMin && rangoMax) valorEstimadoFinal = (rangoMin + rangoMax) / 2;
-        else if (valorVentaDirecta && valorRentabilidad) valorEstimadoFinal = (valorVentaDirecta * 0.8 + valorRentabilidad * 0.2);
-        else valorEstimadoFinal = valorVentaDirecta || valorRentabilidad;
+      let avaluoId = formData.id;
+      if (!avaluoId) {
+        const avaluoIdRes = await guardarAvaluoEnSupabase({
+          email: data.contacto_email,
+          tipoInmueble: formData.tipo_inmueble,
+          barrio: formData.barrio,
+          ciudad: formData.municipio,
+          valorFinal: valorEstimadoFinal,
+          codigoAvaluo: codigoAvaluo,
+          payloadJson: payloadJson
+        });
+        avaluoId = avaluoIdRes;
       }
 
-      // --- PLANTILLA PREMIUM HERO (Unificada con MisAvaluos) ---
-      const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
+      const detalleUrl = `${window.location.origin}/resultados/${avaluoId}`;
+
+      // Email Template Construction (Hero Design)
       const valorFormateado = formatCurrency(valorEstimadoFinal);
       const rangoMinStr = formatCurrency(rangoMin);
       const rangoMaxStr = formatCurrency(rangoMax);
@@ -52,225 +86,75 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         <style>
           body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 0; background-color: #F4F4F4; color: #333; }
           .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; overflow: hidden; }
-          
-          /* HERO HEADER */
-          .hero {
-             background-color: #2C3D37;
-             color: white;
-             padding: 40px 30px;
-             text-align: left;
-             position: relative;
-          }
-          .hero-label {
-             display: flex;
-             align-items: center;
-             gap: 10px;
-             font-size: 18px;
-             font-weight: bold;
-             margin-bottom: 10px;
-          }
-          .hero-badge {
-             background-color: #C9C19D;
-             color: #2C3D37;
-             padding: 4px 12px;
-             border-radius: 20px;
-             font-size: 11px;
-             font-weight: bold;
-             text-transform: uppercase;
-             display: inline-block;
-             margin-left: auto;
-          }
-          .hero-price {
-             font-size: 42px;
-             font-weight: bold;
-             margin: 15px 0 5px 0;
-             letter-spacing: -1px;
-          }
-          .hero-sub {
-             font-size: 14px;
-             opacity: 0.8;
-             margin-bottom: 25px;
-          }
-          
-          .stats-box {
-             background-color: rgba(255,255,255,0.1);
-             border: 1px solid rgba(255,255,255,0.2);
-             border-radius: 8px;
-             padding: 15px;
-             display: flex;
-             justify-content: space-between;
-             font-size: 12px;
-          }
+          .hero { background-color: #2C3D37; color: white; padding: 40px 30px; text-align: left; }
+          .hero-label { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+          .hero-badge { background-color: #C9C19D; color: #2C3D37; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: inline-block; margin-left: auto; }
+          .hero-price { font-size: 42px; font-weight: bold; margin: 15px 0 5px 0; letter-spacing: -1px; }
+          .hero-sub { font-size: 14px; opacity: 0.8; margin-bottom: 25px; }
+          .stats-box { background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 15px; display: flex; justify-content: space-between; font-size: 12px; }
           .stat-item strong { display: block; font-size: 14px; margin-bottom: 2px; }
-          .stat-item span { opacity: 0.8; }
-          .stat-right { text-align: right; }
-
-          /* CONTENT */
           .content { padding: 30px; }
           .intro-text { font-size: 14px; line-height: 1.6; color: #555; margin-bottom: 30px; }
-          .intro-text strong { color: #2C3D37; }
-
-          .section-title {
-             font-size: 16px;
-             font-weight: bold;
-             color: #2C3D37;
-             border-bottom: 2px solid #E8ECE9;
-             padding-bottom: 10px;
-             margin-bottom: 20px;
-             margin-top: 10px;
-          }
-
-          /* TABLE */
+          .section-title { font-size: 16px; font-weight: bold; color: #2C3D37; border-bottom: 2px solid #E8ECE9; padding-bottom: 10px; margin-bottom: 20px; margin-top: 10px; }
           .details-table { width: 100%; border-collapse: collapse; }
-          .details-table td {
-             padding: 12px 0;
-             border-bottom: 1px border-color: #f0f0f0; /* Fallback */
-             border-bottom: 1px solid #eee;
-             font-size: 14px;
-          }
+          .details-table td { padding: 12px 0; border-bottom: 1px solid #eee; font-size: 14px; }
           .label { font-weight: bold; color: #888; text-transform: uppercase; font-size: 11px; width: 40%; }
           .value { text-align: right; font-weight: bold; color: #333; }
-
-          /* FOOTER */
-          .footer {
-             background-color: #1a2620;
-             color: #8FA396;
-             text-align: center;
-             padding: 30px;
-             font-size: 12px;
-          }
-          .footer p { margin: 5px 0; }
+          .footer { background-color: #1a2620; color: #8FA396; text-align: center; padding: 30px; font-size: 12px; }
         </style>
       </head>
       <body>
         <div class="container">
-          <!-- HERO -->
           <div class="hero">
-            <div class="hero-label">
-              <span>🏠 Valor Comercial</span>
-              <span class="hero-badge">⚡ Estimación IA</span>
-            </div>
+            <div class="hero-label"><span>🏠 Valor Comercial</span><span class="hero-badge">⚡ Estimación IA</span></div>
             <div class="hero-sub">Estimación de Inteligencia Inmobiliaria</div>
-            
             <div class="hero-price">${valorFormateado}</div>
             <div class="hero-sub">COP (Pesos Colombianos)</div>
-            
             <div class="stats-box">
-               <div class="stat-item">
-                  <span>Rango Sugerido</span>
-                  <strong>${rangoMinStr} - ${rangoMaxStr}</strong>
-               </div>
-               <div class="stat-item stat-right">
-                  <span>Muestra de Mercado</span>
-                  <strong>${totalComparables} inmuebles</strong>
-               </div>
+               <div class="stat-item"><span>Rango Sugerido</span><strong>${rangoMinStr} - ${rangoMaxStr}</strong></div>
+               <div class="stat-item" style="text-align:right;"><span>Muestra de Mercado</span><strong>${totalComparables} inmuebles</strong></div>
             </div>
           </div>
-
           <div class="content">
-             <p class="intro-text">
-               Hola,<br><br>
-               Aquí tienes el detalle de la valoración para tu inmueble ubicado en <strong>${data.barrio}, ${data.municipio}</strong>. 
-               Este reporte refleja el comportamiento real del mercado local.
+             <p class="intro-text">Hola <strong>${data.contacto_nombre || 'Usuario'}</strong>,<br><br>
+               Aquí tienes el detalle de la valoración para tu inmueble en <strong>${data.barrio}, ${data.municipio}</strong>.
              </p>
-
              <div class="section-title">Información Detallada</div>
              <table class="details-table">
                <tr><td class="label">TIPO INMUEBLE</td><td class="value">${data.tipo_inmueble}</td></tr>
                <tr><td class="label">UBICACIÓN</td><td class="value">${data.barrio}, ${data.municipio}</td></tr>
-               <tr><td class="label">ÁREA CONSTRUIDA</td><td class="value">${data.area_construida} m²</td></tr>
-               ${!esLote ? `
-               <tr><td class="label">HABITACIONES</td><td class="value">${data.habitaciones || '-'}</td></tr>
-               <tr><td class="label">BAÑOS</td><td class="value">${data.banos || '-'}</td></tr>
-               ` : `
-               <tr><td class="label">USO</td><td class="value">${data.uso_lote || '-'}</td></tr>
-               `}
+               <tr><td class="label">ÁREA</td><td class="value">${data.area_construida} m²</td></tr>
+               ${!esLote ? `<tr><td class="label">HABITACIONES</td><td class="value">${data.habitaciones || '-'}</td></tr><tr><td class="label">BAÑOS</td><td class="value">${data.banos || '-'}</td></tr>` : ''}
                <tr><td class="label">ESTADO</td><td class="value">${estadoInmueble}</td></tr>
-               ${!esLote ? `<tr><td class="label">RENTABILIDAD ESTIMADA</td><td class="value">${yieldVal}</td></tr>` : ''}
              </table>
-
-             <div class="section-title" style="margin-top: 40px;">Resumen de Mercado</div>
-             <p style="font-size: 13px; text-align: justify; color: #555; line-height: 1.5; margin-bottom: 20px;">
-                ${comparablesData.resumen_busqueda || 'Análisis basado en la oferta actual del mercado.'}
-             </p>
-
-             <div class="section-title">Comparables Destacados (Top 3)</div>
-             <table class="details-table">
-                ${(comparablesData.comparables_usados_en_calculo || []).slice(0, 3).map(comp => `
-                  <tr>
-                    <td style="text-align:left;">
-                      <div style="font-weight:bold; font-size:13px; color:#2C3D37;">${comp.barrio || 'Zona'}</div>
-                      <div style="font-size:11px; color:#888;">${comp.area_construida} m²</div>
-                    </td>
-                    <td class="value">${comp.precio_publicado ? '$ ' + Math.round(comp.precio_publicado).toLocaleString('es-CO') : 'Consultar'}</td>
-                  </tr>
-                `).join('')}
-             </table>
-
-             <!-- FULL REPORT CTA -->
              <div style="background-color: #2C3D37; border-radius: 8px; padding: 30px; text-align: center; margin-top: 40px; color: white;">
                 <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">📄 Reporte Completo</div>
-                <div style="font-size: 13px; opacity: 0.8; margin-bottom: 20px;">
-                  Para ver todas las gráficas y guardar el informe oficial, descarga el PDF.
-                </div>
-                <a href="${detalleUrl}" 
-                   style="background-color: #C9C19D; color: #2C3D37; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px;">
-                   Ver y Descargar PDF
-                </a>
+                <a href="${detalleUrl}" style="background-color: #C9C19D; color: #2C3D37; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px;">Ver y Descargar PDF</a>
              </div>
-
-             <!-- CONTACT AGENT -->
-             <div style="background-color: #F8F9FA; border-radius: 8px; padding: 30px; text-align: center; margin-top: 30px;">
-                <h3 style="margin: 0 0 10px 0; color: #2C3D37;">¿Necesitas vender este inmueble?</h3>
-                <p style="font-size: 13px; color: #666; margin-bottom: 20px;">
-                   En Quetzal Hábitats conectamos tu propiedad con los clientes adecuados.
-                </p>
-                <a href="https://wa.me/573186383809" 
-                   style="background-color: #2C3D37; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px;">
-                   Contactar Asesor
-                </a>
-             </div>
-
           </div>
-
           <div class="footer">
              <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal" style="filter: brightness(0) invert(1); opacity: 0.5; height: 30px; margin-bottom: 10px;">
-             <p>© 2025 Quetzal Hábitats - Todos los derechos reservados</p>
-             <p>Código: ${codigoAvaluo}</p>
+             <p>© 2025 Quetzal Hábitats</p>
           </div>
         </div>
       </body>
-      </html>
-      `;
+      </html>`;
 
       const response = await fetch(`${import.meta.env.VITE_WORKER_EMAIL_URL}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: email, // String, not array
-          subject: `Reporte de Avalúo: ${data.tipo_inmueble} en ${data.barrio}`,
-          htmlBody: emailHtml // Worker expects "htmlBody", not "html"
-        }),
+        body: JSON.stringify({ to: email, subject: `Reporte de Avalúo: ${data.tipo_inmueble} en ${data.barrio}`, htmlBody: emailHtml }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al enviar el correo');
-      }
-
+      if (!response.ok) throw new Error('Error enviando email');
       return { success: true, id: avaluoId };
     },
     onSuccess: (data) => {
       setEnviado(true);
-      // Redirigir después de un momento para que el usuario vea el mensaje de éxito
-      setTimeout(() => {
-        navigate(`/resultados/${data.id}`);
-      }, 3500); // Damos un poco más de tiempo para que lean el mensaje de éxito
-      // También podríamos dejar el botón "Ver Reporte" en la UI de éxito para ir manualmente
+      setTimeout(() => navigate(`/resultados/${data.id}`), 3500);
     },
     onError: (error) => {
-      console.error("Error en proceso de avalúo:", error);
-      alert(`Hubo un error al procesar tu solicitud: ${error.message}. Por favor intenta de nuevo.`);
+      alert(`Error: ${error.message}`);
       setEnviado(false);
     }
   });
@@ -278,16 +162,7 @@ export default function Step4Contact({ formData, onBack, onReset }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!email || !nombre || !telefono) return;
-
-    // Combinar datos del formulario de contacto con los datos del avalúo
-    const finalData = {
-      ...formData,
-      contacto_nombre: nombre,
-      contacto_email: email,
-      contacto_telefono: telefono,
-    };
-
-    sendEmailMutation.mutate(finalData);
+    sendEmailMutation.mutate({ ...formData, contacto_nombre: nombre, contacto_email: email, contacto_telefono: telefono });
   };
 
   if (enviado) {
@@ -298,103 +173,91 @@ export default function Step4Contact({ formData, onBack, onReset }) {
             <CheckCircle className="w-10 h-10 text-[#2E7D32]" />
           </div>
           <h2 className="text-3xl font-bold text-[#2C3D37] mb-4 font-outfit">¡Reporte Enviado!</h2>
-          <p className="text-gray-600 mb-8 max-w-md mx-auto">
-            Hemos enviado el reporte detallado a <strong>{email}</strong>.
-            Revisa tu bandeja de entrada (y spam por si acaso).
-          </p>
-          <Button
-            onClick={onReset}
-            className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-8 py-6 text-lg"
-          >
-            Realizar otro avalúo
-          </Button>
+          <p className="text-gray-600 mb-8 max-w-md mx-auto">Revisa tu correo: <strong>{email}</strong></p>
         </CardContent>
       </Card>
     );
   }
 
+  // --- RESTORED LAYOUT: Enfoque Cards + Form ---
   return (
-    <div className="max-w-2xl mx-auto">
-      <Button
-        variant="ghost"
-        onClick={onBack}
-        className="mb-6 text-gray-600 hover:text-[#2C3D37] hover:bg-transparent pl-0"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Volver a resultados
+    <div className="max-w-4xl mx-auto">
+      <Button variant="ghost" onClick={onBack} className="mb-6 text-gray-600 hover:text-[#2C3D37] hover:bg-transparent pl-0">
+        <ArrowLeft className="w-4 h-4 mr-2" /> Volver
       </Button>
 
-      <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm overflow-hidden">
-        <CardHeader className="bg-[#2C3D37] text-white p-8 text-center">
-          <CardTitle className="text-2xl font-bold font-outfit mb-2">Recibe tu Reporte Completo</CardTitle>
-          <CardDescription className="text-gray-300 text-base">
-            Ingresa tus datos para enviarte el PDF con el análisis detallado y la evidencia de mercado.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="nombre" className="text-[#2C3D37] font-medium">Nombre Completo</Label>
-              <Input
-                id="nombre"
-                placeholder="Ej. Juan Pérez"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                required
-                className="border-gray-300 focus:border-[#C9C19D] focus:ring-[#C9C19D] h-12"
-              />
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        {/* COLUMNA IZQUIERDA: RESUMEN DE VALORES (ESTILO DIC 5) */}
+        <div className="space-y-6">
+          <Card className="border-0 shadow-md bg-white overflow-hidden">
+            <CardHeader className="bg-[#2C3D37] text-white py-4 text-center">
+              <CardTitle className="text-lg font-outfit">Resultados Preliminares</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="bg-[#F8F9FA] p-4 rounded-lg border border-gray-100">
+                <div className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1 flex items-center">
+                  <TrendingUp className="w-3 h-3 mr-1" /> Enfoque de Mercado
+                </div>
+                <div className="text-2xl font-bold text-[#2C3D37]">
+                  {formatCurrency(valorVentaDirecta)}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">Comparables directos</div>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#2C3D37] font-medium">Correo Electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Ej. juan@empresa.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="border-gray-300 focus:border-[#C9C19D] focus:ring-[#C9C19D] h-12"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="telefono" className="text-[#2C3D37] font-medium">Teléfono / WhatsApp</Label>
-              <Input
-                id="telefono"
-                type="tel"
-                placeholder="Ej. 300 123 4567"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                required
-                className="border-gray-300 focus:border-[#C9C19D] focus:ring-[#C9C19D] h-12"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] font-bold text-lg h-14 rounded-xl transition-all shadow-md hover:shadow-lg mt-4"
-              disabled={sendEmailMutation.isPending}
-            >
-              {sendEmailMutation.isPending ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5 mr-2" />
-                  Enviar Reporte a mi Correo
-                </>
+              {!esLote && (
+                <div className="bg-[#F8F9FA] p-4 rounded-lg border border-gray-100">
+                  <div className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1 flex items-center">
+                    <Building2 className="w-3 h-3 mr-1" /> Enfoque de Rentabilidad
+                  </div>
+                  <div className="text-2xl font-bold text-[#2C3D37]">
+                    {formatCurrency(valorRentabilidad)}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">Estimación por renta</div>
+                </div>
               )}
-            </Button>
 
-            <p className="text-xs text-center text-gray-400 mt-4">
-              Tus datos están seguros. Solo los usaremos para enviarte el reporte.
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="flex items-start p-3 bg-blue-50 text-blue-800 rounded text-xs">
+                <Info className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                Estos valores son estimaciones preliminares. El reporte final PDF incluye el análisis detallado y el valor comercial sugerido.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* COLUMNA DERECHA: FORMULARIO */}
+        <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
+          <CardHeader className="p-6 pb-2">
+            <CardTitle className="text-xl font-bold font-outfit text-[#2C3D37]">Recibe el Reporte Oficial</CardTitle>
+            <CardDescription className="text-gray-500 text-sm">
+              Ingresa tus datos para generar el PDF con firma digital y enviarlo a tu correo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="nombre" className="text-[#2C3D37] font-medium text-sm">Nombre Completo</Label>
+                <Input id="nombre" placeholder="Tu nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required className="h-10 border-gray-300" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-[#2C3D37] font-medium text-sm">Correo Electrónico</Label>
+                <Input id="email" type="email" placeholder="tucorreo@ejemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-10 border-gray-300" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="telefono" className="text-[#2C3D37] font-medium text-sm">Celular / WhatsApp</Label>
+                <Input id="telefono" type="tel" placeholder="300 123 4567" value={telefono} onChange={(e) => setTelefono(e.target.value)} required className="h-10 border-gray-300" />
+              </div>
+
+              <div className="pt-2 text-xs text-center text-gray-400 mb-4">
+                Tus datos están seguros. Solo los usaremos para enviarte el reporte.
+              </div>
+
+              <Button type="submit" disabled={sendEmailMutation.isPending} className="w-full bg-[#2C3D37] hover:bg-[#1a2620] text-white h-11 font-medium">
+                {sendEmailMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando...</> : <><Send className="w-4 h-4 mr-2" /> Enviar Reporte PDF</>}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
