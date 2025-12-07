@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Send, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, Send, CheckCircle, Phone, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { guardarAvaluoEnSupabase } from '@/lib/avaluos';
@@ -14,6 +14,11 @@ export default function Step4Contact({ formData, onBack, onReset }) {
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
   const [enviado, setEnviado] = useState(false);
+
+  // Scroll automático al top al montar componente
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const sendEmailMutation = useMutation({
     mutationFn: async (data) => {
@@ -247,37 +252,75 @@ export default function Step4Contact({ formData, onBack, onReset }) {
 
   if (enviado) {
     return (
-      <Card className="w-full max-w-2xl mx-auto shadow-lg border-0 bg-white/90 backdrop-blur-sm animate-in fade-in zoom-in duration-500">
-        <CardContent className="pt-10 pb-10 text-center">
-          <div className="w-20 h-20 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-10 h-10 text-[#2E7D32]" />
-          </div>
-          <h2 className="text-3xl font-bold text-[#2C3D37] mb-4 font-outfit">¡Reporte Enviado!</h2>
-          <p className="text-gray-600 mb-8 max-w-md mx-auto">
-            Hemos enviado el reporte detallado a <strong>{email}</strong>.
-            Revisa tu bandeja de entrada (y spam por si acaso).
-          </p>
-          <Button
-            onClick={onReset}
-            className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-8 py-6 text-lg"
-          >
-            Realizar otro avalúo
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="w-full max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
+        {/* Success Card */}
+        <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-sm">
+          <CardContent className="pt-10 pb-10 text-center">
+            <div className="w-20 h-20 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-10 h-10 text-[#2E7D32]" />
+            </div>
+            <h2 className="text-3xl font-bold text-[#2C3D37] mb-4 font-outfit">¡Reporte Enviado!</h2>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              Hemos enviado el reporte detallado a <strong>{email}</strong>.
+              Revisa tu bandeja de entrada (y spam por si acaso).
+            </p>
+            <Button
+              onClick={onReset}
+              className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-8 py-6 text-lg"
+            >
+              Realizar otro avalúo
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Aviso Legal */}
+        <Card className="bg-gray-50 border-gray-200">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="font-bold text-[#2C3D37] mb-2">Aviso Legal:</h3>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  Este avalúo comercial es una estimación basada en el análisis de propiedades comparables en el mercado inmobiliario actual y no constituye un avalúo oficial o catastral. Los valores presentados son aproximados y pueden variar según las condiciones específicas del inmueble y del mercado. Para transacciones legales o financieras, se recomienda obtener un avalúo oficial realizado por un perito avaluador certificado.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CTA Venta/Compra */}
+        <Card className="bg-[#F9FAF9] border-[#E0E5E2]">
+          <CardContent className="pt-6 pb-6 text-center">
+            <h3 className="text-xl font-bold text-[#2C3D37] mb-3">¿Interesado en vender o comprar?</h3>
+            <p className="text-sm text-gray-700 max-w-lg mx-auto">
+              En Quetzal Hábitats te ayudamos a encontrar el comprador ideal o la propiedad perfecta para ti. Contáctanos para una asesoría personalizada sin compromiso.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Información de Contacto */}
+        <Card className="bg-[#F9FAF9] border-[#E0E5E2]">
+          <CardContent className="pt-6 pb-6 text-center">
+            <h3 className="text-xl font-bold text-[#2C3D37] mb-4">¿Necesitas más información?</h3>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm">
+              <a href="tel:+573186383809" className="flex items-center gap-2 text-[#2C3D37] hover:text-[#C9C19D] transition-colors">
+                <Phone className="w-4 h-4" />
+                <span className="font-medium">+57 318 638 3809</span>
+              </a>
+              <span className="hidden sm:inline text-gray-400">--</span>
+              <a href="mailto:contacto@quetzalhabitats.com" className="flex items-center gap-2 text-[#2C3D37] hover:text-[#C9C19D] transition-colors">
+                <Mail className="w-4 h-4" />
+                <span className="font-medium">contacto@quetzalhabitats.com</span>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="max-w-2xl mx-auto">
-      <Button
-        variant="ghost"
-        onClick={onBack}
-        className="mb-6 text-gray-600 hover:text-[#2C3D37] hover:bg-transparent pl-0"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Volver a resultados
-      </Button>
 
       <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm overflow-hidden">
         <CardHeader className="bg-[#2C3D37] text-white p-8 text-center">
