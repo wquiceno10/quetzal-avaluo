@@ -795,9 +795,11 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
         printWindow.document.title = 'Reporte de Avalúo - Quetzal Hábitats';
+
+        // Esperar a que las fuentes se carguen antes de imprimir
         setTimeout(() => {
           printWindow.print();
-        }, 800);
+        }, 1500); // Aumentado de 800ms a 1500ms para asegurar carga de Google Fonts
       }
 
       return { success: true };
