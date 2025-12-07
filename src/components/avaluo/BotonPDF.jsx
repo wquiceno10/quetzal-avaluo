@@ -351,7 +351,7 @@ export default function BotonPDF({ formData }) {
               line-height: 1.3;
               opacity: 0.9;
               margin-bottom: 20px;
-              max-width: 85%; 
+              max-width: 100%; 
               font-weight: 300;
               margin: 0;
               font-family: 'Raleway', sans-serif;
@@ -425,8 +425,8 @@ export default function BotonPDF({ formData }) {
               background: rgba(255, 255, 255, 0.1);
               border: 1px solid rgba(255, 255, 255, 0.1);
               border-radius: 12px;
-              padding: 16px;
-              min-width: 280px;
+              padding: 14px 18px;
+              min-width: 240px;
             }
             .hero-detail-row {
               display: flex;
@@ -524,8 +524,8 @@ export default function BotonPDF({ formData }) {
             .hero-content-row {
               display: flex;
               justify-content: space-between;
-              align-items: center; /* Centrado vertical */
-              gap: 40px;
+              align-items: center;
+              gap: 30px;
               margin: 20px 0;
               position: relative;
               z-index: 1;
@@ -581,11 +581,12 @@ export default function BotonPDF({ formData }) {
                 </div>
 
                 <div class="hero-details-box">
-                  <div class="hero-detail-row">
-                    <span class="hero-detail-label">Rango Sugerido</span>
-                    <span class="hero-detail-value">
-                      ${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}
-                    </span>
+                  <div class="hero-detail-row" style="align-items: center;">
+                    <span class="hero-detail-label" style="align-self: center;">Rango Sugerido</span>
+                    <div style="text-align: right; line-height: 1.4;">
+                      <div class="hero-detail-value">${formatCurrency(rangoMin)}</div>
+                      <div class="hero-detail-value">${formatCurrency(rangoMax)}</div>
+                    </div>
                   </div>
                   <div class="hero-detail-row">
                     <span class="hero-detail-label">Precio m² Ref.</span>
