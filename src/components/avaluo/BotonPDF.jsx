@@ -173,6 +173,17 @@ export default function BotonPDF({ formData }) {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Raleway:wght@300;400;500;600&display=swap');
 
+            /* Eliminar headers y footers del navegador */
+            @page {
+              margin: 0;
+            }
+
+            @media print {
+              body {
+                margin: 0;
+              }
+            }
+
             body {
               font-family: 'Outfit', sans-serif;
               margin: 0;
