@@ -704,6 +704,16 @@ export default function BotonPDF({ formData }) {
               </div>
             </div>
 
+            <!-- ANÁLISIS DETALLADO DEL MODELO -->
+            ${comparablesData.perplexity_full_text ? `
+            <div class="analysis-section">
+              <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Análisis Detallado del Modelo</h3>
+              <div class="analysis-content">
+                ${formatText(comparablesData.perplexity_full_text)}
+              </div>
+            </div>
+            ` : ''}
+
             <!-- Tabla de comparables -->
             <h2 style="margin-top: 30px;">Propiedades Comparables</h2>
 
@@ -760,16 +770,6 @@ export default function BotonPDF({ formData }) {
               <p style="font-size: 10px; color: #888; margin-top: 15px; font-style: italic; text-align: justify;">
                 Nota: Ante la escasez de oferta comercial idéntica, se han utilizado lotes campestres y urbanos como referencia base, ajustando sus valores por factores de localización, escala y uso comercial. Se aplicó ajuste por factor de comercialización.
               </p>
-            ` : ''}
-
-            <!-- ANÁLISIS DETALLADO DEL MODELO -->
-            ${comparablesData.perplexity_full_text ? `
-            <div class="analysis-section">
-              <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Análisis Detallado del Modelo</h3>
-              <div class="analysis-content">
-                ${formatText(comparablesData.perplexity_full_text)}
-              </div>
-            </div>
             ` : ''}
 
             <div class="footer">
