@@ -173,47 +173,58 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Raleway:wght@300;400;500;600&display=swap');
 
-            /* Eliminar headers y footers del navegador */
+            /* CONFIGURACIÓN DE PÁGINA: Elimina about:blank y margenes del navegador */
             @page {
+              size: auto;
               margin: 0;
-            }
-
-            @media print {
-              body {
-                margin: 0;
-              }
             }
 
             body {
               font-family: 'Outfit', sans-serif;
-              margin: 0;
-              padding: 0;
+              margin: 20mm 15mm 20mm 15mm; /* Margen simulado para el contenido */
+              padding-top: 20px; /* Espacio para el header fijo */
+              padding-bottom: 20px; /* Espacio para el footer fijo */
               background: white;
               color: #2C3D37;
             }
+
+            /* HEADER FIJO PERSONALIZADO */
+            .print-header {
+                position: fixed;
+                top: 10mm;
+                left: 15mm;
+                right: 15mm;
+                height: 30px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 10px;
+                color: #7A8C85;
+                border-bottom: 1px solid #E0E5E2;
+                padding-bottom: 5px;
+            }
+
+            /* FOOTER FIJO PERSONALIZADO */
+            .print-footer {
+                position: fixed;
+                bottom: 10mm;
+                left: 15mm;
+                right: 15mm;
+                text-align: center;
+                font-size: 9px;
+                color: #A3B2AA;
+                border-top: 1px solid #E0E5E2;
+                padding-top: 10px;
+            }
+
             .container {
-              max-width: 960px;
+              max-width: 100%;
               margin: 0 auto;
-              padding: 40px 20px;
+              padding: 0;
             }
-            @media (max-width: 1024px) {
-              .container {
-                max-width: 768px;
-              }
-            }
-            @media (max-width: 768px) {
-              .container {
-                max-width: 100%;
-                padding: 20px 15px;
-              }
-            }
-            .header {
-              background: #2C3D37;
-              padding: 30px;
-              text-align: center;
-              margin: -40px -20px 30px -20px;
-              color: white;
-            }
+
+            /* --- ESTILOS ORIGINALES CONSERVADOS --- */
+            
             .header-logo {
               height: 50px;
               margin-bottom: 15px;
@@ -249,6 +260,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               border-radius: 12px;
               padding: 20px;
               margin: 25px 0;
+              break-inside: avoid;
             }
             .info-grid {
               display: grid;
@@ -276,13 +288,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               font-weight: 600;
               color: #2C3D37;
               font-size: 11px;
-            }
-            .footer {
-              margin-top: 40px;
-              padding: 0 20px;
-              font-size: 10px;
-              text-align: center;
-              color: #666;
             }
             table {
               width: 100%;
@@ -363,7 +368,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               line-height: 1.3;
               opacity: 0.9;
               margin-bottom: 20px;
-              max-width: 100%; 
+              max-width: 85%; 
               font-weight: 300;
               margin: 0;
               font-family: 'Raleway', sans-serif;
@@ -508,9 +513,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 display: table-header-group;
               }
             }
-            @page {
-              margin: 1.5cm;
-            }
+            
             /* Analysis Styles */
             .analysis-section {
               margin-top: 30px;
@@ -548,14 +551,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               flex-direction: column;
               justify-content: space-between;
             }
-            .hero-description {
-              font-size: 13px;
-              color: #D3DDD6;
-              line-height: 1.3;
-              margin: 0 0 25px 0; /* Space between description and price */
-              font-family: 'Raleway', sans-serif;
-              text-align: justify;
-            }
             .hero-value-block {
               margin-top: auto;
             }
@@ -563,12 +558,20 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         </head>
 
         <body>
+          <div class="print-header">
+            <span style="font-weight: 600;">Fecha: ${fecha}</span>
+            <span style="font-weight: 700; color: #2C3D37;">Reporte de Avalúo - Quetzal Hábitats</span>
+          </div>
+
+          <div class="print-footer">
+             Quetzal Hábitats - Inteligencia Inmobiliaria &copy; ${new Date().getFullYear()} <br/>
+             <span style="font-style: italic; font-size: 8px; margin-top: 2px; display: inline-block;">Documento generado automáticamente</span>
+          </div>
+
           <div class="container">
-            <!-- HERO HEADER - Diseño de la página -->
             <div class="hero-header">
               <div class="hero-decoration"></div>
               
-              <!-- Title Row -->
               <div class="hero-top" style="margin-bottom: 10px;">
                 <div class="hero-icon-title">
                   <div class="hero-icon">🏠</div>
@@ -577,10 +580,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 <div class="hero-badge">⚡ Estimación IA</div>
               </div>
 
-              <!-- Content Row: Description+Price (Left) | Details (Right) -->
               <div class="hero-content-row">
                 <div class="hero-left-col">
-                  <p class="hero-description">
+                  <p class="hero-description" style="max-width: 85%;">
                     ${esLote
           ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
           : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
@@ -626,7 +628,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               </div>
             </div>
 
-            <!-- MÉTODOS DE VALORACIÓN -->
             <div class="grid-2">
               <div class="box">
                 <h3>${esLote ? 'Metodología Ajustada (Lotes)' : 'Enfoque de Mercado'}</h3>
@@ -658,7 +659,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               ` : ''}
             </div>
 
-            <!-- INFORMACIÓN DETALLADA (Inline Style) -->
             <div class="info-section">
               <h3 style="margin-top: 0; color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Información Detallada</h3>
               <div class="info-grid">
@@ -784,11 +784,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               </p>
             ` : ''}
 
-            <div class="footer">
-              <p>Quetzal Hábitats - Inteligencia Inmobiliaria</p>
-              <p>Este documento es una estimación estadística y no constituye un avalúo certificado.</p>
-              <p>Generado el ${fecha}</p>
-            </div>
           </div>
         </body>
         </html>
