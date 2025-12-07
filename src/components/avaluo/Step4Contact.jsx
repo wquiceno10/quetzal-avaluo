@@ -32,170 +32,215 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         else valorEstimadoFinal = valorVentaDirecta || valorRentabilidad;
       }
 
-      // Formateadores
+      // --- PLANTILLA PREMIUM HERO (Unificada con MisAvaluos) ---
       const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
+      const valorFormateado = formatCurrency(valorEstimadoFinal);
+      const rangoMinStr = formatCurrency(rangoMin);
+      const rangoMaxStr = formatCurrency(rangoMax);
+      const totalComparables = comparablesData.total_comparables || 0;
+      const yieldVal = comparablesData.yield_mensual_mercado
+        ? (comparablesData.yield_mensual_mercado * 100).toFixed(2) + '%'
+        : 'N/A';
 
-      // GENERAR CODIGO AVALUO SI NO EXISTE
-      const codigoAvaluo = formData.codigo_avaluo || `QZ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
-
-      // 1. GUARDAR EN SUPABASE
-      // Preparamos el payload_json con TODO el análisis (comparables_data tiene casi todo, pero aseguramos el objeto completo)
-      const payloadJson = {
-        ...comparablesData,
-        codigo_avaluo: codigoAvaluo,
-        valor_final: valorEstimadoFinal,
-        // Incluimos datos básicos también por si acaso
-        tipo_inmueble: formData.tipo_inmueble,
-        barrio: formData.barrio,
-        municipio: formData.municipio,
-        area_construida: formData.area_construida,
-        habitaciones: formData.habitaciones,
-        banos: formData.banos,
-      };
-
-      let avaluoId = formData.id;
-
-      if (!avaluoId) {
-        const avaluoIdRes = await guardarAvaluoEnSupabase({
-          email: data.contacto_email,
-          tipoInmueble: formData.tipo_inmueble,
-          barrio: formData.barrio,
-          ciudad: formData.municipio,
-          valorFinal: valorEstimadoFinal,
-          codigoAvaluo: codigoAvaluo,
-          payloadJson: payloadJson
-        });
-        avaluoId = avaluoIdRes;
-      }
-
-      const detalleUrl = `${window.location.origin}/resultados/${avaluoId}`;
-
-      // Helper para convertir markdown básico a HTML
-      const esLote = (data.tipo_inmueble || '').toLowerCase().includes('lote');
-
-      const markdownToHtml = (text) => {
-        if (!text) return '';
-        let html = text
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/^#+\s*(.*?)$/gm, '<h4 style="color: #2C3D37; margin-top: 15px; margin-bottom: 5px; font-size: 14px;">$1</h4>')
-          .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 5px;">$1</li>')
-          .replace(/\n\n/g, '<br><br>')
-          .replace(/\n/g, '<br>');
-        return html;
-      };
+      const estadoInmuebleRaw = formData.estado_inmueble || formData.estrato || '—';
+      const estadoInmueble = String(estadoInmuebleRaw).replace(/_/g, ' ');
 
       const emailHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; line-height: 1.6; background-color: #f4f4f4; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 0 auto; background: #ffffff; overflow: hidden; font-size: 14px; }
-            .header { background-color: #2C3D37; padding: 40px 20px; text-align: center; color: white; }
-            .header-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-            .header-code { font-size: 14px; opacity: 0.8; }
-            
-            .content { padding: 30px; }
-            
-            .value-box { background-color: #F9FAF9; border: 1px solid #E0E5E2; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 30px; }
-            .value-label { color: #666; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-            .value-amount { color: #2C3D37; font-size: 36px; font-weight: bold; margin: 5px 0; }
-            .value-range { color: #888; font-size: 12px; }
-            
-            .section-title { color: #2C3D37; font-size: 16px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; margin-top: 30px; }
-            
-            .data-grid { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .data-grid td { padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 13px; }
-            .data-label { color: #666; width: 40%; }
-            .data-val { color: #333; font-weight: bold; text-align: right; }
-            
-            .cta-box { background-color: #E8ECE9; padding: 30px; text-align: center; margin-top: 30px; border-radius: 8px; }
-            .cta-title { color: #2C3D37; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
-            .cta-text { color: #4F5B55; font-size: 13px; margin-bottom: 20px; line-height: 1.5; }
-            .cta-btn { background-color: #2C3D37; color: white; text-decoration: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; font-size: 14px; display: inline-block; }
-            
-            .alert-box { background-color: #FFFDF5; border-left: 4px solid #FBC02D; padding: 15px; margin-top: 30px; font-size: 12px; color: #555; text-align: justify; }
-            
-            .footer-contact { background-color: #E8ECE9; padding: 30px; text-align: center; margin-top: 20px; }
-            .contact-title { font-size: 16px; font-weight: bold; color: #2C3D37; margin-bottom: 10px; }
-            
-            .footer-dark { background-color: #2C3D37; padding: 30px; text-align: center; color: #8FA396; font-size: 11px; }
-            .footer-dark p { margin: 5px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <!-- DARK HEADER -->
-            <div class="header">
-              <div class="header-title">Reporte de Avalúo</div>
-              <div class="header-code">Código: ${codigoAvaluo}</div>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 0; background-color: #F4F4F4; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; overflow: hidden; }
+          
+          /* HERO HEADER */
+          .hero {
+             background-color: #2C3D37;
+             color: white;
+             padding: 40px 30px;
+             text-align: left;
+             position: relative;
+          }
+          .hero-label {
+             display: flex;
+             align-items: center;
+             gap: 10px;
+             font-size: 18px;
+             font-weight: bold;
+             margin-bottom: 10px;
+          }
+          .hero-badge {
+             background-color: #C9C19D;
+             color: #2C3D37;
+             padding: 4px 12px;
+             border-radius: 20px;
+             font-size: 11px;
+             font-weight: bold;
+             text-transform: uppercase;
+             display: inline-block;
+             margin-left: auto;
+          }
+          .hero-price {
+             font-size: 42px;
+             font-weight: bold;
+             margin: 15px 0 5px 0;
+             letter-spacing: -1px;
+          }
+          .hero-sub {
+             font-size: 14px;
+             opacity: 0.8;
+             margin-bottom: 25px;
+          }
+          
+          .stats-box {
+             background-color: rgba(255,255,255,0.1);
+             border: 1px solid rgba(255,255,255,0.2);
+             border-radius: 8px;
+             padding: 15px;
+             display: flex;
+             justify-content: space-between;
+             font-size: 12px;
+          }
+          .stat-item strong { display: block; font-size: 14px; margin-bottom: 2px; }
+          .stat-item span { opacity: 0.8; }
+          .stat-right { text-align: right; }
+
+          /* CONTENT */
+          .content { padding: 30px; }
+          .intro-text { font-size: 14px; line-height: 1.6; color: #555; margin-bottom: 30px; }
+          .intro-text strong { color: #2C3D37; }
+
+          .section-title {
+             font-size: 16px;
+             font-weight: bold;
+             color: #2C3D37;
+             border-bottom: 2px solid #E8ECE9;
+             padding-bottom: 10px;
+             margin-bottom: 20px;
+             margin-top: 10px;
+          }
+
+          /* TABLE */
+          .details-table { width: 100%; border-collapse: collapse; }
+          .details-table td {
+             padding: 12px 0;
+             border-bottom: 1px border-color: #f0f0f0; /* Fallback */
+             border-bottom: 1px solid #eee;
+             font-size: 14px;
+          }
+          .label { font-weight: bold; color: #888; text-transform: uppercase; font-size: 11px; width: 40%; }
+          .value { text-align: right; font-weight: bold; color: #333; }
+
+          /* FOOTER */
+          .footer {
+             background-color: #1a2620;
+             color: #8FA396;
+             text-align: center;
+             padding: 30px;
+             font-size: 12px;
+          }
+          .footer p { margin: 5px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <!-- HERO -->
+          <div class="hero">
+            <div class="hero-label">
+              <span>🏠 Valor Comercial</span>
+              <span class="hero-badge">⚡ Estimación IA</span>
             </div>
+            <div class="hero-sub">Estimación de Inteligencia Inmobiliaria</div>
             
-            <div class="content">
-              <p>Hola <strong>${formData.contacto_nombre || data.contacto_nombre || 'Usuario'}</strong>,</p>
-              <p>Adjunto encontrarás el detalle de la valoración para tu inmueble en <strong>${data.barrio}, ${data.municipio}</strong>.</p>
-              
-              <!-- VALUE BOX -->
-              <div class="value-box">
-                <div class="value-label">Valor Comercial Estimado</div>
-                <div class="value-amount">${formatCurrency(valorEstimadoFinal)}</div>
-                <div class="value-range">Rango sugerido: ${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</div>
-              </div>
-
-              <!-- FICHA TÉCNICA -->
-              <div class="section-title">Ficha Técnica</div>
-              <table class="data-grid">
-                <tr><td class="data-label">Tipo Inmueble:</td><td class="data-val">${data.tipo_inmueble}</td></tr>
-                <tr><td class="data-label">Ubicación:</td><td class="data-val">${data.barrio}, ${data.municipio}</td></tr>
-                <tr><td class="data-label">Área:</td><td class="data-val">${data.area_construida} m²</td></tr>
-                ${!esLote ? `
-                <tr><td class="data-label">Habitaciones:</td><td class="data-val">${data.habitaciones || '-'}</td></tr>
-                <tr><td class="data-label">Baños:</td><td class="data-val">${data.banos || '-'}</td></tr>
-                ` : `
-                <tr><td class="data-label">Uso:</td><td class="data-val">${data.uso_lote || '-'}</td></tr>
-                `}
-              </table>
-
-              <!-- RESUMEN MERCADO -->
-              <div class="section-title">Resumen del Mercado</div>
-               <p style="font-size: 13px; text-align: justify; color: #555; line-height: 1.5;">
-                  ${comparablesData.resumen_busqueda || 'Análisis basado en la oferta actual del mercado.'}
-               </p>
-               <table class="data-grid" style="margin-top: 15px;">
-                  <tr><td class="data-label">Comparables:</td><td class="data-val">${comparablesData.total_comparables || 0} inmuebles</td></tr>
-                  ${!esLote ? `<tr><td class="data-label">Yield Estimado:</td><td class="data-val">${((comparablesData.yield_mensual_mercado || 0) * 100).toFixed(2)}% mensual</td></tr>` : ''}
-               </table>
-
-              <!-- AVISO LEGAL -->
-              <div class="alert-box">
-                <strong>⚠️ Aviso Legal:</strong><br>
-                Este avalúo comercial es una estimación basada en el análisis de propiedades comparables en el mercado inmobiliario actual y no constituye un avalúo oficial o catastral. Los valores presentados son aproximados. Para transacciones legales o financieras, se recomienda obtener un avalúo oficial realizado por un perito avaluador certificado.
-              </div>
-              
-              <!-- CTA COMPRA/VENTA -->
-              <div class="cta-box">
-                <div class="cta-title">¿Interesado en vender o comprar?</div>
-                <div class="cta-text">En Quetzal Hábitats te ayudamos a encontrar el comprador ideal o la propiedad perfecta para ti. Contáctanos para una asesoría personalizada.</div>
-                <a href="https://wa.me/573186383809" class="cta-btn">Contactar Asesor</a>
-              </div>
-            </div>
-
-            <!-- FOOTER INFO -->
-            <div class="footer-contact">
-               <div class="contact-title">¿Necesitas más información?</div>
-               <p style="font-size: 14px; margin: 5px 0;">📞 +57 318 638 3809</p>
-               <p style="font-size: 14px; margin: 5px 0;">✉️ contacto@quetzalhabitats.com</p>
-            </div>
-
-            <!-- DARK FOOTER COPYRIGHT -->
-            <div class="footer-dark">
-               <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal" style="filter: brightness(0) invert(1); opacity: 0.5; height: 30px; margin-bottom: 10px;">
-               <p>© 2025 Quetzal Hábitats - Todos los derechos reservados</p>
-               <p>Código: ${codigoAvaluo}</p>
+            <div class="hero-price">${valorFormateado}</div>
+            <div class="hero-sub">COP (Pesos Colombianos)</div>
+            
+            <div class="stats-box">
+               <div class="stat-item">
+                  <span>Rango Sugerido</span>
+                  <strong>${rangoMinStr} - ${rangoMaxStr}</strong>
+               </div>
+               <div class="stat-item stat-right">
+                  <span>Muestra de Mercado</span>
+                  <strong>${totalComparables} inmuebles</strong>
+               </div>
             </div>
           </div>
-        </body>
-        </html>
+
+          <div class="content">
+             <p class="intro-text">
+               Hola,<br><br>
+               Aquí tienes el detalle de la valoración para tu inmueble ubicado en <strong>${data.barrio}, ${data.municipio}</strong>. 
+               Este reporte refleja el comportamiento real del mercado local.
+             </p>
+
+             <div class="section-title">Información Detallada</div>
+             <table class="details-table">
+               <tr><td class="label">TIPO INMUEBLE</td><td class="value">${data.tipo_inmueble}</td></tr>
+               <tr><td class="label">UBICACIÓN</td><td class="value">${data.barrio}, ${data.municipio}</td></tr>
+               <tr><td class="label">ÁREA CONSTRUIDA</td><td class="value">${data.area_construida} m²</td></tr>
+               ${!esLote ? `
+               <tr><td class="label">HABITACIONES</td><td class="value">${data.habitaciones || '-'}</td></tr>
+               <tr><td class="label">BAÑOS</td><td class="value">${data.banos || '-'}</td></tr>
+               ` : `
+               <tr><td class="label">USO</td><td class="value">${data.uso_lote || '-'}</td></tr>
+               `}
+               <tr><td class="label">ESTADO</td><td class="value">${estadoInmueble}</td></tr>
+               ${!esLote ? `<tr><td class="label">RENTABILIDAD ESTIMADA</td><td class="value">${yieldVal}</td></tr>` : ''}
+             </table>
+
+             <div class="section-title" style="margin-top: 40px;">Resumen de Mercado</div>
+             <p style="font-size: 13px; text-align: justify; color: #555; line-height: 1.5; margin-bottom: 20px;">
+                ${comparablesData.resumen_busqueda || 'Análisis basado en la oferta actual del mercado.'}
+             </p>
+
+             <div class="section-title">Comparables Destacados (Top 3)</div>
+             <table class="details-table">
+                ${(comparablesData.comparables_usados_en_calculo || []).slice(0, 3).map(comp => `
+                  <tr>
+                    <td style="text-align:left;">
+                      <div style="font-weight:bold; font-size:13px; color:#2C3D37;">${comp.barrio || 'Zona'}</div>
+                      <div style="font-size:11px; color:#888;">${comp.area_construida} m²</div>
+                    </td>
+                    <td class="value">${comp.precio_publicado ? '$ ' + Math.round(comp.precio_publicado).toLocaleString('es-CO') : 'Consultar'}</td>
+                  </tr>
+                `).join('')}
+             </table>
+
+             <!-- FULL REPORT CTA -->
+             <div style="background-color: #2C3D37; border-radius: 8px; padding: 30px; text-align: center; margin-top: 40px; color: white;">
+                <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">📄 Reporte Completo</div>
+                <div style="font-size: 13px; opacity: 0.8; margin-bottom: 20px;">
+                  Para ver todas las gráficas y guardar el informe oficial, descarga el PDF.
+                </div>
+                <a href="${detalleUrl}" 
+                   style="background-color: #C9C19D; color: #2C3D37; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px;">
+                   Ver y Descargar PDF
+                </a>
+             </div>
+
+             <!-- CONTACT AGENT -->
+             <div style="background-color: #F8F9FA; border-radius: 8px; padding: 30px; text-align: center; margin-top: 30px;">
+                <h3 style="margin: 0 0 10px 0; color: #2C3D37;">¿Necesitas vender este inmueble?</h3>
+                <p style="font-size: 13px; color: #666; margin-bottom: 20px;">
+                   En Quetzal Hábitats conectamos tu propiedad con los clientes adecuados.
+                </p>
+                <a href="https://wa.me/573186383809" 
+                   style="background-color: #2C3D37; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px;">
+                   Contactar Asesor
+                </a>
+             </div>
+
+          </div>
+
+          <div class="footer">
+             <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal" style="filter: brightness(0) invert(1); opacity: 0.5; height: 30px; margin-bottom: 10px;">
+             <p>© 2025 Quetzal Hábitats - Todos los derechos reservados</p>
+             <p>Código: ${codigoAvaluo}</p>
+          </div>
+        </div>
+      </body>
+      </html>
       `;
 
       const response = await fetch(`${import.meta.env.VITE_WORKER_EMAIL_URL}/send-email`, {

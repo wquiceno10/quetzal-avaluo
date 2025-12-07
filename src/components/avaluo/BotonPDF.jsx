@@ -49,13 +49,9 @@ export default function BotonPDF({ formData }) {
       const totalEncontrados =
         comparablesData.comparables_totales_encontrados || totalComparables;
 
-      const yieldMensual = comparablesData.yield_mensual_mercado;
-
-      const fecha = new Date().toLocaleDateString('es-CO', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
+      // Estado (Fallback robusto: Estado Inmueble > Estrato > Default)
+      const estadoInmuebleRaw = formData.estado_inmueble || comparablesData.estado_inmueble || formData.estrato || defaults.estado_inmueble || '—';
+      const estadoInmueble = String(estadoInmuebleRaw).replace(/_/g, ' ');
 
       const formatCurrency = (val) =>
         val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
@@ -88,30 +84,23 @@ export default function BotonPDF({ formData }) {
       const formatText = (text) => {
         if (!text) return '';
 
-        // 1. Limpieza Inicial (Artefactos y LaTeX)
+        // 1. Limpiar LaTeX y símbolos
         let cleanText = text
-          // Eliminar líneas horizontales MD (reforzado)
-          .replace(/^-{3,}\s*$/gm, '')
-          .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
-          // Eliminar saltos de línea excesivos
-          .replace(/\n{3,}/g, '\n\n')
-          // Limpiar LaTeX básico
           .replace(/\\\(/g, '')
           .replace(/\\\)/g, '')
           .replace(/\\\[/g, '')
           .replace(/\\\]/g, '')
+          // Fracciones con espacios opcionales
+          .replace(/\\frac\s*\{([^}]+)\}\s*\{([^}]+)\}/g, '$1/$2')
           .replace(/\\text\{([^}]+)\}/g, '$1')
-          // LaTeX \frac con soporte de espacios
-          .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1 / $2')
           .replace(/\\sum/g, '∑')
           .replace(/\\approx/g, '≈')
-          // Limpiar unidades duplicadas
           .replace(/\s+COP\/m²/g, ' COP/m²');
 
-        // Normalizar "Promedio precio..."
+        // ✅ Normalizar línea del promedio (LaTeX roto específico)
         cleanText = cleanText.replace(
-          /Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi,
-          'Promedio precio por m² ≈ $1 COP/m²'
+          /Promedio precio por m²\s*=\s*.*(\\frac|∑).*≈\s*([\d\.\,]+)/gi,
+          'Promedio precio por m² ≈ $2'
         );
 
         // 2. Procesar tablas markdown
@@ -129,7 +118,9 @@ export default function BotonPDF({ formData }) {
         for (const line of lines) {
           const trimmed = line.trim();
 
-          // Detectar fila de tabla | a | b |
+          // Detectar saltos "---" o similares y omitirlos
+          if (/^[-*_]{3,}$/.test(trimmed)) continue;
+
           if (
             trimmed.startsWith('|') &&
             trimmed.endsWith('|') &&
@@ -143,39 +134,47 @@ export default function BotonPDF({ formData }) {
             continue; // fila separadora de markdown
           } else {
             flushTable();
-            // Limpieza de títulos con puntos/números "1. Título" o ". Título"
-            let msgLine = line;
-            // Regex detecta inicio de línea con num/punto seguidos de Texto Mayuscula
-            if (/^[ \t]*[\d\.]+[ \t]+(?=[A-ZÀ-ÿ])/.test(msgLine)) {
-              msgLine = msgLine.replace(/^[ \t]*[\d\.]+[ \t]+/, '');
-              // Forzamos que sea un título si parece importante
-              if (msgLine.length < 50) msgLine = `#### ${msgLine}`;
-            }
-
-            processedLines.push(msgLine);
+            processedLines.push(line);
           }
         }
         flushTable();
 
         cleanText = processedLines.join('\n');
 
-        // 3. Convertir markdown a HTML simple
+        // 4. Convertir markdown a HTML simple
         return cleanText
-          // Negritas (asegurar que cierra)
+          // Negritas
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          // Encabezados MD "# Título" o "#### Título"
+          // Encabezados mal formados (. TITULO o 1. TITULO)
+          .replace(/^[\d\.]+\s+([A-ZÁÉÍÓÚÑ]{4,}.*?)$/gm, '<h4 style="font-size: 13px; margin: 16px 0 4px 0; color: #2C3D37;">$1</h4>')
+          // Encabezados tipo "#"
           .replace(
             /^#+\s*(.*?)$/gm,
-            '<h4 style="font-size: 13px; margin: 16px 0 4px 0; color: #2C3D37; font-weight:700;">$1</h4>'
+            '<h4 style="font-size: 13px; margin: 16px 0 4px 0; color: #2C3D37;">$1</h4>'
           )
           // Listas
           .replace(
             /^\s*[-*•]\s+(.*?)$/gm,
             '<li style="margin-left: 18px; font-size: 11px; margin-bottom: 2px;">$1</li>'
           )
-          // Párrafos (líneas sueltas que no son tags HTML)
+          // Encabezados tipo "#"
           .replace(
-            /^(?!<(h4|li|table|div))(.+)$/gm,
+            /^#+\s*(.*?)$/gm,
+            '<h4 style="font-size: 13px; margin: 16px 0 4px 0; color: #2C3D37;">$1</h4>'
+          )
+          // Encabezados numerados "1. Título" → se elimina el número y el punto
+          .replace(
+            /^\d+\.\s+(.*?)$/gm,
+            '<h4 style="font-size: 13px; margin: 16px 0 4px 0; color: #2C3D37;">$1</h4>'
+          )
+          // Listas con guion / asterisco / punto medio
+          .replace(
+            /^\s*[-*•]\s+(.*?)$/gm,
+            '<li style="margin-left: 18px; font-size: 11px; margin-bottom: 2px;">$1</li>'
+          )
+          // Párrafos genéricos
+          .replace(
+            /^(?!<h4|<li|<table)(.+)$/gm,
             '<p style="font-size: 11px; line-height: 1.5; margin: 4px 0; text-align: justify;">$1</p>'
           );
       };
@@ -538,7 +537,7 @@ export default function BotonPDF({ formData }) {
                 <div class="info-item">
                   <span class="info-label">Estado:</span>
                   <span class="info-value" style="text-transform: capitalize;">
-                    ${(formData.estado_inmueble || formData.estado || comparablesData.estado_inmueble || comparablesData.estado || defaults.estado_inmueble || defaults.estrato || '—').replace(/_/g, ' ')}
+                    ${(formData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || '—').replace(/_/g, ' ')}
                   </span>
                 </div>
                 `

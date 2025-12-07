@@ -22,26 +22,21 @@ import BotonPDF from './BotonPDF';
 
 // --- COMPONENTE DE FORMATO DE TEXTO ---
 // --- COMPONENTE DE FORMATO DE TEXTO ---
+// --- COMPONENTE DE FORMATO DE TEXTO ---
 const AnalisisAI = ({ text }) => {
     if (!text) return null;
 
-    // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
-    // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
+    // 1. Limpieza de LaTeX y normalización
     const cleanText = text
-        .replace(/^-{3,}\s*$/gm, '')
-        .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
-        .replace(/\n{3,}/g, '\n\n')
         .replace(/\\\(/g, '')
         .replace(/\\\)/g, '')
         .replace(/\\\[/g, '')
         .replace(/\\\]/g, '')
-        .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1 / $2')
+        .replace(/\\frac\s*\{([^}]+)\}\s*\{([^}]+)\}/g, '$1/$2') // Fracciones con espacios
         .replace(/\\text\{([^}]+)\}/g, '$1')
         .replace(/\\sum/g, '∑')
         .replace(/\\approx/g, '≈')
-        .replace(/\s+COP\/m²/g, ' COP/m²')
-        .replace(/Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi, 'Promedio precio por m² ≈ $1 COP/m²')
-        .replace(/^[\d\.]+\s+(?=[A-Z])/gm, '')
+        .replace(/Promedio precio por m²\s*=\s*.*(\\frac|∑).*≈\s*([\d\.\,]+)/gi, 'Promedio precio por m² ≈ $2') // Fix específico
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
     const blocks = cleanText.split('\n\n');
@@ -51,10 +46,11 @@ const AnalisisAI = ({ text }) => {
             {blocks.map((block, index) => {
                 const trimmed = block.trim();
                 if (!trimmed) return null;
+                if (/^[-*_]{3,}$/.test(trimmed)) return null; // Ignorar separadores solos
 
-                // HEADERS
-                if (trimmed.startsWith('#')) {
-                    const title = trimmed.replace(/^#+\s*/, '');
+                // HEADERS (Markdown # o "1. TÍTULO")
+                if (trimmed.startsWith('#') || /^[\d\.]+\s+[A-ZÁÉÍÓÚÑ]{4,}/.test(trimmed)) {
+                    const title = trimmed.replace(/^#+\s*/, '').replace(/^[\d\.]+\s+/, '');
                     return (
                         <h3 key={index} className="font-outfit font-bold text-lg text-[#2C3D37] mt-6 first:mt-0 mb-3 border-b border-[#C9C19D]/50 pb-1 break-inside-avoid">
                             {title}
@@ -310,7 +306,9 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                         <span className="w-1.5 h-6 bg-[#1a2620] rounded-full"></span>
                         Resumen del Mercado
                     </h3>
-                    <p className="text-sm text-[#1a2620] leading-relaxed font-raleway whitespace-pre-line font-medium" dangerouslySetInnerHTML={{ __html: data.resumen_busqueda.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                    <p className="text-sm text-[#1a2620] leading-relaxed font-raleway whitespace-pre-line font-medium">
+                        {data.resumen_busqueda}
+                    </p>
                 </div>
             )}
 
