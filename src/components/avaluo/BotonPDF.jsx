@@ -268,6 +268,7 @@ export default function BotonPDF({ formData }) {
             }
             .footer {
               margin-top: 40px;
+              padding: 0 20px;
               font-size: 10px;
               text-align: center;
               color: #666;
@@ -787,6 +788,7 @@ export default function BotonPDF({ formData }) {
       if (printWindow) {
         printWindow.document.write(htmlContent);
         printWindow.document.close();
+        printWindow.document.title = 'Reporte de Avalúo - Quetzal Hábitats';
         setTimeout(() => {
           printWindow.print();
         }, 800);
