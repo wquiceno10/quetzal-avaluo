@@ -1,764 +1,429 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2 } from 'lucide-react';
-import { useMutation } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import {
+    ArrowLeft,
+    ArrowRight,
+    TrendingUp,
+    Home,
+    Calculator,
+    AlertCircle,
+    Info,
+    ChevronDown,
+    ChevronUp,
+    FileText,
+    Globe,
+    Download
+} from 'lucide-react';
+import TablaComparables from './TablaComparables';
+import BotonPDF from './BotonPDF';
 
-export default function BotonPDF({ formData }) {
-    const generatePDFMutation = useMutation({
-        mutationFn: async (data) => {
-            const comparablesData = data.comparables_data || {};
-            const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
+// --- COMPONENTE DE FORMATO DE TEXTO ---
+// --- COMPONENTE DE FORMATO DE TEXTO ---
+const AnalisisAI = ({ text }) => {
+    if (!text) return null;
 
-            // Cálculos de valores (Prioridad a datos de backend V10)
-            const valorVentaDirecta = comparablesData.valor_estimado_venta_directa;
-            const valorRentabilidad = comparablesData.valor_estimado_rentabilidad;
-            const rangoMin = comparablesData.rango_valor_min;
-            const rangoMax = comparablesData.rango_valor_max;
+    // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
+    // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
+    const cleanText = text
+        .replace(/^-{3,}\s*$/gm, '')
+        .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/\\\(/g, '')
+        .replace(/\\\)/g, '')
+        .replace(/\\\[/g, '')
+        .replace(/\\\]/g, '')
+        .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1 / $2')
+        .replace(/\\text\{([^}]+)\}/g, '$1')
+        .replace(/\\sum/g, '∑')
+        .replace(/\\approx/g, '≈')
+        .replace(/\s+COP\/m²/g, ' COP/m²')
+        .replace(/Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi, 'Promedio precio por m² ≈ $1 COP/m²')
+        .replace(/^[\d\.]+\s+(?=[A-Z])/gm, '')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-            let valorEstimadoFinal = comparablesData.valor_final;
-            if (!valorEstimadoFinal) {
-                if (rangoMin && rangoMax) valorEstimadoFinal = (rangoMin + rangoMax) / 2;
-                else if (valorVentaDirecta && valorRentabilidad) valorEstimadoFinal = (valorVentaDirecta * 0.8 + valorRentabilidad * 0.2);
-                else valorEstimadoFinal = valorVentaDirecta || valorRentabilidad;
-            }
-
-            // Área
-            const area = parseFloat(formData.area_construida || comparablesData.area_construida || 0);
-
-            // ✔ CORRECCIÓN 1: Variables nuevas y contadores consistentes
-            const precioM2 =
-                comparablesData.precio_m2_final ||
-                comparablesData.precio_m2_usado ||
-                comparablesData.precio_m2_venta_directa ||
-                (valorEstimadoFinal && area ? valorEstimadoFinal / area : 0);
-
-            const defaults = comparablesData.ficha_tecnica_defaults || {};
-            const comparables = comparablesData.comparables || [];
-
-            const totalComparables =
-                comparablesData.comparables_usados_en_calculo ||
-                comparablesData.total_comparables ||
-                comparables.length;
-
-            const totalEncontrados = comparablesData.comparables_totales_encontrados;
-            const yieldMensual = comparablesData.yield_mensual_mercado;
-
-            const fecha = new Date().toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-
-            // Formateadores
-            const formatCurrency = (val) =>
-                val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
-
-            const formatNumber = (val) =>
-                val ? Math.round(val).toLocaleString('es-CO') : '—';
-
-            // Helper para generar tablas HTML
-            const generateTableHtml = (rows) => {
-                if (!rows.length) return '';
-                const htmlRows = rows.map((row, i) => {
-                    const cells = row.split('|').filter(c => c.trim() !== '');
-                    if (cells.length === 0) return '';
-                    const tag = i === 0 ? 'th' : 'td';
-                    const inner = cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('');
-                    return `<tr>${inner}</tr>`;
-                }).join('');
-                return `<div style="overflow-x:auto; margin: 15px 0;"><table border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:10px;">${htmlRows}</table></div>`;
-            };
-
-            const formatText = (text) => {
-                if (!text) return '';
-
-                // 1. Limpiar LaTeX básico
-                let cleanText = text
-                    .replace(/\\\(/g, '')
-                    .replace(/\\\)/g, '')
-                    .replace(/\\\[/g, '')
-                    .replace(/\\\]/g, '')
-                    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2')
-                    .replace(/\\text\{([^}]+)\}/g, '$1')
-                    .replace(/\\sum/g, '∑')
-                    .replace(/\\approx/g, '≈');
-
-                // 2. Detectar y Formatear Tablas Markdown
-                const lines = cleanText.split('\n');
-                let newLines = [];
-                let inTable = false;
-                let tableRows = [];
-
-                lines.forEach(line => {
-                    const trimmed = line.trim();
-                    if (trimmed.startsWith('|')) {
-                        if (!inTable) inTable = true;
-                        if (!trimmed.includes('---')) {
-                            tableRows.push(trimmed);
-                        }
-                    } else {
-                        if (inTable) {
-                            newLines.push(generateTableHtml(tableRows));
-                            tableRows = [];
-                            inTable = false;
-                        }
-                        newLines.push(line);
-                    }
-                });
-                if (inTable) {
-                    newLines.push(generateTableHtml(tableRows));
-                }
-
-                cleanText = newLines.join('\n');
-
-                // 3. Formatear Markdown básico
-                return cleanText
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/^#+\s*(.*?)$/gm, '<h4 style="margin-top:10px; margin-bottom:5px; color:#2C3D37;">$1</h4>')
-                    .replace(/^\s*[-*•]\s+(.*?)$/gm, '<li style="margin-bottom: 4px; color:#2C3D37;">$1</li>')
-                    .replace(/\n\n/g, '<br><br>')
-                    .replace(/\n/g, '<br>');
-            };
-
-            // -----------------------------------------------------------------------------------
-            // HTML DEL REPORTE
-            // -----------------------------------------------------------------------------------
-
-            const htmlContent = `
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-          <meta charset="UTF-8">
-          <title>Reporte de Avalúo - Quetzal Hábitats</title>
-
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Raleway:wght@300;400;500;600&display=swap');
-
-            body {
-              font-family: 'Outfit', sans-serif;
-              margin: 0;
-              padding: 0;
-              background: white;
-              color: #2C3D37;
-            }
-            .container {
-              max-width: 960px;
-              margin: 0 auto;
-              padding: 40px 20px;
-            }
-            @media (max-width: 1024px) {
-              .container {
-                max-width: 768px;
-              }
-            }
-            @media (max-width: 768px) {
-              .container {
-                max-width: 100%;
-                padding: 20px 15px;
-              }
-            }
-            .header {
-              background: #2C3D37;
-              padding: 30px;
-              text-align: center;
-              margin: -40px -20px 30px -20px;
-              color: white;
-            }
-            .header-logo {
-              height: 50px;
-              margin-bottom: 15px;
-              filter: brightness(0) invert(1);
-            }
-            .header-title {
-              font-size: 28px;
-              font-weight: 700;
-              margin-bottom: 8px;
-            }
-            .header-subtitle {
-              font-size: 14px;
-              opacity: 0.9;
-            }
-            h1 { font-size: 26px; font-weight: 700; margin-bottom: 5px; }
-            h2 { font-size: 20px; font-weight: 600; margin: 12px 0 4px; }
-            h3 { font-size: 16px; font-weight: 600; margin: 10px 0 6px; }
-            .grid-2 {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin-top: 20px;
-            }
-            .box {
-              background: #F8F6EF;
-              padding: 16px;
-              border-radius: 12px;
-              border: 1px solid #e6e0c7;
-            }
-            .info-section {
-              background: #F9FAF9;
-              border: 1px solid #E0E5E2;
-              border-radius: 12px;
-              padding: 20px;
-              margin: 25px 0;
-            }
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 15px;
-            }
-            .info-item {
-              display: flex;
-              align-items: baseline;
-              gap: 8px;
-              padding: 5px 0;
-              border-bottom: 1px solid #eee;
-            }
-            .info-item:last-child {
-              border-bottom: none;
-            }
-            .info-label {
-              font-weight: 600;
-              color: #7A8C85;
-              font-size: 10px;
-              text-transform: uppercase;
-              min-width: 120px;
-            }
-            .info-value {
-              font-weight: 600;
-              color: #2C3D37;
-              font-size: 11px;
-            }
-            .footer {
-              margin-top: 40px;
-              font-size: 10px;
-              text-align: center;
-              color: #666;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 15px;
-            }
-            th, td {
-              padding: 8px;
-              border-bottom: 1px solid #ddd;
-              font-size: 11px;
-            }
-            th { background: #F0ECD9; font-weight: 600; }
-            .badge {
-              padding: 3px 7px;
-              border-radius: 6px;
-              font-size: 10px;
-              color: white;
-            }
-            .badge-venta { background: #4B7F52; }
-            .badge-arriendo { background: #2C3D37; }
-            .sub-text {
-              font-size: 9px;
-              color: #777;
-            }
-
-            /* Hero Header Styles */
-            .hero-header {
-              background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
-              color: white;
-              border-radius: 16px;
-              padding: 32px;
-              margin-bottom: 30px;
-              position: relative;
-              overflow: hidden;
-              box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            }
-            .hero-decoration {
-              position: absolute;
-              top: -20px;
-              right: -20px;
-              width: 120px;
-              height: 120px;
-              background: rgba(201, 193, 157, 0.1);
-              border-radius: 50%;
-              filter: blur(40px);
-            }
-            .hero-top {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-bottom: 20px;
-              position: relative;
-              z-index: 1;
-            }
-            .hero-title-section {
-              flex: 1;
-            }
-            .hero-icon-title {
-              display: flex;
-              align-items: center;
-              gap: 12px;
-              margin-bottom: 12px;
-            }
-            .hero-icon {
-              background: rgba(255, 255, 255, 0.1);
-              padding: 8px;
-              border-radius: 8px;
-              font-size: 24px;
-              line-height: 1;
-            }
-            .hero-title {
-              font-size: 24px;
-              font-weight: 600;
-              margin: 0;
-            }
-            .hero-description {
-              font-size: 14px;
-              line-height: 1.4;
-              opacity: 0.9;
-              margin-bottom: 20px;
-              max-width: 90%; 
-              font-weight: 300;
-              margin: 0;
-              font-family: 'Raleway', sans-serif;
-            }
-            .analysis-section {
-              background: #F9FAF9;
-              border: 1px solid #E0E5E2;
-              border-radius: 12px;
-              padding: 20px;
-              margin: 25px 0;
-            }
-            .analysis-content {
-              column-count: 2;
-              column-gap: 30px;
-              font-size: 11px;
-              line-height: 1.5;
-              text-align: justify;
-            }
-             .analysis-content h4 {
-              column-span: all;
-              margin-top: 0;
-            }
-            .hero-badge {
-              background: rgba(201, 193, 157, 0.9);
-              color: #1a2620;
-              padding: 6px 16px;
-              border-radius: 20px;
-              font-size: 13px;
-              font-weight: 600;
-              white-space: nowrap;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            .hero-value-section {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-end;
-              gap: 30px;
-              margin: 24px 0;
-              position: relative;
-              z-index: 1;
-            }
-            .hero-main-value {
-              flex: 1;
-            }
-            .hero-amount {
-              font-size: 36px;
-              font-weight: 700;
-              line-height: 1;
-              margin-bottom: 8px;
-            }
-            .hero-currency {
-              font-size: 12px;
-              color: #D3DDD6;
-              opacity: 0.8;
-            }
-            .hero-details-box {
-              background: rgba(255, 255, 255, 0.1);
-              border: 1px solid rgba(255, 255, 255, 0.1);
-              border-radius: 12px;
-              padding: 16px;
-              min-width: 280px;
-            }
-            .hero-detail-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 8px 0;
-              border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            .hero-detail-row:last-child {
-              border-bottom: none;
-            }
-            .hero-detail-label {
-              color: #D3DDD6;
-              font-size: 13px;
-            }
-            .hero-detail-value {
-              font-weight: 600;
-              text-align: right;
-              font-size: 13px;
-            }
-            .hero-detail-sub {
-              font-size: 10px;
-              color: #A3B2AA;
-              display: block;
-              margin-top: 2px;
-            }
-            .hero-footer {
-              font-size: 11px;
-              color: rgba(211, 221, 214, 0.8);
-              font-style: italic;
-              line-height: 1.5;
-              margin-top: 16px;
-              position: relative;
-              z-index: 1;
-            }
-
-            /* Print Styles */
-            @media print {
-              body {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-              }
-              .hero-header {
-                background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              .hero-details-box {
-                background: rgba(255, 255, 255, 0.1) !important;
-                -webkit-print-color-adjust: exact !important;
-              }
-              .hero-badge {
-                background: #C9C19D !important;
-                -webkit-print-color-adjust: exact !important;
-              }
-              .info-section {
-                page-break-inside: avoid;
-              }
-              table {
-                page-break-inside: auto;
-              }
-              tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-              }
-              thead {
-                display: table-header-group;
-              }
-            }
-            @page {
-              margin: 1.5cm;
-            }
-            /* Analysis Styles */
-            .analysis-section {
-              margin-top: 30px;
-              border-top: 2px solid #E0E5E2;
-              padding-top: 20px;
-            }
-            .analysis-content h4 {
-              color: #2C3D37;
-              font-size: 14px;
-              margin: 15px 0 8px 0;
-            }
-            .analysis-content li {
-              margin-bottom: 5px;
-              font-size: 11px;
-            }
-            .analysis-content p {
-              margin-bottom: 10px;
-              font-size: 11px;
-              text-align: justify;
-            }
-
-            /* Hero Layout Update */
-            .hero-content-row {
-              display: flex;
-              justify-content: space-between;
-              align-items: center; /* Centrado vertical */
-              gap: 40px;
-              margin: 20px 0;
-              position: relative;
-              z-index: 1;
-            }
-            .hero-left-col {
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-              justify-content: space-between;
-            }
-            .hero-description {
-              font-size: 13px;
-              color: #D3DDD6;
-              line-height: 1.5;
-              margin: 0 0 25px 0; /* Space between description and price */
-              font-family: 'Raleway', sans-serif;
-              text-align: justify;
-            }
-            .hero-value-block {
-              margin-top: auto;
-            }
-          </style>
-        </head>
-
-        <body>
-          <div class="container">
-            <!-- HERO HEADER - Diseño de la página -->
-            <div class="hero-header">
-              <div class="hero-decoration"></div>
-              
-              <!-- Title Row -->
-              <div class="hero-top" style="margin-bottom: 10px;">
-                <div class="hero-icon-title">
-                  <div class="hero-icon">🏠</div>
-                  <h1 class="hero-title">Valor Comercial Estimado</h1>
-                </div>
-                <div class="hero-badge">⚡ Estimación IA</div>
-              </div>
-
-              <!-- Content Row: Description+Price (Left) | Details (Right) -->
-              <div class="hero-content-row">
-                <div class="hero-left-col">
-                  <p class="hero-description">
-                    ${esLote
-                    ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
-                    : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
-                  </p>
-                  
-                  <div class="hero-value-block">
-                    <div class="hero-amount">${formatCurrency(valorEstimadoFinal)}</div>
-                    <div class="hero-currency">COP (Pesos Colombianos)</div>
-                  </div>
-                </div>
-
-                <div class="hero-details-box">
-                  <div class="hero-detail-row">
-                    <span class="hero-detail-label">Rango Sugerido</span>
-                    <span class="hero-detail-value">
-                      ${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}
-                    </span>
-                  </div>
-                  <div class="hero-detail-row">
-                    <span class="hero-detail-label">Precio m² Ref.</span>
-                    <span class="hero-detail-value">${formatCurrency(precioM2)}/m²</span>
-                  </div>
-                  ${totalComparables ? `
-                  <div class="hero-detail-row">
-                    <span class="hero-detail-label">Muestra</span>
-                    <span class="hero-detail-value">
-                      ${totalComparables} inmuebles
-                      ${totalEncontrados && totalEncontrados > totalComparables
-                        ? `<span class="hero-detail-sub">(de ${totalEncontrados} encontrados)</span>`
-                        : `<span class="hero-detail-sub">(${comparablesData.total_comparables_venta || 0} venta, ${comparablesData.total_comparables_arriendo || 0} arriendo)</span>`
-                    }
-                    </span>
-                  </div>
-                  ` : ''}
-                </div>
-              </div>
-
-              <div class="hero-footer">
-                El valor final es una recomendación técnica ponderada entre el enfoque de mercado
-                y el de rentabilidad, priorizando el método con datos más consistentes según la
-                cantidad, homogeneidad y dispersión de los comparables disponibles.
-              </div>
-            </div>
-
-            <!-- MÉTODOS DE VALORACIÓN -->
-            <div class="grid-2">
-              <div class="box">
-                <h3>${esLote ? 'Metodología Ajustada (Lotes)' : 'Enfoque de Mercado'}</h3>
-                <p style="font-size: 22px; font-weight: 700;">
-                  ${formatCurrency(valorVentaDirecta)}
-                </p>
-                <p style="font-size: 11px; margin-top: 8px;">
-                  ${esLote
-                    ? 'Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.'
-                    : 'Basado en precio promedio por m² × área construida.'}
-                </p>
-              </div>
-
-              ${valorRentabilidad ? `
-              <div class="box">
-                <h3>Enfoque de Rentabilidad</h3>
-                <p style="font-size: 22px; font-weight: 700;">
-                  ${formatCurrency(valorRentabilidad)}
-                </p>
-                <p style="font-size: 11px; margin-top: 8px;">
-                  Canon mensual estimado ÷ yield mensual del sector.
-                </p>
-                ${yieldMensual ? `
-                <p style="font-size: 10px; color: #7A8C85; font-style: italic; margin-top: 8px;">
-                  Yield utilizado: ${(yieldMensual * 100).toFixed(2)}% mensual
-                </p>
-                ` : ''}
-              </div>
-              ` : ''}
-            </div>
-
-            <!-- INFORMACIÓN DETALLADA (Inline Style) -->
-            <div class="info-section">
-              <h3 style="margin-top: 0; color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Información Detallada</h3>
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Tipo de Inmueble:</span>
-                  <span class="info-value">${formData.tipo_inmueble || '—'}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Ubicación:</span>
-                  <span class="info-value">${formData.barrio || '—'}, ${formData.municipio || formData.ciudad || '—'}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Área Construida:</span>
-                  <span class="info-value">${formatNumber(area)} m²</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Precio por m²:</span>
-                  <span class="info-value">${formatCurrency(precioM2)}/m²</span>
-                </div>
-                ${!esLote ? `
-                <div class="info-item">
-                  <span class="info-label">Habitaciones:</span>
-                  <span class="info-value">${formData.habitaciones || comparablesData.habitaciones || defaults.habitaciones || '—'}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Baños:</span>
-                  <span class="info-value">${formData.banos || comparablesData.banos || defaults.banos || '—'}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Estrato:</span>
-                  <span class="info-value">${formData.estrato || comparablesData.estrato || defaults.estrato || 'No especificado'}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Estado:</span>
-                  <span class="info-value" style="text-transform: capitalize;">
-                    ${(formData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || '—').replace(/_/g, ' ')}
-                  </span>
-                </div>
-                ` : `
-                <div class="info-item">
-                  <span class="info-label">Uso del Lote:</span>
-                  <span class="info-value">${formData.uso_lote || '—'}</span>
-                </div>
-                `}
-                <div class="info-item">
-                  <span class="info-label">Comparables:</span>
-                  <span class="info-value">${totalComparables} inmuebles</span>
-                </div>
-                ${!esLote && yieldMensual ? `
-                <div class="info-item">
-                  <span class="info-label">Yield Mensual:</span>
-                  <span class="info-value">${(yieldMensual * 100).toFixed(2)}%</span>
-                </div>
-                ` : ''}
-              </div>
-            </div>
-
-            <!-- Tabla de comparables -->
-            <h2 style="margin-top: 30px;">Propiedades Comparables</h2>
-
-            <table>
-              <thead>
-                <tr>
-                  <th>Inmueble</th>
-                  <th>Tipo</th>
-                  <th>Área</th>
-                  <th>Precio Publicado</th>
-                  <th>Precio de Venta</th>
-                  <th>Precio m²</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                ${(comparables || []).map(item => {
-                        const esArriendo = item.tipo_origen === 'arriendo';
-                        const badgeClass = esArriendo ? 'badge-arriendo' : 'badge-venta';
-                        const tipoLabel = esArriendo ? 'Arriendo' : 'Venta';
-                        const notaArriendo = esArriendo
-                            ? `<span class="sub-text">Estimado por rentabilidad (Yield ${(item.yield_mensual * 100).toFixed(2)}%)</span>`
-                            : '';
-
-                        return `
-                    <tr>
-                      <td>
-                        <strong>${item.titulo || 'Inmueble'}</strong><br>
-                        <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
-                      </td>
-                      <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-                      <td class="text-center">${formatNumber(item.area_m2)} m²</td>
-                      <td class="text-right">${formatCurrency(item.precio_publicado)} ${esArriendo ? '<span class="sub-text">/mes</span>' : ''}</td>
-                      <td class="text-right">
-                        <strong>${formatCurrency(item.precio_cop)}</strong>
-                        ${notaArriendo}
-                      </td>
-                      <td class="text-right">
-                        ${formatCurrency(item.precio_m2)}
-                      </td>
-                    </tr>
-                  `;
-                    }).join('')}
-              </tbody>
-            </table>
-
-            <!-- ✔ CORRECCIÓN 3: Nota sobre Yield -->
-            <p style="font-size: 10px; color: #666; margin-top: 15px; font-style: italic;">
-              Yield mensual utilizado: ${yieldMensual ? (yieldMensual * 100).toFixed(2) + '%' : '0.45%'}.
-              Este yield corresponde al promedio observado en arriendos residenciales del mercado local.
-            </p>
-
-            ${esLote ? `
-              <p style="font-size: 10px; color: #888; margin-top: 15px; font-style: italic; text-align: justify;">
-                Nota: Ante la escasez de oferta comercial idéntica, se han utilizado lotes campestres y urbanos como referencia base, ajustando sus valores por factores de localización, escala y uso comercial. Se aplicó ajuste por factor de comercialización.
-              </p>
-            ` : ''}
-
-            <!-- ANÁLISIS DETALLADO DEL MODELO -->
-            ${comparablesData.perplexity_full_text ? `
-            <div class="analysis-section">
-              <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Análisis Detallado del Modelo</h3>
-              <div class="analysis-content">
-                ${formatText(comparablesData.perplexity_full_text)}
-              </div>
-            </div>
-            ` : ''}
-
-            <div class="footer">
-              <p>Quetzal Hábitats - Inteligencia Inmobiliaria</p>
-              <p>Este documento es una estimación estadística y no constituye un avalúo certificado.</p>
-              <p>Generado el ${fecha}</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-
-            // Abrir PDF
-            const printWindow = window.open('', '_blank');
-            if (printWindow) {
-                printWindow.document.write(htmlContent);
-                printWindow.document.close();
-                setTimeout(() => {
-                    printWindow.print();
-                }, 800);
-            }
-
-            return { success: true };
-        }
-    });
+    const blocks = cleanText.split('\n\n');
 
     return (
-        <Button
-            onClick={() => generatePDFMutation.mutate(formData)}
-            disabled={generatePDFMutation.isPending}
-            className="flex-1 bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] rounded-full py-6 text-lg font-medium"
-        >
-            {generatePDFMutation.isPending ? (
-                <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Generando PDF...
-                </>
-            ) : (
-                <>
-                    <Download className="w-5 h-5 mr-2" />
-                    Descargar Reporte PDF
-                </>
+        <div className="text-[#4F5B55] font-raleway columns-1 md:columns-2 gap-10 space-y-4">
+            {blocks.map((block, index) => {
+                const trimmed = block.trim();
+                if (!trimmed) return null;
+
+                // HEADERS
+                if (trimmed.startsWith('#')) {
+                    const title = trimmed.replace(/^#+\s*/, '');
+                    return (
+                        <h3 key={index} className="font-outfit font-bold text-lg text-[#2C3D37] mt-6 first:mt-0 mb-3 border-b border-[#C9C19D]/50 pb-1 break-inside-avoid">
+                            {title}
+                        </h3>
+                    );
+                }
+
+                // TABLAS MARKDOWN
+                if (trimmed.startsWith('|')) {
+                    const rows = trimmed.split('\n').filter(r => r.trim());
+                    return (
+                        <div key={index} className="overflow-x-auto mb-4 break-inside-avoid shadow-sm rounded-lg border border-[#E0E5E2] bg-white">
+                            <table className="w-full text-xs border-collapse">
+                                <tbody>
+                                    {rows.map((row, rIdx) => {
+                                        if (row.includes('---')) return null; // Ignorar separadores
+                                        const cells = row.split('|').filter(c => c.trim() !== '');
+                                        if (cells.length === 0) return null;
+
+                                        const isHeader = rIdx === 0;
+                                        return (
+                                            <tr key={rIdx} className={isHeader ? "bg-[#F0ECD9] text-[#2C3D37] font-bold" : "border-t border-[#f0f0f0] text-[#4F5B55]"}>
+                                                {cells.map((cell, cIdx) => (
+                                                    <td key={cIdx} className="p-2 border-r border-[#f0f0f0] last:border-r-0 text-center last:text-right first:text-left">
+                                                        {cell.trim()}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )
+                }
+
+                // LISTAS
+                if (trimmed.match(/^[-*•]|^\d+[\.\)]/)) {
+                    const items = trimmed.split('\n').map((line) => line.replace(/^[-*•\d+[\.\)]\s*/, ''));
+                    return (
+                        <ul key={index} className="list-none space-y-2 mb-4 break-inside-avoid">
+                            {items.map((item, i) => (
+                                <li key={i} className="flex gap-2 text-sm leading-relaxed text-[#4F5B55]">
+                                    <span className="font-bold mt-0.5">•</span>
+                                    <span dangerouslySetInnerHTML={{ __html: item }} />
+                                </li>
+                            ))}
+                        </ul>
+                    );
+                }
+
+                // PARRAGRAFOS
+                return (
+                    <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: trimmed }} />
+                );
+            })}
+        </div>
+    );
+};
+
+export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset }) {
+    const [mostrarComparables, setMostrarComparables] = useState(false);
+
+    if (!formData) return renderErrorState('Datos del formulario no disponibles', onBack);
+
+    const data = formData.comparables_data || formData;
+    if (!data || (Array.isArray(data.comparables) && data.comparables.length === 0 && !data.valor_final)) {
+        if (!data.valor_final && !data.valor_estimado_venta_directa && !data.valor_estimado_rentabilidad) {
+            return renderErrorState("Análisis de mercado insuficiente", onBack);
+        }
+    }
+
+    const valorVentaDirecta = validarNumero(data.valor_estimado_venta_directa);
+    const valorRentabilidad = validarNumero(data.valor_estimado_rentabilidad);
+    const rangoMin = validarNumero(data.rango_valor_min);
+    const rangoMax = validarNumero(data.rango_valor_max);
+    const precioM2Usado = validarNumero(data.precio_m2_final) || validarNumero(data.precio_m2_usado) || validarNumero(data.precio_m2_venta_directa);
+
+    let valorPrincipal = validarNumero(data.valor_final);
+    if (!valorPrincipal) {
+        if (rangoMin && rangoMax) valorPrincipal = Math.round((rangoMin + rangoMax) / 2);
+        else if (valorVentaDirecta && valorRentabilidad) valorPrincipal = Math.round(valorVentaDirecta * 0.80 + valorRentabilidad * 0.20);
+        else valorPrincipal = valorVentaDirecta || valorRentabilidad || null;
+    }
+
+    const areaInmueble = validarNumero(formData.area_construida || formData.area_total || data.area_construida || data.area_total);
+    const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
+
+    const formatCurrency = (value) => {
+        const num = validarNumero(value);
+        if (num === null) return '—';
+        return '$ ' + Math.round(num).toLocaleString('es-CO');
+    };
+
+    const tieneComparables = Array.isArray(data.comparables) && data.comparables.length > 0;
+    const tieneAnalisisCompleto = data.perplexity_full_text && data.perplexity_full_text.length > 50;
+    const tieneResumen = data.resumen_busqueda && data.resumen_busqueda.length > 10;
+
+    // Corrección 3: Usar contadores consistentes del Worker
+    const totalComparables = validarNumero(data.comparables_usados_en_calculo) || validarNumero(data.total_comparables);
+    const totalEncontrados = validarNumero(data.comparables_totales_encontrados);
+    const totalVenta = validarNumero(data.total_comparables_venta);
+    const totalArriendo = validarNumero(data.total_comparables_arriendo);
+    const portales = data.portales_consultados || [];
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+
+            {/* 1. SECCIÓN HERO */}
+            <Card className="border-none shadow-lg bg-gradient-to-br from-[#2C3D37] to-[#1a2620] text-white overflow-hidden relative">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[#C9C19D] opacity-10 rounded-full blur-2xl"></div>
+                <CardHeader className="pb-2 relative z-10">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle className="text-xl md:text-2xl font-outfit font-semibold flex items-center gap-3">
+                                <div className="p-2 bg-white/10 rounded-lg"><Home className="w-6 h-6 text-[#C9C19D]" /></div>
+                                Valor Comercial Estimado
+                            </CardTitle>
+                            <p className="text-sm text-[#D3DDD6] mt-2 font-raleway max-w-lg">
+                                {esLote
+                                    ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
+                                    : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
+                            </p>
+                        </div>
+                        <span className="inline-flex self-start md:self-center items-center rounded-full bg-[#C9C19D]/90 px-4 py-1.5 text-xs md:text-sm font-semibold text-[#1a2620] shadow-sm">
+                            <TrendingUp className="w-3 h-3 mr-2" />
+                            Estimación IA
+                        </span>
+                    </div>
+                </CardHeader>
+                <CardContent className="pt-4 relative z-10">
+                    <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-8">
+                        <div>
+                            <div className="text-4xl md:text-6xl font-bold font-outfit tracking-tight">
+                                {formatCurrency(valorPrincipal)}
+                            </div>
+                            <p className="text-xs md:text-sm text-[#D3DDD6] mt-2 opacity-80">COP (Pesos Colombianos)</p>
+                        </div>
+                        <div className="bg-[#FFFFFF]/10 backdrop-blur-sm border border-[#FFFFFF]/10 rounded-xl p-4 w-full lg:w-auto min-w-[280px] space-y-3">
+                            <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                                <span className="text-[#D3DDD6] text-sm">Rango Sugerido</span>
+                                <span className="font-semibold font-outfit text-white">
+                                    {rangoMin ? formatCurrency(rangoMin) : '—'} - {rangoMax ? formatCurrency(rangoMax) : '—'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                                <span className="text-[#D3DDD6] text-sm">Precio m² Ref.</span>
+                                <span className="font-semibold font-outfit text-white">{formatCurrency(precioM2Usado)}/m²</span>
+                            </div>
+                            {totalComparables !== null && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[#D3DDD6] text-sm">Muestra</span>
+                                    <div className="text-right">
+                                        <span className="font-semibold block">{totalComparables} inmuebles</span>
+                                        {totalEncontrados && totalEncontrados > totalComparables ? (
+                                            <span className="text-[10px] text-[#A3B2AA] block">(de {totalEncontrados} encontrados)</span>
+                                        ) : (
+                                            <span className="text-[10px] text-[#A3B2AA] block">({totalVenta || 0} venta, {totalArriendo || 0} arriendo)</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+                {/* Corrección 4: Explicación del Valor Final */}
+                <div className="px-6 pb-6 relative z-10">
+                    <p className="text-xs text-[#D3DDD6]/80 italic leading-relaxed">
+                        El valor final es una recomendación técnica ponderada entre el enfoque de mercado y el de rentabilidad,
+                        priorizando el método con datos más consistentes según la cantidad, homogeneidad y dispersión de los
+                        comparables disponibles.
+                    </p>
+                </div>
+            </Card>
+
+            {/* 2. MÉTODOS DESGLOSADOS (ADAPTATIVO) */}
+            <div className={valorRentabilidad ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "max-w-lg mx-auto"}>
+                {/* Venta Directa */}
+                <Card className="border-[#E0E5E2] shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
+                        <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
+                            <TrendingUp className="w-4 h-4 text-[#C9C19D]" />
+                            {esLote ? 'Metodología Ajustada (Lotes)' : 'Enfoque de Mercado (Comparables)'}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-4">
+                        <div className="text-center">
+                            <div className="text-3xl font-bold text-[#2C3D37] mt-1 font-outfit">
+                                {formatCurrency(valorVentaDirecta)}
+                            </div>
+                        </div>
+                        <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
+                            {esLote
+                                ? 'Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.'
+                                : 'Calculado a partir del precio promedio por m² de las propiedades comparables (precio promedio por m² × área del inmueble).'}
+                        </p>
+                        <div className="flex justify-between items-center pt-2 mt-1">
+                            <span className="text-sm text-[#7A8C85]">Precio m² estimado:</span>
+                            <span className="text-sm font-semibold text-[#2C3D37]">
+                                {areaInmueble && valorVentaDirecta ? `${formatCurrency(valorVentaDirecta / areaInmueble)}/m²` : '—'}
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Rentabilidad (Condicional) */}
+                {valorRentabilidad && (
+                    <Card className="border-[#E0E5E2] shadow-sm hover:shadow-md transition-shadow duration-200">
+                        <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
+                            <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
+                                <Calculator className="w-4 h-4 text-[#C9C19D]" />
+                                Enfoque de Rentabilidad (Capitalización)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="text-center">
+                                <div className="text-3xl font-bold text-[#2C3D37] mt-1 font-outfit">
+                                    {formatCurrency(valorRentabilidad)}
+                                </div>
+                            </div>
+                            <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
+                                Calculado a partir del canon mensual estimado y la fórmula del rendimiento (yield) del sector (canon mensual estimado ÷ yield mensual).
+                            </p>
+                            {/* Corrección 5: Nota sobre Yield */}
+                            {data.yield_mensual_mercado && (
+                                <p className="text-xs text-[#7A8C85] italic px-4 mt-2">
+                                    El yield utilizado ({(data.yield_mensual_mercado * 100).toFixed(2)}% mensual) corresponde al promedio
+                                    observado en arriendos residenciales del sector, ajustado automáticamente por zona y disponibilidad de comparables.
+                                </p>
+                            )}
+                            <div className="flex justify-between items-center pt-2 mt-1">
+                                <span className="text-sm text-[#7A8C85]">Precio m² implícito:</span>
+                                <span className="text-sm font-semibold text-[#2C3D37]">
+                                    {areaInmueble && valorRentabilidad ? `${formatCurrency(valorRentabilidad / areaInmueble)}/m²` : '—'}
+                                </span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+
+            <Alert className="border-[#C9C19D]/30 bg-[#FFFDF5] text-[#2C3D37]">
+                <Info className="h-4 w-4 text-[#C4A356]" />
+                <AlertDescription className="text-sm">
+                    Este informe es una estimación automatizada basada en datos estadísticos. <strong>No reemplaza un avalúo certificado profesional.</strong>
+                </AlertDescription>
+            </Alert>
+
+            {/* 3. RESUMEN DEL MERCADO (ESTILO ESTIMACIÓN IA) */}
+            {tieneResumen && (
+                <div className="bg-[#C9C19D]/90 rounded-xl p-6 shadow-sm border border-[#C9C19D]">
+                    <h3 className="font-outfit font-semibold text-lg text-[#1a2620] mb-3 flex items-center gap-2">
+                        <span className="w-1.5 h-6 bg-[#1a2620] rounded-full"></span>
+                        Resumen del Mercado
+                    </h3>
+                    <p className="text-sm text-[#1a2620] leading-relaxed font-raleway whitespace-pre-line font-medium" dangerouslySetInnerHTML={{ __html: data.resumen_busqueda.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+                </div>
             )}
-        </Button>
+
+            {/* AVISO DE DESCARGA PDF */}
+            <Alert className="border-[#C9C19D]/30 bg-[#FFFDF5] text-[#2C3D37]">
+                <Download className="h-4 w-4 text-[#C9C19D]" />
+                <AlertDescription className="text-sm">
+                    <strong>Descarga el reporte completo en PDF</strong> para compartir o guardar esta valoración con todos los detalles y comparables.
+                </AlertDescription>
+            </Alert>
+
+            {/* 4. PORTALES CONSULTADOS (BLOQUE DESTACADO TIPO ALERTA) */}
+            {portales.length > 0 && (
+                <Alert className="border-[#C9C19D]/30 bg-[#FFFDF5] text-[#2C3D37]">
+                    <Globe className="h-4 w-4 text-[#C9C19D]" />
+                    <div className="flex flex-col gap-2 w-full">
+                        <span className="text-sm font-semibold">Fuentes Consultadas:</span>
+                        <div className="flex flex-wrap gap-2">
+                            {portales.map((portal, idx) => (
+                                <Badge key={idx} variant="outline" className="bg-white border-[#C9C19D]/50 text-[#4F5B55] font-normal hover:bg-[#E0E5E2]">
+                                    {portal}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+                </Alert>
+            )}
+
+            {/* 5. TABLA DE COMPARABLES */}
+            {tieneComparables && (
+                <Card className="border-[#E0E5E2] shadow-sm overflow-hidden transition-all duration-300 mt-6">
+                    <button
+                        onClick={() => setMostrarComparables(!mostrarComparables)}
+                        className="w-full flex items-center justify-between p-4 bg-[#F9FAF9] hover:bg-[#F0F2F1] transition-colors text-left"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-1.5 bg-white border border-[#E0E5E2] rounded-md text-[#2C3D37]">
+                                <FileText className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h3 className="font-outfit font-semibold text-base text-[#2C3D37]">Propiedades Comparables</h3>
+                                <p className="text-xs text-[#7A8C85]">Ver los {data.comparables.length} inmuebles usados para el cálculo</p>
+                            </div>
+                        </div>
+                        {mostrarComparables ? <ChevronUp className="w-5 h-5 text-[#7A8C85]" /> : <ChevronDown className="w-5 h-5 text-[#7A8C85]" />}
+                    </button>
+                    {mostrarComparables && (
+                        <div className="border-t border-[#E0E5E2] animate-in slide-in-from-top-2 duration-300">
+                            <TablaComparables comparables={data.comparables} yieldMensualMercado={data.yield_mensual_mercado} />
+                        </div>
+                    )}
+                </Card>
+            )}
+
+            {/* 6. ANÁLISIS COMPLETO IA */}
+            {tieneAnalisisCompleto && (
+                <Card className="border-[#E0E5E2] shadow-sm overflow-hidden mt-8">
+                    <CardHeader className="bg-[#2C3D37] py-4">
+                        <CardTitle className="text-base text-white font-outfit flex items-center gap-2">
+                            <span className="bg-[#C9C19D] text-[#2C3D37] text-[10px] font-bold px-2 py-0.5 rounded">AI</span>
+                            Análisis Detallado del Modelo
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 md:p-8 bg-white">
+                        <AnalisisAI text={data.perplexity_full_text} />
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* 7. NAVEGACIÓN (BOTONES ALINEADOS) */}
+            <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4 pt-6 border-t border-[#E0E5E2] mt-8">
+                <div className="flex gap-3">
+                    <Button variant="ghost" onClick={onBack} className="text-[#7A8C85] hover:text-[#2C3D37] hover:bg-[#F5F7F6]">
+                        <ArrowLeft className="w-4 h-4 mr-2" /> Editar Datos
+                    </Button>
+                </div>
+                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                    <BotonPDF formData={formData} />
+                    {onReset && (
+                        <Button variant="outline" onClick={onReset} className="text-[#7A8C85] border-[#B0BDB4] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-6">
+                            Nuevo Avalúo
+                        </Button>
+                    )}
+                    <Button onClick={onNext} className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium shadow-lg transition-all" disabled={!valorPrincipal}>
+                        Finalizar Informe <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function validarNumero(valor) {
+    if (valor === null || valor === undefined) return null;
+    if (typeof valor === 'number') return isFinite(valor) && !isNaN(valor) ? valor : null;
+    if (typeof valor === 'string') {
+        const num = parseFloat(valor.replace(/[^\d.-]/g, ''));
+        return isFinite(num) && !isNaN(num) ? num : null;
+    }
+    return null;
+}
+
+function renderErrorState(mensaje, onBack) {
+    return (
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6">
+            <div className="bg-red-50 p-4 rounded-full"><AlertCircle className="h-10 w-10 text-red-500" /></div>
+            <div className="max-w-md space-y-2">
+                <h3 className="text-lg font-semibold text-[#2C3D37]">No pudimos generar el análisis</h3>
+                <p className="text-sm text-[#4F5B55]">{mensaje}</p>
+            </div>
+            <Button onClick={onBack} variant="outline" className="border-[#B0BDB4] text-[#2C3D37] rounded-full">
+                <ArrowLeft className="w-4 h-4 mr-2" /> Intentar nuevamente
+            </Button>
+        </div>
     );
 }
