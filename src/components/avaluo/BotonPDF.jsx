@@ -411,7 +411,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               line-height: 1.2;
               opacity: 0.9;
               margin-bottom: 12px;
-              margin-top: 0;
+              margin-top: 2px;
               max-width: 85%; 
               font-weight: 300;
               font-family: 'Raleway', sans-serif;
@@ -497,7 +497,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             .hero-detail-row {
               display: flex;
               justify-content: space-between;
-              align-items: center;
               padding: 8px 0;
               border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             }
@@ -539,9 +538,14 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
-                margin: 0 !important;
-                padding-top: 50px !important;
-                padding-bottom: 50px !important;
+                margin: 0 !important; /* Dejar que @page maneje los margenes externos */
+                padding: 0 !important;
+              }
+
+              /* EVITAR SOLAPES EN PDF */
+              .print-header,
+              .print-footer {
+                display: none;
               }
 
               .analysis-content {
@@ -844,13 +848,13 @@ ail-row" style="align-items: center;">
             <table>
               <thead>
                 <tr>
-                  <th style="text-align:center;">Inmueble</th>
-                  <th style="text-align:center;">Tipo</th>
-                  <th style="text-align:center;">Área</th>
-                  <th style="text-align:center; max-width: 50px;">Hab/<br>Baños</th>
-                  <th style="text-align:center; width: 110px;">Precio Publicado</th>
-                  <th style="text-align:center; width: 110px;">Precio de Venta</th>
-                  <th style="text-align:center; width: 80px;">Precio m²</th>
+                  <th style="text-align:left;">Inmueble</th>
+                  <th>Tipo</th>
+                  <th>Área</th>
+                  <th style="max-width: 60px; white-space: normal;">Hab/<br>Baños</th>
+                  <th>Precio Publicado</th>
+                  <th style="width: 120px;">Precio de Venta</th>
+                  <th style="width: 120px;">Precio m²</th>
                 </tr>
               </thead>
 
@@ -869,17 +873,17 @@ ail-row" style="align-items: center;">
                         <strong style="display:block; margin-bottom:2px;">${item.titulo || 'Inmueble'}</strong>
                         <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
                       </td>
-                      <td style="text-align:center;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-                      <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>
-                      <td style="text-align:center; white-space: nowrap;">
+                      <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+                      <td>${formatNumber(item.area_m2)} m²</td>
+                      <td style="white-space: nowrap;">
                         ${item.habitaciones || '—'} / ${item.banos || '—'}
                       </td>
-                      <td style="text-align:right; white-space: nowrap;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
-                      <td style="text-align:right; white-space: nowrap;">
+                      <td>${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
+                      <td>
                         <strong>${formatCurrency(item.precio_cop)}</strong>
                         ${notaArriendo}
                       </td>
-                      <td style="text-align:right; white-space: nowrap;">
+                      <td>
                         ${formatCurrency(item.precio_m2)}
                       </td>
                     </tr>
