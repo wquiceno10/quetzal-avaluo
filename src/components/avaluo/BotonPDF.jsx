@@ -579,6 +579,36 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 </div>
                 <div class="hero-badge">⚡ Estimación IA</div>
               </div>
+              
+              <!-- Property Summary Row -->
+              ${!esLote ? `
+              <div style="display: flex; gap: 20px; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); position: relative; z-index: 1;">
+                <span style="font-size: 14px; color: #D3DDD6;">
+                  🏠 ${formData.tipo_inmueble || 'Inmueble'}
+                </span>
+                <span style="font-size: 14px; color: #D3DDD6;">
+                  📐 ${formatNumber(area)} m²
+                </span>
+                <span style="font-size: 14px; color: #D3DDD6;">
+                  🛏️ ${formData.habitaciones || comparablesData.habitaciones || defaults.habitaciones || '—'} hab
+                </span>
+                <span style="font-size: 14px; color: #D3DDD6;">
+                  🚿 ${formData.banos || comparablesData.banos || defaults.banos || '—'} baños
+                </span>
+              </div>
+              ` : `
+              <div style="display: flex; gap: 20px; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); position: relative; z-index: 1;">
+                <span style="font-size: 14px; color: #D3DDD6;">
+                  🏠 ${formData.tipo_inmueble || 'Lote'}
+                </span>
+                <span style="font-size: 14px; color: #D3DDD6;">
+                  📐 ${formatNumber(area)} m²
+                </span>
+                <span style="font-size: 14px; color: #D3DDD6;">
+                  📍 ${formData.uso_lote || 'Uso no especificado'}
+                </span>
+              </div>
+              `}
 
               <div class="hero-content-row">
                 <div class="hero-left-col">
