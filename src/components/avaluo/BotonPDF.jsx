@@ -849,7 +849,7 @@ ail-row" style="align-items: center;">
                   <th style="text-align:left;">Inmueble</th>
                   <th style="text-align:center;">Tipo</th>
                   <th style="text-align:center;">Área</th>
-                  <th style="text-align:center;">Hab/Baños</th>
+                  <th style="text-align:center; max-width: 60px; white-space: normal;">Hab/<br>Baños</th>
                   <th style="text-align:center;">Precio Publicado</th>
                   <th style="text-align:right;">Precio de Venta</th>
                   <th style="text-align:right;">Precio m²</th>
@@ -873,7 +873,7 @@ ail-row" style="align-items: center;">
                       </td>
                       <td style="text-align:center;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
                       <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>
-                      <td style="text-align:center;">
+                      <td style="text-align:center; white-space: nowrap;">
                         ${item.habitaciones || '—'} / ${item.banos || '—'}
                       </td>
                       <td style="text-align:center;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
