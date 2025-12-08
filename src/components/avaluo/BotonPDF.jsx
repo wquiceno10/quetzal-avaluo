@@ -516,6 +516,77 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             
             /* Analysis Styles */
             .analysis-section {
+              margin-top: 30px;
+              border-top: 2px solid #E0E5E2;
+              padding-top: 20px;
+            }
+            .analysis-content h4 {
+              color: #2C3D37;
+              font-size: 14px;
+              margin: 15px 0 8px 0;
+            }
+            .analysis-content li {
+              margin-bottom: 5px;
+              font-size: 11px;
+            }
+            .analysis-content p {
+              margin-bottom: 10px;
+              font-size: 11px;
+              text-align: justify;
+            }
+
+            /* Hero Layout Update */
+            .hero-content-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 30px;
+              margin: 20px 0;
+              position: relative;
+              z-index: 1;
+            }
+            .hero-left-col {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+            }
+            .hero-value-block {
+              margin-top: auto;
+            }
+          </style>
+        </head>
+
+        <body>
+          <div class="print-header">
+            <span style="font-weight: 600;">Fecha: ${fecha}</span>
+            <span style="font-weight: 700; color: #2C3D37;">Reporte de Avalúo - Quetzal Hábitats</span>
+          </div>
+
+          <div class="print-footer">
+             Quetzal Hábitats - Inteligencia Inmobiliaria &copy; ${new Date().getFullYear()} <br/>
+             <span style="font-style: italic; font-size: 8px; margin-top: 2px; display: inline-block;">Documento generado automáticamente</span>
+          </div>
+
+          <div class="container">
+            <div class="hero-header">
+              <div class="hero-decoration"></div>
+              
+              <div class="hero-top" style="margin-bottom: 10px;">
+                <div class="hero-icon-title">
+                  <div class="hero-icon">🏠</div>
+                  <h1 class="hero-title">Valor Comercial Estimado</h1>
+                </div>
+                <div class="hero-badge">⚡ Estimación IA</div>
+              </div>
+
+              <div class="hero-content-row">
+                <div class="hero-left-col">
+                  <p class="hero-description" style="max-width: 85%;">
+                    ${esLote
+          ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
+          : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
+                  </p>
                   
                   <div class="hero-value-block">
                     <div class="hero-amount">${formatCurrency(valorEstimadoFinal)}</div>
@@ -524,7 +595,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 </div>
 
                 <div class="hero-details-box">
-                  <div class="hero-detail-row" style="align-items: center;">
+                  <div class="hero-det
+
+ail-row" style="align-items: center;">
                     <span class="hero-detail-label" style="align-self: center;">Rango Sugerido</span>
                     <div style="text-align: right; line-height: 1.4;">
                       <div class="hero-detail-value">${formatCurrency(rangoMin)}</div>
