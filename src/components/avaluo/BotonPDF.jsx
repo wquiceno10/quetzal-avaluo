@@ -176,21 +176,21 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             /* CONFIGURACIÓN DE PÁGINA: Sin headers/footers */
             @page {
               size: auto;
-              margin: 0;
+              margin: 15mm;
             }
 
             body {
               font-family: 'Outfit', sans-serif;
               font-size: 13px;
-              margin: 15mm;
+              margin: 0;
               padding: 0;
               background: white;
               color: #2C3D37;
             }
 
             .container {
-              max-width: 960px;
-              margin: 0 auto;
+              max-width: 100%;
+              margin: 0;
               padding: 0;
             }
 
@@ -642,11 +642,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 </div>
 
                 <div class="hero-details-box">
-                  <div class="hero-det
-
-ail-row" style="align-items: center;">
+                  <div class="hero-detail-row" style="align-items: flex-start;">
                     <span class="hero-detail-label" style="align-self: center;">Rango Sugerido</span>
-                    <div style="text-align: right; line-height: 1.2;">
+                    <div style="text-align: right; line-height: 1.4;">
                       <div class="hero-detail-value">${formatCurrency(rangoMin)}</div>
                       <div class="hero-detail-value">${formatCurrency(rangoMax)}</div>
                     </div>

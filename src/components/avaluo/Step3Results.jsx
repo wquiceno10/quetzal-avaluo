@@ -334,11 +334,12 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                             </div>
                         </div>
                         <div className="bg-[#FFFFFF]/10 backdrop-blur-sm border border-[#FFFFFF]/10 rounded-xl p-4 w-full lg:w-auto min-w-[280px] space-y-3">
-                            <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                                <span className="text-[#D3DDD6] text-sm">Rango Sugerido</span>
-                                <span className="font-semibold font-outfit text-white">
-                                    {rangoMin ? formatCurrency(rangoMin) : '—'} - {rangoMax ? formatCurrency(rangoMax) : '—'}
-                                </span>
+                            <div className="flex justify-between items-start border-b border-white/10 pb-2">
+                                <span className="text-[#D3DDD6] text-sm self-center">Rango Sugerido</span>
+                                <div className="text-right">
+                                    <div className="font-semibold font-outfit text-white">{rangoMin ? formatCurrency(rangoMin) : '—'}</div>
+                                    <div className="font-semibold font-outfit text-white">{rangoMax ? formatCurrency(rangoMax) : '—'}</div>
+                                </div>
                             </div>
                             <div className="flex justify-between items-center border-b border-white/10 pb-2">
                                 <span className="text-[#D3DDD6] text-sm">Precio m² Ref.</span>

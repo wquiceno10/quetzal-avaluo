@@ -358,10 +358,10 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                         <SelectValue placeholder="Selecciona" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ligera">Reforma Ligera ($0 - $2'000.000)</SelectItem>
-                        <SelectItem value="moderada">Reforma Moderada ($2'000.000 - $5'000.000)</SelectItem>
-                        <SelectItem value="amplia">Remodelación Amplia ($5'000.000 - $10'000.000)</SelectItem>
-                        <SelectItem value="premium">Remodelación Premium (Más de $10'000.000)</SelectItem>
+                        <SelectItem value="ligera">Reforma Ligera ($0 - $5'000.000)</SelectItem>
+                        <SelectItem value="moderada">Reforma Moderada ($5'000.000 - $15'000.000)</SelectItem>
+                        <SelectItem value="amplia">Remodelación Amplia ($15'000.000 - $20'000.000)</SelectItem>
+                        <SelectItem value="premium">Remodelación Premium (Más de $20'000.000)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
