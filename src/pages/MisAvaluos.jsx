@@ -262,7 +262,7 @@ export default function MisAvaluos() {
                                                     <div>
                                                         <p className="font-semibold text-[#2C3D37] capitalize text-lg">{avaluo.tipo_inmueble}</p>
                                                         <p className="text-sm text-[#4F5B55]">
-                                                            {avaluo.area_construida} m² • {avaluo.habitaciones || 0} Hab • {avaluo.banos || 0} Baños
+                                                            {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {avaluo.habitaciones || avaluo.payload_json?.habitaciones || '—'} Hab • {avaluo.banos || avaluo.payload_json?.banos || '—'} Baños
                                                         </p>
                                                     </div>
                                                 </div>
