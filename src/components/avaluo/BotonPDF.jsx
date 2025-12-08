@@ -173,7 +173,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Raleway:wght@300;400;500;600&display=swap');
 
-            /* CONFIGURACIÓN DE PÁGINA: Elimina about:blank y margenes del navegador */
+            /* CONFIGURACIÓN DE PÁGINA: Sin headers/footers */
             @page {
               size: auto;
               margin: 0;
@@ -182,64 +182,16 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             body {
               font-family: 'Outfit', sans-serif;
               font-size: 13px;
-              margin: 20mm 15mm 20mm 15mm; /* Margen simulado para el contenido */
-              padding-top: 70px; /* Espacio para el header fijo + margen seguro */
-              padding-bottom: 70px; /* Espacio para el footer fijo + margen seguro */
+              margin: 15mm;
+              padding: 0;
               background: white;
               color: #2C3D37;
             }
 
-            /* HEADER FIJO PERSONALIZADO */
-            .print-header {
-                position: fixed;
-                top: 10mm;
-                left: 15mm;
-                right: 15mm;
-                height: 30px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 10px;
-                color: #7A8C85;
-                border-bottom: 1px solid #E0E5E2;
-                padding-bottom: 5px;
-                z-index: 1000;
-                background: white;
-            }
-
-            /* FOOTER FIJO PERSONALIZADO */
-            .print-footer {
-                position: fixed;
-                bottom: 10mm;
-                left: 15mm;
-                right: 15mm;
-                text-align: center;
-                font-size: 9px;
-                color: #A3B2AA;
-                border-top: 1px solid #E0E5E2;
-                padding-top: 10px;
-                z-index: 1000;
-                background: white;
-            }
-
             .container {
-              max-width: 960px;
-              margin: 0 auto;
+              max-width: 100%;
+              margin: 0;
               padding: 0;
-            }
-            
-            /* Responsive container widths */
-            @media (max-width: 1024px) {
-              .container {
-                max-width: 768px;
-              }
-            }
-            
-            @media (max-width: 768px) {
-              .container {
-                max-width: 100%;
-                padding: 0 15px;
-              }
             }
 
             /* --- ESTILOS ORIGINALES CONSERVADOS --- */
@@ -631,15 +583,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         </head>
 
         <body>
-          <div class="print-header">
-            <span style="font-weight: 600;">Fecha: ${fecha}</span>
-            <span style="font-weight: 700; color: #2C3D37;">Reporte de Avalúo - Quetzal Hábitats</span>
-          </div>
 
-          <div class="print-footer">
-             Quetzal Hábitats - Inteligencia Inmobiliaria &copy; ${new Date().getFullYear()} <br/>
-             <span style="font-style: italic; font-size: 8px; margin-top: 2px; display: inline-block;">Documento generado automáticamente</span>
-          </div>
 
           <div class="container">
             <div class="hero-header">
