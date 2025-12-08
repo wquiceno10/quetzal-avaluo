@@ -182,8 +182,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             body {
               font-family: 'Outfit', sans-serif;
               margin: 20mm 15mm 20mm 15mm; /* Margen simulado para el contenido */
-              padding-top: 20px; /* Espacio para el header fijo */
-              padding-bottom: 20px; /* Espacio para el footer fijo */
+              padding-top: 70px; /* Espacio para el header fijo + margen seguro */
+              padding-bottom: 70px; /* Espacio para el footer fijo + margen seguro */
               background: white;
               color: #2C3D37;
             }
@@ -202,6 +202,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 color: #7A8C85;
                 border-bottom: 1px solid #E0E5E2;
                 padding-bottom: 5px;
+                z-index: 1000;
+                background: white;
             }
 
             /* FOOTER FIJO PERSONALIZADO */
@@ -215,6 +217,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 color: #A3B2AA;
                 border-top: 1px solid #E0E5E2;
                 padding-top: 10px;
+                z-index: 1000;
+                background: white;
             }
 
             .container {
@@ -267,6 +271,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               padding: 16px;
               border-radius: 12px;
               border: 1px solid #e6e0c7;
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
             .info-section {
               background: #F9FAF9;
@@ -351,6 +357,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               position: relative;
               overflow: hidden;
               box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
             .hero-decoration {
               position: absolute;
@@ -547,6 +555,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               margin-top: 30px;
               border-top: 2px solid #E0E5E2;
               padding-top: 20px;
+              page-break-inside: avoid;
+              break-inside: avoid;
             }
             .analysis-content h4 {
               color: #2C3D37;
