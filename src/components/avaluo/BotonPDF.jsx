@@ -528,10 +528,16 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
             /* Print Styles */
             @media print {
+              @page {
+                margin: 20mm;
+                size: letter;
+              }
               body {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
+                margin: 0 !important; /* Dejar que @page maneje los margenes externos */
+                padding: 0 !important;
               }
 
               /* EVITAR SOLAPES EN PDF */
