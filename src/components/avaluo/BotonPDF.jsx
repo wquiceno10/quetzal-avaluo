@@ -181,6 +181,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
             body {
               font-family: 'Outfit', sans-serif;
+              font-size: 13px;
               margin: 20mm 15mm 20mm 15mm; /* Margen simulado para el contenido */
               padding-top: 70px; /* Espacio para el header fijo + margen seguro */
               padding-bottom: 70px; /* Espacio para el footer fijo + margen seguro */
@@ -437,16 +438,18 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               font-weight: 700;
               font-family: 'Outfit', sans-serif;
             }
-            .analysis-content li {
+             .analysis-content li {
               margin-left: 18px;
               margin-bottom: 6px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
+              font-size: 12px;
             }
             .analysis-content p {
               margin-bottom: 12px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
+              font-size: 12px;
             }
             .hero-badge {
               background: rgba(201, 193, 157, 0.9);
@@ -530,6 +533,17 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
               }
+
+              /* EVITAR SOLAPES EN PDF */
+              .print-header,
+              .print-footer {
+                display: none;
+              }
+
+              .analysis-content {
+                column-count: 1;
+              }
+
               .hero-header {
                 background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%) !important;
                 -webkit-print-color-adjust: exact !important;
@@ -571,14 +585,18 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               font-size: 14px;
               margin: 15px 0 8px 0;
             }
-            .analysis-content li {
+             .analysis-content li {
               margin-bottom: 5px;
-              font-size: 11px;
+              font-size: 12px;
+              color: #4F5B55;
+              font-family: 'Raleway', sans-serif;
             }
             .analysis-content p {
               margin-bottom: 10px;
-              font-size: 11px;
+              font-size: 12px;
               text-align: justify;
+              color: #4F5B55;
+              font-family: 'Raleway', sans-serif;
             }
 
             /* Hero Layout Update */
