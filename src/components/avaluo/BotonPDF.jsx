@@ -218,9 +218,23 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             }
 
             .container {
-              max-width: 100%;
+              max-width: 960px;
               margin: 0 auto;
               padding: 0;
+            }
+            
+            /* Responsive container widths */
+            @media (max-width: 1024px) {
+              .container {
+                max-width: 768px;
+              }
+            }
+            
+            @media (max-width: 768px) {
+              .container {
+                max-width: 100%;
+                padding: 0 15px;
+              }
             }
 
             /* --- ESTILOS ORIGINALES CONSERVADOS --- */
@@ -293,11 +307,19 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               width: 100%;
               border-collapse: collapse;
               margin-top: 15px;
+              table-layout: auto;
             }
             th, td {
               padding: 8px;
               border-bottom: 1px solid #ddd;
               font-size: 11px;
+              white-space: normal;
+              word-wrap: break-word;
+              overflow: visible;
+            }
+            td strong {
+              display: block;
+              margin-bottom: 2px;
             }
             th { background: #F0ECD9; font-weight: 600; }
             .badge {
