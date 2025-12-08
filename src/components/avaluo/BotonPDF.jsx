@@ -274,18 +274,19 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               border-radius: 12px;
               padding: 20px;
               margin: 25px 0;
+              page-break-inside: avoid;
               break-inside: avoid;
             }
             .info-grid {
               display: grid;
               grid-template-columns: repeat(2, 1fr);
-              gap: 15px;
+              gap: 10px;
             }
             .info-item {
               display: flex;
               align-items: baseline;
               gap: 8px;
-              padding: 5px 0;
+              padding: 2px 0;
               border-bottom: 1px solid #eee;
             }
             .info-item:last-child {
@@ -294,25 +295,27 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             .info-label {
               font-weight: 600;
               color: #7A8C85;
-              font-size: 10px;
+              font-size: 11px;
               text-transform: uppercase;
               min-width: 120px;
             }
             .info-value {
               font-weight: 600;
               color: #2C3D37;
-              font-size: 11px;
+              font-size: 12px;
             }
             table {
               width: 100%;
               border-collapse: collapse;
               margin-top: 15px;
               table-layout: auto;
+              page-break-inside: auto;
             }
             th, td {
-              padding: 8px;
+              padding: 6px 8px;
               border-bottom: 1px solid #ddd;
-              font-size: 11px;
+              font-size: 12px;
+              line-height: 1.4;
               white-space: normal;
               word-wrap: break-word;
               overflow: visible;
@@ -321,7 +324,10 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               display: block;
               margin-bottom: 2px;
             }
-            th { background: #F0ECD9; font-weight: 600; }
+            th { background: #F0ECD9; font-weight: 600; text-align: left; }
+            td { vertical-align: top; }
+            td.text-center { text-align: center; }
+            td.text-right { text-align: right; }
             .badge {
               padding: 3px 7px;
               border-radius: 6px;
@@ -387,12 +393,12 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             }
             .hero-description {
               font-size: 13px;
-              line-height: 1.3;
+              line-height: 1.4;
               opacity: 0.9;
-              margin-bottom: 20px;
+              margin-bottom: 12px;
+              margin-top: 8px;
               max-width: 85%; 
               font-weight: 300;
-              margin: 0;
               font-family: 'Raleway', sans-serif;
             }
             .analysis-section {
@@ -405,8 +411,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             .analysis-content {
               column-count: 2;
               column-gap: 30px;
-              font-size: 11px;
-              line-height: 1.6;
+              font-size: 12px;
+              line-height: 1.5;
               text-align: justify;
               color: #4F5B55;
             }
@@ -748,7 +754,10 @@ ail-row" style="align-items: center;">
                 <div class="info-item">
                   <span class="info-label">Estado:</span>
                   <span class="info-value" style="text-transform: capitalize;">
-                    ${(formData.estado_inmueble || formData.estado || comparablesData.estado_inmueble || comparablesData.estado || defaults.estado_inmueble || defaults.estado || '—').replace(/_/g, ' ')}
+                    ${(() => {
+            const estado = formData.estado_inmueble || formData.estado || comparablesData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || defaults.estado;
+            return estado ? estado.replace(/_/g, ' ') : '—';
+          })()}
                   </span>
                 </div>
                 ` : `
@@ -786,12 +795,12 @@ ail-row" style="align-items: center;">
             <table>
               <thead>
                 <tr>
-                  <th>Inmueble</th>
-                  <th>Tipo</th>
-                  <th>Área</th>
-                  <th>Precio Publicado</th>
-                  <th>Precio de Venta</th>
-                  <th>Precio m²</th>
+                  <th style="text-align:left;">Inmueble</th>
+                  <th style="text-align:center;">Tipo</th>
+                  <th style="text-align:center;">Área</th>
+                  <th style="text-align:right;">Precio Publicado</th>
+                  <th style="text-align:right;">Precio de Venta</th>
+                  <th style="text-align:right;">Precio m²</th>
                 </tr>
               </thead>
 
@@ -806,14 +815,14 @@ ail-row" style="align-items: center;">
 
             return `
                     <tr>
-                      <td>
-                        <strong>${item.titulo || 'Inmueble'}</strong><br>
+                      <td style="text-align:left;">
+                        <strong style="display:block; margin-bottom:2px;">${item.titulo || 'Inmueble'}</strong>
                         <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
                       </td>
-                      <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-                      <td class="text-center">${formatNumber(item.area_m2)} m²</td>
-                      <td class="text-right">${formatCurrency(item.precio_publicado)} ${esArriendo ? '<span class="sub-text">/mes</span>' : ''}</td>
-                      <td class="text-right">
+                      <td style="text-align:center;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+                      <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>
+                      <td style="text-align:right;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
+                      <td style="text-align:right;">
                         <strong>${formatCurrency(item.precio_cop)}</strong>
                         ${notaArriendo}
                       </td>
