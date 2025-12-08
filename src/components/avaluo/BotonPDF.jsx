@@ -321,9 +321,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               page-break-inside: auto;
             }
             th, td {
-              padding: 6px 8px;
+              padding: 4px 6px;
               border-bottom: 1px solid #ddd;
-              font-size: 13px;
+              font-size: 11px;
               line-height: 1.2;
               white-space: normal;
               word-wrap: break-word;
@@ -850,7 +850,7 @@ ail-row" style="align-items: center;">
                   <th style="text-align:center;">Tipo</th>
                   <th style="text-align:center;">Área</th>
                   <th style="text-align:center; max-width: 60px; white-space: normal;">Hab/<br>Baños</th>
-                  <th style="text-align:center;">Precio Publicado</th>
+                  <th style="text-align:right;">Precio Publicado</th>
                   <th style="text-align:right;">Precio de Venta</th>
                   <th style="text-align:right;">Precio m²</th>
                 </tr>
@@ -876,7 +876,7 @@ ail-row" style="align-items: center;">
                       <td style="text-align:center; white-space: nowrap;">
                         ${item.habitaciones || '—'} / ${item.banos || '—'}
                       </td>
-                      <td style="text-align:center;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
+                      <td style="text-align:right;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
                       <td style="text-align:right;">
                         <strong>${formatCurrency(item.precio_cop)}</strong>
                         ${notaArriendo}
