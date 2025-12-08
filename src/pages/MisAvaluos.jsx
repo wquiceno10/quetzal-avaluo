@@ -32,27 +32,63 @@ export default function MisAvaluos() {
 
             const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
+            // Intentar obtener el usuario actual
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-            if (!user) {
-                // Should be handled by Layout redirect, but double check
+            console.log('[MisAvaluos] getUser result:', { user, userError });
+
+            // Si getUser falla, intentar con getSession como fallback
+            let userEmail = user?.email;
+
+            if (!userEmail) {
+                console.log('[MisAvaluos] getUser returned null, trying getSession...');
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                console.log('[MisAvaluos] getSession result:', { session, sessionError });
+                userEmail = session?.user?.email;
+            }
+
+            if (!userEmail) {
+                console.warn('[MisAvaluos] No se pudo obtener email del usuario');
+                // En desarrollo local, permitir listar todos los avalúos para testing
+                const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+                if (isLocalDev) {
+                    console.log('[MisAvaluos] Modo desarrollo - listando todos los avalúos');
+                    const { data, error } = await supabase
+                        .from('avaluos')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .limit(10); // Limitar a 10 para no saturar
+
+                    if (error) throw error;
+                    setAvaluos(data || []);
+                    setLoading(false);
+                    return;
+                }
+
+                // En producción, si no hay usuario, no mostrar nada
                 setLoading(false);
                 return;
             }
 
-            // La tabla no tiene columna user_id, usamos email del usuario autenticado
+            console.log('[MisAvaluos] Buscando avalúos para email:', userEmail);
+
+            // Buscar avalúos por email del usuario
             const { data, error } = await supabase
                 .from('avaluos')
                 .select('*')
-                .eq('email', user.email)
+                .eq('email', userEmail)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                console.error('[MisAvaluos] Error al consultar avalúos:', error);
+                throw error;
+            }
 
+            console.log('[MisAvaluos] Avalúos encontrados:', data?.length || 0);
             setAvaluos(data || []);
         } catch (err) {
-            console.error('Error fetching avaluos:', err);
+            console.error('[MisAvaluos] Error fetching avaluos:', err);
             setError('No pudimos cargar tus avalúos. Por favor intenta más tarde.');
         } finally {
             setLoading(false);
