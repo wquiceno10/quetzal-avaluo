@@ -848,13 +848,13 @@ ail-row" style="align-items: center;">
             <table>
               <thead>
                 <tr>
-                  <th style="text-align:center; vertical-align:middle;">Inmueble</th>
+                  <th style="text-align:center; vertical-align:middle; min-width: 180px;">Inmueble</th>
                   <th style="text-align:center; vertical-align:middle;">Tipo</th>
                   <th style="text-align:center; vertical-align:middle;">Área</th>
                   <th style="text-align:center; vertical-align:middle; max-width: 50px;">Hab/<br>Baños</th>
-                  <th style="text-align:center; vertical-align:middle; width: 110px;">Precio Publicado</th>
-                  <th style="text-align:center; vertical-align:middle; width: 110px;">Precio de Venta</th>
-                  <th style="text-align:center; vertical-align:middle; width: 100px;">Precio m²</th>
+                  <th style="text-align:center; vertical-align:middle; min-width: 100px;">Precio Publicado</th>
+                  <th style="text-align:center; vertical-align:middle; min-width: 100px;">Precio de Venta</th>
+                  <th style="text-align:center; vertical-align:middle;">Precio m²</th>
                 </tr>
               </thead>
 
