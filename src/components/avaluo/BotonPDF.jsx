@@ -150,12 +150,12 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           // Listas
           .replace(
             /^\s*[-*•]\s+(.*?)$/gm,
-            '<li style="margin-left:18px; font-size:11px; margin-bottom:6px; color:#4F5B55; line-height:1.5;">$1</li>'
+            '<li style="margin-left:18px; font-size:11px; margin-bottom:6px; color:#4F5B55; line-height:1.2;">$1</li>'
           )
           // Párrafos (líneas sueltas que no son tags HTML)
           .replace(
             /^(?!<(h4|li|table|div|strong))(.+)$/gm,
-            '<p style="font-size:11px; line-height:1.6; margin:8px 0; text-align:justify; color:#4F5B55;">$2</p>'
+            '<p style="font-size:11px; line-height:1.2; margin:8px 0; text-align:justify; color:#4F5B55;">$2</p>'
           );
       };
 
@@ -301,14 +301,16 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             .info-label {
               font-weight: 600;
               color: #7A8C85;
-              font-size: 11px;
+              font-size: 12px;
               text-transform: uppercase;
               min-width: 120px;
+              font-family: 'Outfit', sans-serif;
             }
             .info-value {
               font-weight: 600;
               color: #2C3D37;
-              font-size: 12px;
+              font-size: 14px;
+              font-family: 'Outfit', sans-serif;
             }
             table {
               width: 100%;
@@ -320,11 +322,12 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             th, td {
               padding: 6px 8px;
               border-bottom: 1px solid #ddd;
-              font-size: 12px;
-              line-height: 1.4;
+              font-size: 13px;
+              line-height: 1.2;
               white-space: normal;
               word-wrap: break-word;
               overflow: visible;
+              font-family: 'Outfit', sans-serif;
             }
             td strong {
               display: block;
@@ -343,8 +346,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             .badge-venta { background: #4B7F52; }
             .badge-arriendo { background: #2C3D37; }
             .sub-text {
-              font-size: 9px;
-              color: #777;
+              font-size: 11px;
+              color: #888;
+              font-family: 'Raleway', sans-serif;
             }
 
             /* Hero Header Styles */
@@ -401,10 +405,10 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             }
             .hero-description {
               font-size: 13px;
-              line-height: 1.4;
+              line-height: 1.2;
               opacity: 0.9;
               margin-bottom: 12px;
-              margin-top: 8px;
+              margin-top: 2px;
               max-width: 85%; 
               font-weight: 300;
               font-family: 'Raleway', sans-serif;
@@ -419,26 +423,30 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             .analysis-content {
               column-count: 2;
               column-gap: 30px;
-              font-size: 12px;
-              line-height: 1.5;
+              font-size: 13px;
+              line-height: 1.2;
               text-align: justify;
               color: #4F5B55;
+              font-family: 'Raleway', sans-serif;
             }
              .analysis-content h4 {
               column-span: all;
               margin: 16px 0 8px 0;
-              font-size: 13px;
+              font-size: 15px;
               color: #2C3D37;
               font-weight: 700;
+              font-family: 'Outfit', sans-serif;
             }
             .analysis-content li {
               margin-left: 18px;
               margin-bottom: 6px;
               color: #4F5B55;
+              font-family: 'Raleway', sans-serif;
             }
             .analysis-content p {
               margin-bottom: 12px;
               color: #4F5B55;
+              font-family: 'Raleway', sans-serif;
             }
             .hero-badge {
               background: rgba(201, 193, 157, 0.9);
@@ -509,7 +517,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               font-size: 11px;
               color: rgba(211, 221, 214, 0.8);
               font-style: italic;
-              line-height: 1.5;
+              line-height: 1.2;
               margin-top: 16px;
               position: relative;
               z-index: 1;
@@ -667,7 +675,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
 ail-row" style="align-items: center;">
                     <span class="hero-detail-label" style="align-self: center;">Rango Sugerido</span>
-                    <div style="text-align: right; line-height: 1.4;">
+                    <div style="text-align: right; line-height: 1.2;">
                       <div class="hero-detail-value">${formatCurrency(rangoMin)}</div>
                       <div class="hero-detail-value">${formatCurrency(rangoMax)}</div>
                     </div>
@@ -765,7 +773,9 @@ ail-row" style="align-items: center;">
                   <span class="info-label">Estado:</span>
                   <span class="info-value" style="text-transform: capitalize;">
                     ${(() => {
-            const estado = formData.estado_inmueble || formData.estado || comparablesData.estado_inmueble || comparablesData.estado_inmueble || defaults.estado_inmueble || defaults.estado;
+            const estado = formData.estado_inmueble || formData.estado ||
+              comparablesData.estado_inmueble || comparablesData.estado ||
+              defaults.estado_inmueble || defaults.estado;
             return estado ? estado.replace(/_/g, ' ') : '—';
           })()}
                   </span>
@@ -808,7 +818,8 @@ ail-row" style="align-items: center;">
                   <th style="text-align:left;">Inmueble</th>
                   <th style="text-align:center;">Tipo</th>
                   <th style="text-align:center;">Área</th>
-                  <th style="text-align:right;">Precio Publicado</th>
+                  <th style="text-align:center;">Hab/Baños</th>
+                  <th style="text-align:center;">Precio Publicado</th>
                   <th style="text-align:right;">Precio de Venta</th>
                   <th style="text-align:right;">Precio m²</th>
                 </tr>
@@ -831,7 +842,10 @@ ail-row" style="align-items: center;">
                       </td>
                       <td style="text-align:center;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
                       <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>
-                      <td style="text-align:right;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
+                      <td style="text-align:center;">
+                        ${item.habitaciones || '—'} / ${item.banos || '—'}
+                      </td>
+                      <td style="text-align:center;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
                       <td style="text-align:right;">
                         <strong>${formatCurrency(item.precio_cop)}</strong>
                         ${notaArriendo}
