@@ -218,7 +218,7 @@ ${!esLote ? `### 2.2. Método de Rentabilidad (Yield Mensual)
   2. Obtén el promedio de canon/m².
   3. Multiplica ese promedio por los ${areaConstruida || 'metros'} m² del inmueble objetivo para obtener el Canon Mensual Estimado.
 - Investiga y Estima el Yield mensual promedio del sector (ej: 0.4% - 0.6%).
-- Presenta el Yield mensual promedio del sector **Yield promedio mercado: 0.45%**
+- Presenta el Yield mensual promedio del sector **Yield promedio mercado: 0.5%**
 - Aplica la fórmula: Valor estimado = Canon Mensual Estimado / Yield mensual promedio.` : ''}
 
 ## 3. RESULTADOS FINALES
@@ -323,7 +323,7 @@ INSTRUCCIONES DE EXTRACCIÓN:
 
 2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
 
-3. "yield_zona": ${esLote ? 'IGNORAR (Devolver null)' : 'Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.45%", devuelve 0.0045).'}
+3. "yield_zona": ${esLote ? 'IGNORAR (Devolver null)' : 'Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.5%", devuelve 0.005).'}
 
 4. "valor_recomendado_venta": Busca "Valor Recomendado de Venta: $XXX.XXX.XXX".
    Extrae el número ENTERO (elimina puntos y $).

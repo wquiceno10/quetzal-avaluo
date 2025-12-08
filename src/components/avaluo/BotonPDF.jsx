@@ -818,7 +818,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
             <!-- ✔ CORRECCIÓN 3: Nota sobre Yield -->
             <p style="font-size: 10px; color: #666; margin-top: 15px; font-style: italic;">
-              Yield mensual utilizado: ${yieldMensual ? (yieldMensual * 100).toFixed(2) + '%' : '0.45%'}.
+              Yield mensual utilizado: ${yieldMensual ? (yieldMensual * 100).toFixed(2) + '%' : '0.5%'}.
               Este yield corresponde al promedio observado en arriendos residenciales del mercado local.
             </p>
 
