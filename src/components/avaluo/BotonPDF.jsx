@@ -848,13 +848,13 @@ ail-row" style="align-items: center;">
             <table>
               <thead>
                 <tr>
-                  <th style="text-align:left;">Inmueble</th>
-                  <th>Tipo</th>
-                  <th>Área</th>
-                  <th style="max-width: 60px; white-space: normal;">Hab/<br>Baños</th>
-                  <th>Precio Publicado</th>
-                  <th style="width: 120px;">Precio de Venta</th>
-                  <th style="width: 120px;">Precio m²</th>
+                  <th style="text-align:center; vertical-align:middle;">Inmueble</th>
+                  <th style="text-align:center; vertical-align:middle;">Tipo</th>
+                  <th style="text-align:center; vertical-align:middle;">Área</th>
+                  <th style="text-align:center; vertical-align:middle; max-width: 50px;">Hab/<br>Baños</th>
+                  <th style="text-align:center; vertical-align:middle; width: 110px;">Precio Publicado</th>
+                  <th style="text-align:center; vertical-align:middle; width: 110px;">Precio de Venta</th>
+                  <th style="text-align:center; vertical-align:middle; width: 100px;">Precio m²</th>
                 </tr>
               </thead>
 
@@ -873,17 +873,17 @@ ail-row" style="align-items: center;">
                         <strong style="display:block; margin-bottom:2px;">${item.titulo || 'Inmueble'}</strong>
                         <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
                       </td>
-                      <td><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-                      <td>${formatNumber(item.area_m2)} m²</td>
-                      <td style="white-space: nowrap;">
+                      <td style="text-align:center;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+                      <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>
+                      <td style="text-align:center; white-space: nowrap;">
                         ${item.habitaciones || '—'} / ${item.banos || '—'}
                       </td>
-                      <td>${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
-                      <td>
+                      <td style="text-align:right;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
+                      <td style="text-align:right;">
                         <strong>${formatCurrency(item.precio_cop)}</strong>
                         ${notaArriendo}
                       </td>
-                      <td>
+                      <td style="text-align:right;">
                         ${formatCurrency(item.precio_m2)}
                       </td>
                     </tr>
