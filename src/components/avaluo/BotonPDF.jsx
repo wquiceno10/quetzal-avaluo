@@ -547,7 +547,14 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               }
 
               .analysis-content {
-                column-count: 1;
+                column-count: 2;
+                column-gap: 30px;
+              }
+              
+              .analysis-content p, 
+              .analysis-content li {
+                break-inside: avoid;
+                page-break-inside: avoid;
               }
 
               .hero-header {
