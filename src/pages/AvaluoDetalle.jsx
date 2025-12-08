@@ -90,7 +90,11 @@ export default function AvaluoDetalle() {
         banos: avaluo.banos,
         estrato: avaluo.estrato,
         edad_inmueble: avaluo.edad_inmueble,
-        estado_inmueble: avaluo.estado_inmueble
+        estado_inmueble: avaluo.estado_inmueble,
+        // Contact info for direct resend
+        email: avaluo.email,
+        nombre_contacto: avaluo.nombre_contacto || avaluo.contacto_nombre,
+        contacto_telefono: avaluo.contacto_telefono || avaluo.telefono
     };
 
     // Si mostramos la vista de contacto (Finalizar Informe)
@@ -107,7 +111,7 @@ export default function AvaluoDetalle() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8" >
             <div className="mb-6 flex items-center justify-between">
                 <Button
                     variant="ghost"
@@ -130,6 +134,6 @@ export default function AvaluoDetalle() {
                 onUpdate={() => { }}
                 autoDownloadPDF={autoDownload}
             />
-        </div>
+        </div >
     );
 }

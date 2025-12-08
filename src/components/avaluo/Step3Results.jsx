@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { generateAvaluoEmailHtml } from '@/lib/emailGenerator';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,17 +17,20 @@ import {
     ChevronUp,
     FileText,
     Globe,
-    Download
+    Download,
+    DollarSign,
+    X,
+    Loader2,
+    Mail,
+    Send
 } from 'lucide-react';
 import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
 
 // --- COMPONENTE DE FORMATO DE TEXTO ---
-// --- COMPONENTE DE FORMATO DE TEXTO ---
 const AnalisisAI = ({ text }) => {
     if (!text) return null;
 
-    // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
     // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
     const cleanText = text
         .replace(/^-{3,}\s*$/gm, '')
@@ -115,14 +120,9 @@ const AnalisisAI = ({ text }) => {
     );
 };
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Home, TrendingUp, DollarSign, FileText, X } from 'lucide-react';
-import BotonPDF from './BotonPDF';
 
-// ... (renderError y AnalisisAI helper functions)
+
+
 
 export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF }) {
     const [mostrarComparables, setMostrarComparables] = useState(false);
@@ -138,6 +138,69 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
             return () => clearTimeout(timer);
         }
     }, [autoDownloadPDF]);
+
+    const sendEmailMutation = useMutation({
+        mutationFn: async () => {
+            const data = formData.comparables_data || formData;
+            const codigoAvaluo = formData.codigo_avaluo || data.codigo_avaluo;
+
+            // Recalcular valores para el email (misma lógica que en render)
+            const valorVentaDirecta = validarNumero(data.valor_estimado_venta_directa);
+            const valorRentabilidad = validarNumero(data.valor_estimado_rentabilidad);
+            const rangoMin = validarNumero(data.rango_valor_min);
+            const rangoMax = validarNumero(data.rango_valor_max);
+
+            let valorPrincipal = validarNumero(data.valor_final);
+            if (!valorPrincipal) {
+                if (rangoMin && rangoMax) valorPrincipal = Math.round((rangoMin + rangoMax) / 2);
+                else if (valorVentaDirecta && valorRentabilidad) valorPrincipal = Math.round(valorVentaDirecta * 0.80 + valorRentabilidad * 0.20);
+                else valorPrincipal = valorVentaDirecta || valorRentabilidad || null;
+            }
+
+            const emailHtml = generateAvaluoEmailHtml({
+                data: { ...data, ...formData },
+                codigoAvaluo,
+                valorEstimadoFinal: valorPrincipal,
+                rangoMin,
+                rangoMax
+            });
+
+            const response = await fetch(`${import.meta.env.VITE_WORKER_EMAIL_URL}/send-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: formData.email || formData.contacto_email, // Priorizar datos guardados en BD
+                    subject: `Reporte de Avalúo: ${data.tipo_inmueble} en ${data.barrio}`,
+                    htmlBody: emailHtml
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al enviar el correo');
+            }
+            return true;
+        },
+        onSuccess: () => {
+            alert("¡Correo reenviado con éxito!");
+        },
+        onError: (error) => {
+            console.error("Error reenviando correo:", error);
+            alert("Error al reenviar el correo. Por favor intenta de nuevo.");
+        }
+    });
+
+    const handleAction = () => {
+        // Si ya tiene ID y datos de contacto, reenviar directamente
+        if (formData.id && (formData.email || formData.contacto_email)) {
+            if (confirm(`¿Deseas reenviar el reporte a ${formData.email || formData.contacto_email}?`)) {
+                sendEmailMutation.mutate();
+            }
+        } else {
+            // Si es nuevo o no tiene datos, ir al formulario
+            onNext();
+        }
+    };
 
     if (!formData) return renderErrorState('Datos del formulario no disponibles', onBack);
 
@@ -471,8 +534,25 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                             Nuevo Avalúo
                         </Button>
                     )}
-                    <Button onClick={onNext} className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium shadow-lg transition-all" disabled={!valorPrincipal}>
-                        Finalizar Informe <ArrowRight className="w-5 h-5 ml-2" />
+                    <Button
+                        onClick={handleAction}
+                        className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium shadow-lg transition-all"
+                        disabled={!valorPrincipal || sendEmailMutation.isPending}
+                    >
+                        {sendEmailMutation.isPending ? (
+                            <>
+                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                Enviando...
+                            </>
+                        ) : (
+                            <>
+                                {formData.id && (formData.email || formData.contacto_email) ? (
+                                    <>Reenviar al correo <Send className="w-5 h-5 ml-2" /></>
+                                ) : (
+                                    <>Enviar al correo <ArrowRight className="w-5 h-5 ml-2" /></>
+                                )}
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>
