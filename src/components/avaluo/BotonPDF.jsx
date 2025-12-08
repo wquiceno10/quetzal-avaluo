@@ -531,21 +531,15 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             /* Print Styles */
             @media print {
               @page {
-                margin: 20mm;
+                margin: 0;
                 size: letter;
               }
               body {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
-                margin: 0 !important; /* Dejar que @page maneje los margenes externos */
-                padding: 0 !important;
-              }
-
-              /* EVITAR SOLAPES EN PDF */
-              .print-header,
-              .print-footer {
-                display: none;
+                margin: 0 !important;
+                padding: 60px 20mm 60px 20mm !important;
               }
 
               .analysis-content {
@@ -854,7 +848,7 @@ ail-row" style="align-items: center;">
                   <th style="text-align:center; vertical-align:middle; max-width: 50px;">Hab/<br>Baños</th>
                   <th style="text-align:center; vertical-align:middle; min-width: 135px;">Precio Publicado</th>
                   <th style="text-align:center; vertical-align:middle; min-width: 135px;">Precio de Venta</th>
-                  <th style="text-align:center; vertical-align:middle;max-width: 150px">Precio m²</th>
+                  <th style="text-align:center; vertical-align:middle; width: 150px">Precio m²</th>
                 </tr>
               </thead>
 
