@@ -189,8 +189,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             }
 
             .container {
-              max-width: 100%;
-              margin: 0;
+              max-width: 960px;
+              margin: 0 auto;
               padding: 0;
             }
 
@@ -262,18 +262,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             .info-value {
               font-weight: 600;
               color: #2C3D37;
-              font-size: 14px;
-              font-family: 'Outfit', sans-serif;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 15px;
-              table-layout: auto;
-              page-break-inside: auto;
-            }
-            th, td {
-              padding: 4px 6px;
               border-bottom: 1px solid #ddd;
               font-size: 11px;
               line-height: 1.2;
