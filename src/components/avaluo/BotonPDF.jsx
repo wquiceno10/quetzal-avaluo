@@ -189,8 +189,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             }
 
             .container {
-              max-width: 100%;
-              margin: 0;
+              max-width: 960px;
+              margin: 0 auto;
               padding: 0;
             }
 
@@ -792,7 +792,7 @@ ail-row" style="align-items: center;">
                   <th style="text-align:center; vertical-align:middle; max-width: 50px;">Hab/<br>Baños</th>
                   <th style="text-align:center; vertical-align:middle; min-width: 135px;">Precio Publicado</th>
                   <th style="text-align:center; vertical-align:middle; min-width: 135px;">Precio de Venta</th>
-                  <th style="text-align:center; vertical-align:middle; width: 150px">Precio m²</th>
+                  <th style="text-align:center; vertical-align:middle; min-width: 130px;">Precio m²</th>
                 </tr>
               </thead>
 

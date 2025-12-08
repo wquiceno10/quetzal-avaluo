@@ -90,7 +90,7 @@ export default function AvaluoDetalle() {
         banos: avaluo.banos,
         estrato: avaluo.estrato,
         edad_inmueble: avaluo.edad_inmueble,
-        estado_inmueble: avaluo.estado_inmueble,
+        estado_inmueble: avaluo.estado_inmueble || avaluo.payload_json?.estado_inmueble || avaluo.payload_json?.estado || avaluo.payload_json?.inmueble_objetivo?.estado_inmueble || avaluo.payload_json?.inmueble_objetivo?.estado,
         // Contact info for direct resend
         email: avaluo.email,
         nombre_contacto: avaluo.nombre_contacto || avaluo.contacto_nombre,
