@@ -402,8 +402,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               margin: 25px 0;
             }
             .analysis-content {
-              column-count: 2;
-              column-gap: 30px;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 30px;
               font-size: 13px;
               line-height: 1.2;
               text-align: justify;
@@ -522,8 +523,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               }
 
               .analysis-content {
-                column-count: 2;
-                column-gap: 30px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 30px;
               }
               
               .analysis-content p, 

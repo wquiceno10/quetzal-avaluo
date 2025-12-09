@@ -97,6 +97,16 @@ export default function AvaluoDetalle() {
         contacto_telefono: avaluo.contacto_telefono || avaluo.telefono
     };
 
+    // DEBUG: Log Estado/Estrato values
+    console.log('🔍 DEBUG AvaluoDetalle:', {
+        'avaluo.estrato': avaluo.estrato,
+        'avaluo.estado_inmueble': avaluo.estado_inmueble,
+        'payload_json.estrato': avaluo.payload_json?.estrato,
+        'payload_json.estado_inmueble': avaluo.payload_json?.estado_inmueble,
+        'formData.estrato': formData.estrato,
+        'formData.estado_inmueble': formData.estado_inmueble
+    });
+
     // Si mostramos la vista de contacto (Finalizar Informe)
     if (showContact) {
         return (
