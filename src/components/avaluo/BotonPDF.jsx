@@ -464,6 +464,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               color: #D3DDD6;
               opacity: 0.8;
             }
+            .hero-details-box {
               background: rgba(255, 255, 255, 0.1);
               border: 1px solid rgba(255, 255, 255, 0.1);
               border-radius: 12px;
