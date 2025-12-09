@@ -92,13 +92,20 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: email, // String, not array
-          subject: `Reporte de Avalúo: ${data.tipo_inmueble} en ${data.barrio}`,
+          subject: `Reporte de Avalúo: ${formData.tipo_inmueble} en ${formData.barrio || formData.municipio || 'ubicación'}`,
           htmlBody: emailHtml // Worker expects "htmlBody", not "html"
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorText = await response.text();
+        console.error('Worker email error:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          throw new Error(`Error al enviar correo: ${response.status} - ${errorText}`);
+        }
         throw new Error(errorData.error || 'Error al enviar el correo');
       }
 
