@@ -300,6 +300,10 @@ FORMATO FINAL
         }
 
         // --- 3. EXTRACCIÓN ESTRUCTURADA CON DEEPSEEK ---
+        let extractedData = {};
+        let nivelConfianza = 'Medio'; // Default
+        let estadisticasComparables = {}; // Default
+
         const extractionPrompt = `
 Del siguiente texto (que contiene listados y análisis), extrae un JSON estructurado.
 
@@ -355,6 +359,7 @@ INSTRUCCIONES DE EXTRACCIÓN:
 Devuelve SOLO JSON válido.
         `.trim();
 
+
         let extractedData = {};
         try {
             const dsResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -394,9 +399,9 @@ Devuelve SOLO JSON válido.
             extractedData = JSON.parse(content);
             if (!extractedData || typeof extractedData !== 'object') extractedData = {};
 
-            // Procesar nivel_confianza y estadísticas
-            const nivelConfianza = extractedData.nivel_confianza || 'Medio';
-            const estadisticasComparables = extractedData.estadisticas_comparables || {};
+            // Procesar nivel_confianza y estadísticas (ahora asignamos a variables ya declaradas)
+            nivelConfianza = extractedData.nivel_confianza || 'Medio';
+            estadisticasComparables = extractedData.estadisticas_comparables || {};
 
             console.log(`Nivel de confianza: ${nivelConfianza}`);
             if (estadisticasComparables.porcentaje_datos_reales) {
