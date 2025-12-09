@@ -109,6 +109,8 @@ export default function AvaluoInmobiliario() {
           area_construida: effectiveAvaluoData.area_construida,
           habitaciones: effectiveAvaluoData.habitaciones,
           banos: effectiveAvaluoData.banos,
+          estrato: effectiveAvaluoData.estrato,
+          estado_inmueble: effectiveAvaluoData.estado_inmueble,
         };
 
         const savedId = await guardarAvaluoEnSupabase({

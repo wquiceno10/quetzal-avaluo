@@ -402,9 +402,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               margin: 25px 0;
             }
             .analysis-content {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 30px;
+              /* Remove grid to prevent text breaking */
               font-size: 13px;
               line-height: 1.2;
               text-align: justify;
@@ -523,9 +521,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               }
 
               .analysis-content {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 30px;
+                /* Simple 2-column layout without breaking text */
+                column-count: 2;
+                column-gap: 30px;
               }
               
               .analysis-content p, 
@@ -811,7 +809,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             <!-- Tabla de comparables -->
             <h2 style="margin-top: 30px;">Propiedades Comparables</h2>
 
-            <table style="margin: 0 auto;">
+            <table style="margin: 0 auto; margin-left: 0; width: 95%;">
               <thead>
                 <tr>
                   <th style="text-align:center; vertical-align:middle; min-width: 180px;">Inmueble</th>
