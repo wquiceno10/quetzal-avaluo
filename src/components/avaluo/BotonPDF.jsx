@@ -385,14 +385,15 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               margin: 0;
             }
             .hero-description {
-              font-size: 13px;
+              font-size: 12px;
               line-height: 1.2;
               opacity: 0.9;
-              margin-bottom: 12px;
-              margin-top: 2px;
+              margin-bottom: 0px;
+              margin-top: 8px;
               max-width: 90%; 
               font-weight: 300;
               font-family: 'Raleway', sans-serif;
+              text-align: justify;
             }
             .analysis-section {
               background: #F9FAF9;
