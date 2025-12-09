@@ -25,7 +25,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
       // Área
       const area = parseFloat(formData.area_construida || comparablesData.area_construida || 0);
 
-      // ✔ CORRECCIÓN 1: Variables nuevas y contadores consistentes
       const precioM2 =
         comparablesData.precio_m2_final ||
         comparablesData.precio_m2_usado ||
@@ -860,7 +859,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               </tbody>
             </table>
 
-            <!-- ✔ CORRECCIÓN 3: Nota sobre Yield -->
             <p style="font-size: 10px; color: #666; margin-top: 15px; font-style: italic;">
               Yield mensual utilizado: ${yieldMensual ? (yieldMensual * 100).toFixed(2) + '%' : '0.5%'}.
               Este yield corresponde al promedio observado en arriendos residenciales del mercado local.

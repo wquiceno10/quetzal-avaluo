@@ -31,13 +31,11 @@ export default function TablaComparables({ comparables }) {
             <TableHead className="text-[#2C3D37] font-semibold text-sm">Tipo</TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm">Ubicación</TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-center">Área</TableHead>
-            {/* CORRECCIÓN: Columna estrecha con salto de línea */}
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-center w-[80px] leading-tight">
               Hab<br /><span className="text-xs font-normal">Baños</span>
             </TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio Publicado</TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio de Venta</TableHead>
-            {/* CORRECCIÓN: Columna ancha para que quepa en una línea */}
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right w-[120px]">$/m²</TableHead>
           </TableRow>
         </TableHeader>
@@ -92,7 +90,6 @@ export default function TablaComparables({ comparables }) {
                 {formatNumber(item.area_m2)} m²
               </TableCell>
 
-              {/* CORRECCIÓN: Datos en dos líneas centrados */}
               <TableCell className="text-sm text-[#4F5B55] text-center align-top py-3">
                 <div className="flex flex-col items-center leading-tight">
                   <span>{item.habitaciones || '-'}</span>

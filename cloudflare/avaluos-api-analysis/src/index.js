@@ -1,11 +1,12 @@
 /**
- * avaluos-api-analysis V10 (Robust + IQR + Deduplication + Normalization)
+ * avaluos-api-analysis V11 (Anti-Hallucination + Robust + IQR + Deduplication)
+ * - Prompts V11: Anti-hallucination system with fuente_validacion
  * - Prompt V2 (Recomendado): Lógica de área dinámica + Fallback robusto
  * - Extracción estricta (V7 logic)
  * - Resumen conciso (V8 logic)
  * - Filtro IQR y Normalización (V10 logic)
  */
-console.log("Deploy V10 (Refined Logic) - " + new Date().toISOString());
+
 
 // --- HELPER: Similitud de Texto (Levenshtein simplificado -> Ratio) ---
 function getSimilarity(s1, s2) {
