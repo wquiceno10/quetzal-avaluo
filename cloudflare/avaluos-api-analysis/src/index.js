@@ -626,6 +626,9 @@ Devuelve SOLO JSON válido.
 
         // Sincronización de Conteos
         const totalReal = comparablesParaTabla.length;
+        const totalVenta = comparablesParaTabla.filter(c => c.tipo_origen === 'venta').length;
+        const totalArriendo = comparablesParaTabla.filter(c => c.tipo_origen === 'arriendo').length;
+
         let finalPerplexityText = perplexityContent || '';
         finalPerplexityText = finalPerplexityText.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
 
@@ -653,6 +656,8 @@ Devuelve SOLO JSON válido.
 
             comparables: comparablesParaTabla,
             total_comparables: comparablesParaTabla.length,
+            total_comparables_venta: totalVenta,
+            total_comparables_arriendo: totalArriendo,
 
             // ERROR 1: Defaults
             ficha_tecnica_defaults: {

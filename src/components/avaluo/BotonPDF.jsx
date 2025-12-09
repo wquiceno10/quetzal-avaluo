@@ -194,6 +194,24 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               padding: 0;
             }
 
+            @media print {
+              @page {
+                margin: 20mm 15mm 20mm 15mm;
+                size: letter;
+              }
+              body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              .container {
+                max-width: 100%;
+                padding: 0 10mm;
+              }
+            }
+
             /* --- ESTILOS ORIGINALES CONSERVADOS --- */
             
             .header-logo {
@@ -769,7 +787,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             <!-- Tabla de comparables -->
             <h2 style="margin-top: 30px;">Propiedades Comparables</h2>
 
-            <table>
+            <table style="margin: 0 auto;">
               <thead>
                 <tr>
                   <th style="text-align:center; vertical-align:middle; min-width: 180px;">Inmueble</th>
