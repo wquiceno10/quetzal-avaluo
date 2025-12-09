@@ -550,8 +550,10 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 page-break-inside: avoid;
               }
               table {
-                page-break-inside: avoid;
-                break-inside: avoid;
+                page-break-before: auto;
+                page-break-after: auto;
+                page-break-inside: auto;
+                break-inside: auto;
               }
               thead {
                 display: table-header-group;
@@ -810,7 +812,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             <!-- Tabla de comparables -->
             <h2 style="margin-top: 30px;">Propiedades Comparables</h2>
 
-            <table style="margin: 0 auto; margin-left: 0; width: 95%;">
+            <table style="width: 100%; max-width: 900px; margin: 20px auto;">
               <thead>
                 <tr>
                   <th style="text-align:center; vertical-align:middle; min-width: 180px;">Inmueble</th>

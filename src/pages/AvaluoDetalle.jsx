@@ -106,6 +106,8 @@ export default function AvaluoDetalle() {
         'formData.estrato': formData.estrato,
         'formData.estado_inmueble': formData.estado_inmueble
     });
+    console.log('🔍 FULL payload_json:', avaluo.payload_json);
+    console.log('🔍 FULL avaluo object keys:', Object.keys(avaluo));
 
     // Si mostramos la vista de contacto (Finalizar Informe)
     if (showContact) {
