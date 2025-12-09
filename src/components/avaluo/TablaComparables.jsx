@@ -23,7 +23,7 @@ export default function TablaComparables({ comparables }) {
   };
 
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-[#E0E5E2]">
+    <div className="w-full overflow-x-auto rounded-lg border border-[#E0E5E2] mx-auto max-w-fit">
       <Table>
         <TableHeader className="bg-[#F9FAF9]">
           <TableRow>
