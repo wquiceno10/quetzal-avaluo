@@ -499,7 +499,8 @@ Devuelve SOLO JSON válido.
                 };
 
                 // Logging interno para verificación (no se envía al frontend)
-                console.log(`[${comparable.titulo}] Validación: ${comparable.fuente_validacion}${comparable.nota_adicional ? ' | Nota: ' + comparable.nota_adicional.substring(0, 50) : ''}`);
+                const notaSafe = comparable.nota_adicional ? String(comparable.nota_adicional) : '';
+                console.log(`[${comparable.titulo}] Validación: ${comparable.fuente_validacion}${notaSafe ? ' | Nota: ' + notaSafe.substring(0, 50) : ''}`);
 
                 return comparable;
             })
