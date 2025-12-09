@@ -34,8 +34,8 @@ export async function guardarAvaluoEnSupabase({
         valor_final: valorFinal,
         codigo_avaluo: codigoAvaluo,
         payload_json: payloadJson,
-        estrato: payloadJson?.estrato || null,
-        estado_inmueble: payloadJson?.estado_inmueble || null,
+        // estrato y estado_inmueble ya están incluidos en payload_json
+        // No se insertan como columnas separadas porque no existen en la tabla
     };
 
     console.log("[SUPABASE] Inserting avalúo:", {
