@@ -52,7 +52,7 @@ const AnalisisAI = ({ text }) => {
     const blocks = cleanText.split('\n\n');
 
     return (
-        <div className="text-[#4F5B55] font-raleway columns-1 md:columns-2 gap-10 space-y-4">
+        <div className="text-[#4F5B55] font-raleway columns-2 gap-10 space-y-4">
             {blocks.map((block, index) => {
                 const trimmed = block.trim();
                 if (!trimmed) return null;
