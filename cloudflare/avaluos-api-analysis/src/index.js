@@ -478,7 +478,8 @@ Devuelve SOLO JSON válido.
                     }
                 }
 
-                return {
+
+                const comparable = {
                     titulo: c.titulo || 'Inmueble',
                     tipo_origen: esArriendo ? 'arriendo' : 'venta',
                     tipo_inmueble: c.tipo_inmueble || tipoInmueble,
@@ -498,7 +499,7 @@ Devuelve SOLO JSON válido.
                 };
 
                 // Logging interno para verificación (no se envía al frontend)
-                console.log(`[${c.titulo}] Validación: ${c.fuente_validacion || 'portal_verificado'}${c.nota_adicional ? ' | Nota: ' + c.nota_adicional.substring(0, 50) : ''}`);
+                console.log(`[${comparable.titulo}] Validación: ${comparable.fuente_validacion}${comparable.nota_adicional ? ' | Nota: ' + comparable.nota_adicional.substring(0, 50) : ''}`);
 
                 return comparable;
             })
