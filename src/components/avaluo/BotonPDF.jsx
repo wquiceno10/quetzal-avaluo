@@ -521,8 +521,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               }
 
               .analysis-content {
-                column-count: 2;
-                column-gap: 30px;
+                /* Single column layout to match results page */
               }
               
               .analysis-content p, 
