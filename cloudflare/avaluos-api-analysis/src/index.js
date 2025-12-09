@@ -228,8 +228,10 @@ ${!esLote ? `### 2.2. Método de Rentabilidad (Yield Mensual)
   1. Calcula el precio por m² de arriendo de cada comparable (Precio / Área).
   2. Obtén el promedio de canon/m².
   3. Multiplica ese promedio por los ${areaConstruida || 'metros'} m² del inmueble objetivo para obtener el Canon Mensual Estimado.
-- Investiga y Estima el Yield mensual promedio del sector (ej: 0.4% - 0.6%).
-- Presenta el Yield mensual promedio del sector **Yield promedio mercado: 0.5%**
+- **YIELD DEL SECTOR:** Investiga y determina el yield mensual promedio real del mercado local para este tipo de inmueble.
+  * Busca datos de rentabilidad típica en ${ubicacion} para propiedades similares.
+  * Si encuentras información específica, úsala. Si no, usa rangos típicos del mercado colombiano (0.4% - 0.6% mensual).
+  * IMPORTANTE: Presenta el yield que uses con el formato exacto: **Yield promedio mercado: X.XX%** (ejemplo: 0.52%, 0.48%, etc.)
 - Aplica la fórmula: Valor estimado = Canon Mensual Estimado / Yield mensual promedio.` : ''}
 
 ## 3. RESULTADOS FINALES
@@ -626,11 +628,28 @@ Devuelve SOLO JSON válido.
                 });
             }
 
-            // Filtro Lote Grande
+            // Filtro Lote Grande (Estricto con Fallback)
             let comparablesParaTabla = comparablesFiltradosPorArea;
             if (esLote && area > 1000) {
-                const filtrados = comparablesFiltradosPorArea.filter(c => (c.area_m2 || 0) >= 500);
-                comparablesParaTabla = filtrados.length >= 3 ? filtrados : comparablesFiltradosPorArea;
+                // Filtro primario: ±50% (estándar de la industria para lotes)
+                const filtradosEstrictos = uniqueComparables.filter(c => {
+                    const a = c.area_m2 || 0;
+                    return a >= area * 0.5 && a <= area * 1.5;
+                });
+
+                // Si hay suficientes comparables (≥5), usar filtro estricto
+                if (filtradosEstrictos.length >= 5) {
+                    comparablesParaTabla = filtradosEstrictos;
+                } else {
+                    // Fallback: ±70% para mercados con poca oferta
+                    const filtradosRelajados = uniqueComparables.filter(c => {
+                        const a = c.area_m2 || 0;
+                        return a >= area * 0.3 && a <= area * 1.7;
+                    });
+                    comparablesParaTabla = filtradosRelajados.length >= 3
+                        ? filtradosRelajados
+                        : uniqueComparables; // Último recurso: usar todos y dejar que IQR filtre
+                }
             }
 
             // D) FILTRO IQR (New V10 Logic)
@@ -676,11 +695,118 @@ Devuelve SOLO JSON válido.
             let finalPerplexityText = perplexityContent || '';
             // Reemplazar frases naturales
             finalPerplexityText = finalPerplexityText.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
-            // Reemplazar literal "total_comparables: X"
-            finalPerplexityText = finalPerplexityText.replace(/total_comparables:\s*\d+/gi, `total_comparables: ${totalReal}`);
+            // Eliminar literal "total_comparables: X" (no debe ser visible)
+            finalPerplexityText = finalPerplexityText.replace(/total_comparables:\s*\d+/gi, '');
 
             let resumenFinal = extractedData.resumen_mercado || 'Análisis de mercado realizado.';
             resumenFinal = resumenFinal.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
+
+            // --- CÁLCULO AUTOMÁTICO DEL NIVEL DE CONFIANZA ---
+            // Protección: Si no hay comparables, nivel = Bajo
+            if (!comparablesParaTabla || comparablesParaTabla.length === 0) {
+                const nivelConfianzaDetalle = {
+                    fuente: 'calculado',
+                    nivel_llm: extractedData.nivel_confianza || null,
+                    total_comparables: 0,
+                    porcentaje_reales: 0,
+                    total_zonas_alternativas: 0,
+                    dispersion_alta: false
+                };
+
+                const resultado = {
+                    resumen_busqueda: resumenFinal,
+                    valor_final: valorFinal,
+                    valor_fuente: valorFuente,
+                    valor_ponderado_referencia: valorPonderado,
+                    rango_valor_min: rangoMin,
+                    rango_valor_max: rangoMax,
+                    rango_fuente: rangoFuente,
+                    valor_estimado_venta_directa: valorVentaDirecta,
+                    valor_estimado_rentabilidad: valorRentabilidad,
+                    precio_m2_final: precioM2Usado,
+                    metodo_mercado_label: 'Enfoque de Mercado (promedio real)',
+                    metodo_ajuste_label: valorRecomendado ? 'Ajuste de Perplexity (criterio técnico)' : 'Promedio de Mercado',
+                    comparables: [],
+                    total_comparables: 0,
+                    total_comparables_venta: 0,
+                    total_comparables_arriendo: 0,
+                    nivel_confianza: 'Bajo',
+                    nivel_confianza_detalle: nivelConfianzaDetalle,
+                    estadisticas_fuentes: {
+                        total_portal_verificado: 0,
+                        total_estimacion_zona: 0,
+                        total_zona_similar: 0,
+                        total_promedio_municipal: 0,
+                    },
+                    ficha_tecnica_defaults: {
+                        habitaciones: 'No especificado',
+                        banos: 'No especificado',
+                        garajes: 'No especificado',
+                        estrato: 'No especificado',
+                        antiguedad: 'No especificado'
+                    },
+                    yield_mensual_mercado: esLote ? null : yieldFinal,
+                    area_construida: area,
+                    perplexity_full_text: finalPerplexityText
+                };
+
+                return new Response(JSON.stringify(resultado), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
+            }
+
+            const total = comparablesParaTabla.length;
+            const totalPortal = comparablesParaTabla.filter(
+                c => c.fuente_validacion === 'portal_verificado'
+            ).length;
+
+            const totalZonasAlternas = comparablesParaTabla.filter(
+                c => c.fuente_validacion === 'zona_similar' ||
+                    c.fuente_validacion === 'promedio_municipal'
+            ).length;
+
+            const ratioReal = total > 0 ? totalPortal / total : 0;
+
+            // Dispersión precio/m² (protegido contra NaN y división por 0)
+            let dispersionAlta = false;
+            const preciosM2Validos = comparablesParaTabla
+                .map(c => c.precio_m2)
+                .filter(v => typeof v === 'number' && v > 0);
+
+            if (preciosM2Validos.length >= 2) {
+                const max = Math.max(...preciosM2Validos);
+                const min = Math.min(...preciosM2Validos);
+                const dispersionRatio = max / min;
+                dispersionAlta = dispersionRatio > 3;
+            }
+
+            let nivelConfianzaCalc = 'Bajo';
+
+            // Regla base por cantidad y % reales
+            if (total >= 12 && ratioReal >= 0.7 && totalZonasAlternas === 0) {
+                nivelConfianzaCalc = 'Alto';
+            } else if (total >= 8 && ratioReal >= 0.4) {
+                nivelConfianzaCalc = 'Medio';
+            } else {
+                nivelConfianzaCalc = 'Bajo';
+            }
+
+            // Ajuste por dispersión
+            if (dispersionAlta) {
+                if (nivelConfianzaCalc === 'Alto') nivelConfianzaCalc = 'Medio';
+                else if (nivelConfianzaCalc === 'Medio') nivelConfianzaCalc = 'Bajo';
+            }
+
+            const nivelConfianzaLLM = extractedData.nivel_confianza || null;
+
+            const nivelConfianzaDetalle = {
+                fuente: nivelConfianzaLLM ? 'calculado+llm' : 'calculado',
+                nivel_llm: nivelConfianzaLLM,
+                total_comparables: total,
+                porcentaje_reales: Math.round(ratioReal * 100),
+                total_zonas_alternativas: totalZonasAlternas,
+                dispersion_alta: dispersionAlta
+            };
 
             const resultado = {
                 resumen_busqueda: resumenFinal,
@@ -706,8 +832,9 @@ Devuelve SOLO JSON válido.
                 total_comparables_venta: totalVenta,
                 total_comparables_arriendo: totalArriendo,
 
-                // Nivel de confianza y estadísticas de fuentes (V11)
-                nivel_confianza: nivelConfianza,
+                // Nivel de confianza y estadísticas de fuentes (V11 - Calculado)
+                nivel_confianza: nivelConfianzaCalc,
+                nivel_confianza_detalle: nivelConfianzaDetalle,
                 estadisticas_fuentes: {
                     total_portal_verificado: comparablesParaTabla.filter(c => c.fuente_validacion === 'portal_verificado').length,
                     total_estimacion_zona: comparablesParaTabla.filter(c => c.fuente_validacion === 'estimacion_zona').length,
@@ -724,7 +851,7 @@ Devuelve SOLO JSON válido.
                     antiguedad: 'No especificado'
                 },
 
-                yield_mensual_mercado: yieldFinal,
+                yield_mensual_mercado: esLote ? null : yieldFinal,
                 area_construida: area,
                 perplexity_full_text: finalPerplexityText
             };

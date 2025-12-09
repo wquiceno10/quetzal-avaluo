@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
+import { construirTextoConfianza } from '@/lib/confidenceHelper';
 
 // Helper: Convertir texto a Title Case (Primera Letra Mayúscula)
 const toTitleCase = (str) => {
@@ -528,14 +529,36 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
             {/* 5. TABLA DE COMPARABLES */}
             {tieneComparables && (
                 <>
-                    {/* Alert de nivel de confianza bajo */}
-                    {data.nivel_confianza === 'Bajo' && (
-                        <Alert variant="default" className="border-yellow-300 bg-yellow-50 mb-6 mt-6">
-                            <AlertCircle className="h-4 w-4 text-yellow-600" />
-                            <AlertDescription className="text-yellow-800">
-                                <strong>Nota:</strong> Este análisis tiene un nivel de confianza bajo debido a
-                                información limitada en la zona. Se complementó con datos de zonas similares
-                                y promedios municipales.
+                    {/* Alert de nivel de confianza (todos los niveles) */}
+                    {data.nivel_confianza && (
+                        <Alert
+                            variant="default"
+                            className={
+                                data.nivel_confianza === 'Alto'
+                                    ? "border-green-300 bg-green-50 mb-6 mt-6"
+                                    : data.nivel_confianza === 'Medio'
+                                        ? "border-blue-300 bg-blue-50 mb-6 mt-6"
+                                        : "border-yellow-300 bg-yellow-50 mb-6 mt-6"
+                            }
+                        >
+                            <AlertCircle className={
+                                data.nivel_confianza === 'Alto'
+                                    ? "h-4 w-4 text-green-600"
+                                    : data.nivel_confianza === 'Medio'
+                                        ? "h-4 w-4 text-blue-600"
+                                        : "h-4 w-4 text-yellow-600"
+                            } />
+                            <AlertDescription className={
+                                data.nivel_confianza === 'Alto'
+                                    ? "text-green-800"
+                                    : data.nivel_confianza === 'Medio'
+                                        ? "text-blue-800"
+                                        : "text-yellow-800"
+                            }>
+                                {construirTextoConfianza(
+                                    data.nivel_confianza,
+                                    data.nivel_confianza_detalle
+                                )}
                             </AlertDescription>
                         </Alert>
                     )}
@@ -551,7 +574,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                 </div>
                                 <div>
                                     <h3 className="font-outfit font-semibold text-base text-[#2C3D37]">Propiedades Comparables</h3>
-                                    <p className="text-xs text-[#7A8C85]">Ver los {data.comparables.length} inmuebles usados para el cálculo</p>
+                                    <p className="text-xs text-[#7A8C85]">Ver los {totalComparables || data.comparables.length} inmuebles usados para el cálculo</p>
                                 </div>
                             </div>
                             {mostrarComparables ? <ChevronUp className="w-5 h-5 text-[#7A8C85]" /> : <ChevronDown className="w-5 h-5 text-[#7A8C85]" />}

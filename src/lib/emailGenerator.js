@@ -2,6 +2,8 @@
  * Genera el HTML para el correo electrónico del reporte de avalúo.
  * DISEÑO CORRECTO - Matching user screenshots
  */
+import { construirTextoConfianza } from './confidenceHelper';
+
 export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal, rangoMin, rangoMax }) => {
   const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
   const formatNumber = (val) => val ? Math.round(val).toLocaleString('es-CO') : '—';
@@ -94,6 +96,29 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
             <tr><td class="data-label">Uso del Lote</td><td class="data-val">${data.uso_lote || '-'}</td></tr>
             `}
           </table>
+
+          <!-- NIVEL DE CONFIANZA -->
+          ${comparablesData.nivel_confianza ? `
+          <div style="background: ${comparablesData.nivel_confianza === 'Alto' ? '#f0fdf4' : comparablesData.nivel_confianza === 'Medio' ? '#eff6ff' : '#fffbeb'}; 
+                      border: 1px solid ${comparablesData.nivel_confianza === 'Alto' ? '#86efac' : comparablesData.nivel_confianza === 'Medio' ? '#93c5fd' : '#fcd34d'}; 
+                      border-radius: 8px; 
+                      padding: 15px; 
+                      margin: 20px 0;">
+            <div style="font-weight: 600; 
+                        color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e40af' : '#92400e'}; 
+                        font-size: 13px; 
+                        margin-bottom: 8px;">
+              ℹ️ Nivel de Confianza del Análisis
+            </div>
+            <p style="font-size: 12px; 
+                      line-height: 1.5; 
+                      margin: 0; 
+                      color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e3a8a' : '#78350f'};">
+              ${construirTextoConfianza(comparablesData.nivel_confianza, comparablesData.nivel_confianza_detalle)}
+            </p>
+          </div>
+          ` : ''}
+
 
           <!-- RESUMEN MERCADO -->
           <div class="section-title">Resumen del Mercado</div>

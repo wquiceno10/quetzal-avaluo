@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
+import { construirTextoConfianza } from '@/lib/confidenceHelper';
 
 const BotonPDF = forwardRef(({ formData }, ref) => {
   const generatePDFMutation = useMutation({
@@ -814,6 +815,27 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 ` : ''}
               </div>
             </div>
+            
+<!-- NIVEL DE CONFIANZA DEL ANÁLISIS -->
+            ${comparablesData.nivel_confianza ? `
+            <div style="background: ${comparablesData.nivel_confianza === 'Alto' ? '#f0fdf4' : comparablesData.nivel_confianza === 'Medio' ? '#eff6ff' : '#fffbeb'}; 
+                        border: 1px solid ${comparablesData.nivel_confianza === 'Alto' ? '#86efac' : comparablesData.nivel_confianza === 'Medio' ? '#93c5fd' : '#fcd34d'}; 
+                        border-radius: 8px; 
+                        padding: 16px; 
+                        margin: 20px 0;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 18px;">ℹ️</span>
+                <h4 style="margin: 0; color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e40af' : '#92400e'}; 
+                           font-size: 13px; font-weight: 700;">
+                  Nivel de Confianza del Análisis
+                </h4>
+              </div>
+              <p style="font-size: 11px; line-height: 1.5; margin: 0; 
+                        color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e3a8a' : '#78350f'};">
+                ${construirTextoConfianza(comparablesData.nivel_confianza, comparablesData.nivel_confianza_detalle)}
+              </p>
+            </div>
+            ` : ''}
 
             <!-- ANÁLISIS DETALLADO DEL MODELO -->
             ${comparablesData.perplexity_full_text ? `
@@ -880,10 +902,12 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               </tbody>
             </table>
 
+            ${!esLote ? `
             <p style="font-size: 10px; color: #666; margin-top: 15px; font-style: italic;">
               Yield mensual utilizado: ${yieldMensual ? (yieldMensual * 100).toFixed(2) + '%' : '0.5%'}.
               Este yield corresponde al promedio observado en arriendos residenciales del mercado local.
             </p>
+            ` : ''}
 
             ${esLote ? `
               <p style="font-size: 10px; color: #888; margin-top: 15px; font-style: italic; text-align: justify;">
