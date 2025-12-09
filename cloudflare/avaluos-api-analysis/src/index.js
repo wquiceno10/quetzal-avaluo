@@ -152,26 +152,36 @@ ${instruccionesLote}
 
 INSTRUCCIONES GENERALES (GESTIÓN DE FALLBACK)
 ---------------------------------------------
-1. Si no encuentras suficientes datos reales en portales inmobiliarios, DEBES complementar con:
-   - Estadísticas municipales y regionales.
-   - Valores típicos de mercado según tamaño del inmueble y ubicación.
-2. NUNCA devuelvas valores "0", "null", "N/A" o similares.
-3. Si un dato no aparece directamente, GENERA una estimación razonable basada en promedios municipales.
-4. Siempre entrega comparables suficientes:
+1. **PRIORIDAD ABSOLUTA: NO INVENTES DATOS ESPECÍFICOS**
+   - Si encuentras información real de portales (Fincaraíz, Metrocuadrado, Ciencuadras, etc.), úsala.
+   - Si NO encuentras suficientes datos reales en portales, DEBES complementar con:
+     * Estadísticas municipales y regionales VERIFICABLES.
+     * Valores típicos de mercado según tamaño del inmueble y ubicación.
+     * Datos de barrios o zonas CERCANAS similares en características.
+   - **NUNCA inventes precios específicos de propiedades individuales que no existan.**
+   - Si usas promedios o datos agregados, DÉJALO CLARO en la descripción del comparable.
+
+2. **ESTRATEGIA PARA COMPLETAR MUESTRA:**
+   - Si hay pocos datos en la zona exacta, amplía tu búsqueda a:
+     * Barrios adyacentes o del mismo estrato socioeconómico
+     * Municipios cercanos (Dosquebradas, La Virginia, Santa Rosa de Cabal si es Pereira)
+     * Zonas con características demográficas similares
+   - Indica CLARAMENTE cuando uses datos de zonas alternativas.
+
+3. **PRESENTACIÓN DE COMPARABLES:**
    - Entrega idealmente entre 15 y 20 comparables en total.
    - ${esLote ? 'SOLO incluye propiedades en VENTA (Estrictamente prohibido arriendos).' : 'Incluye AL MENOS 6 propiedades en ARRIENDO en barrios similares para enriquecer el análisis.'}
-   - Incluye propiedades de barrios similares.
-5. NO incluyas hipervínculos ni enlaces. Solo textos descriptivos.
-6. Incluye precios, áreas y valores de mercado siempre en pesos colombianos.
-7. Responde SIEMPRE en español.
-8. IMPORTANTE: Todas las cifras deben escribirse COMPLETAS en pesos colombianos, sin abreviaciones.
+   - Para cada comparable, indica:
+     * Si es dato REAL de portal inmobiliario (fuente_validacion: portal_verificado)
+     * Si es ESTIMACIÓN basada en promedios de zona (fuente_validacion: estimacion_zona)
+     * Si proviene de zona ALTERNATIVA (fuente_validacion: zona_similar, especificar cuál)
+
+4. NUNCA devuelvas valores "0", "null", "N/A" o similares.
+5. Incluye precios, áreas y valores de mercado siempre en pesos colombianos.
+6. Responde SIEMPRE en español.
+7. IMPORTANTE: Todas las cifras deben escribirse COMPLETAS en pesos colombianos, sin abreviaciones.
    Ejemplo: usar $4.200.000, NO 4.2M ni 4.200K.
-9. VALIDACIÓN DE URLS:
-   - Para cada comparable, incluye el campo "url: ..." y "url_estado: ...".
-   - Si la URL es real y verificable, url_estado = "real".
-   - Si no puedes verificarla o es inferida, url_estado = "estimado" y url = null.
-   - NUNCA inventes URLs.
-10. Sincronización de Conteos:
+8. Sincronización de Conteos:
     - Ajusta el campo "total_comparables" mencionado en el texto para que COINCIDA EXACTAMENTE con el número de items listados.
 
 TAREAS
@@ -188,8 +198,8 @@ Luego presenta un listado de **entre 15 a 20 comparables** usando EXACTAMENTE es
 $[Precio] | [Área] m² | [Hab] hab | [Baños] baños<br>
 [Barrio] | [Ciudad]<br>
 **[Fuente]**<br>
-url: [Enlace directo o null]<br>
-url_estado: [real/estimado]
+fuente_validacion: [portal_verificado/estimacion_zona/zona_similar/promedio_municipal]<br>
+[NOTA: Si es zona_similar o estimacion_zona, añade una línea explicativa breve]
 
 Ejemplo:
 **Apartamento en Condina, Pereira**<br>
@@ -197,13 +207,13 @@ Apartamento | Venta<br>
 $245.000.000 | 68 m² | 3 hab | 2 baños<br>
 Condina | Pereira<br>
 **Fincaraiz**<br>
-url: https://fincaraiz.com.co/ejemplo<br>
-url_estado: real
+fuente_validacion: portal_verificado
 
 IMPORTANTE: 
 - Respeta EXACTAMENTE este formato.
 - Usa la etiqueta HTML \`<br>\` al final de cada línea para garantizar el salto de línea visual.
 - Separa cada comparable con una línea en blanco adicional.
+- NO incluyas URLs, enlaces ni hipervínculos en ninguna parte del texto.
 
 ## 2. ANÁLISIS DEL VALOR
 
@@ -316,21 +326,30 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - "barrio": Texto antes del | en la cuarta línea (sin etiquetas HTML)
    - "ciudad": Texto después del | en la cuarta línea (sin etiquetas HTML)
    - "fuente": Texto entre ** ** (usualmente antepenúltima línea)
-   - "url": Texto después de "url: " (penúltima línea, o null si no existe)
-   - "url_estado": Texto después de "url_estado: " (última línea)
+   - "fuente_validacion": Valor después de "fuente_validacion: " (uno de: portal_verificado, estimacion_zona, zona_similar, promedio_municipal)
+   - "nota_adicional": Si existe una línea que empieza con "NOTA:", extrae el texto completo (opcional)
 
-   IMPORTANTE: Elimina cualquier etiqueta HTML (como <br>) de los valores extraídos.
+   IMPORTANTE: 
+   - Elimina cualquier etiqueta HTML (como <br>) de los valores extraídos.
+   - Si NO encuentras el campo "fuente_validacion", asume "portal_verificado" por defecto.
 
 2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
 
-3. "yield_zona": ${esLote ? 'IGNORAR (Devolver null)' : 'Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.5%", devuelve 0.005).'}
+3. "nivel_confianza": Busca en el texto la frase "Nivel de confianza:" y extrae el valor (Alto/Medio/Bajo). Si no existe, devuelve null.
 
-4. "valor_recomendado_venta": Busca "Valor Recomendado de Venta: $XXX.XXX.XXX".
+4. "yield_zona": ${esLote ? 'IGNORAR (Devolver null)' : 'Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.5%", devuelve 0.005).'}
+
+5. "valor_recomendado_venta": Busca "Valor Recomendado de Venta: $XXX.XXX.XXX".
    Extrae el número ENTERO (elimina puntos y $).
 
-5. "rango_sugerido_min": Busca "Rango sugerido: $XXX.XXX.XXX - $YYY.YYY.YYY". Extrae el primer número (ENTERO).
+6. "rango_sugerido_min": Busca "Rango sugerido: $XXX.XXX.XXX - $YYY.YYY.YYY". Extrae el primer número (ENTERO).
 
-6. "rango_sugerido_max": Extrae el segundo número del rango sugerido (ENTERO).
+7. "rango_sugerido_max": Extrae el segundo número del rango sugerido (ENTERO).
+
+8. "estadisticas_comparables": Busca en sección 5 (LIMITACIONES) y extrae:
+   - "porcentaje_datos_reales": Si menciona "X% de comparables son datos reales", extrae el número
+   - "porcentaje_estimaciones": Si menciona porcentaje de estimaciones, extrae el número
+   - "zonas_alternativas_usadas": Array de strings con nombres de barrios/zonas alternativas mencionadas
 
 Devuelve SOLO JSON válido.
         `.trim();
@@ -372,6 +391,15 @@ Devuelve SOLO JSON válido.
             }
 
             extractedData = JSON.parse(content);
+
+            // Procesar nivel_confianza y estadísticas
+            const nivelConfianza = extractedData.nivel_confianza || 'Medio';
+            const estadisticasComparables = extractedData.estadisticas_comparables || {};
+
+            console.log(`Nivel de confianza: ${nivelConfianza}`);
+            if (estadisticasComparables.porcentaje_datos_reales) {
+                console.log(`Datos reales: ${estadisticasComparables.porcentaje_datos_reales}%`);
+            }
 
         } catch (e) {
             return new Response(
@@ -464,9 +492,14 @@ Devuelve SOLO JSON válido.
                     precio_m2: precioM2,
                     yield_mensual: esArriendo ? yieldFinal : null,
 
-                    url: c.url,
-                    url_estado: c.url_estado
+                    fuente_validacion: c.fuente_validacion || 'portal_verificado',
+                    nota_adicional: c.nota_adicional || null
                 };
+
+                // Logging interno para verificación (no se envía al frontend)
+                console.log(`[${c.titulo}] Validación: ${c.fuente_validacion || 'portal_verificado'}${c.nota_adicional ? ' | Nota: ' + c.nota_adicional.substring(0, 50) : ''}`);
+
+                return comparable;
             })
             .filter((c) => c && c.precio_cop > 0 && c.area_m2 > 0);
 
@@ -658,6 +691,15 @@ Devuelve SOLO JSON válido.
             total_comparables: comparablesParaTabla.length,
             total_comparables_venta: totalVenta,
             total_comparables_arriendo: totalArriendo,
+
+            // Nivel de confianza y estadísticas de fuentes (V11)
+            nivel_confianza: nivelConfianza,
+            estadisticas_fuentes: {
+                total_portal_verificado: comparablesParaTabla.filter(c => c.fuente_validacion === 'portal_verificado').length,
+                total_estimacion_zona: comparablesParaTabla.filter(c => c.fuente_validacion === 'estimacion_zona').length,
+                total_zona_similar: comparablesParaTabla.filter(c => c.fuente_validacion === 'zona_similar').length,
+                total_promedio_municipal: comparablesParaTabla.filter(c => c.fuente_validacion === 'promedio_municipal').length,
+            },
 
             // ERROR 1: Defaults
             ficha_tecnica_defaults: {

@@ -482,28 +482,42 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
 
             {/* 5. TABLA DE COMPARABLES */}
             {tieneComparables && (
-                <Card className="border-[#E0E5E2] shadow-sm overflow-hidden transition-all duration-300 mt-6">
-                    <button
-                        onClick={() => setMostrarComparables(!mostrarComparables)}
-                        className="w-full flex items-center justify-between p-4 bg-[#F9FAF9] hover:bg-[#F0F2F1] transition-colors text-left"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-1.5 bg-white border border-[#E0E5E2] rounded-md text-[#2C3D37]">
-                                <FileText className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h3 className="font-outfit font-semibold text-base text-[#2C3D37]">Propiedades Comparables</h3>
-                                <p className="text-xs text-[#7A8C85]">Ver los {data.comparables.length} inmuebles usados para el cálculo</p>
-                            </div>
-                        </div>
-                        {mostrarComparables ? <ChevronUp className="w-5 h-5 text-[#7A8C85]" /> : <ChevronDown className="w-5 h-5 text-[#7A8C85]" />}
-                    </button>
-                    {mostrarComparables && (
-                        <div className="border-t border-[#E0E5E2] animate-in slide-in-from-top-2 duration-300">
-                            <TablaComparables comparables={data.comparables} yieldMensualMercado={data.yield_mensual_mercado} />
-                        </div>
+                <>
+                    {/* Alert de nivel de confianza bajo */}
+                    {data.nivel_confianza === 'Bajo' && (
+                        <Alert variant="default" className="border-yellow-300 bg-yellow-50 mb-6 mt-6">
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertDescription className="text-yellow-800">
+                                <strong>Nota:</strong> Este análisis tiene un nivel de confianza bajo debido a
+                                información limitada en la zona. Se complementó con datos de zonas similares
+                                y promedios municipales.
+                            </AlertDescription>
+                        </Alert>
                     )}
-                </Card>
+
+                    <Card className="border-[#E0E5E2] shadow-sm overflow-hidden transition-all duration-300 mt-6">
+                        <button
+                            onClick={() => setMostrarComparables(!mostrarComparables)}
+                            className="w-full flex items-center justify-between p-4 bg-[#F9FAF9] hover:bg-[#F0F2F1] transition-colors text-left"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-1.5 bg-white border border-[#E0E5E2] rounded-md text-[#2C3D37]">
+                                    <FileText className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="font-outfit font-semibold text-base text-[#2C3D37]">Propiedades Comparables</h3>
+                                    <p className="text-xs text-[#7A8C85]">Ver los {data.comparables.length} inmuebles usados para el cálculo</p>
+                                </div>
+                            </div>
+                            {mostrarComparables ? <ChevronUp className="w-5 h-5 text-[#7A8C85]" /> : <ChevronDown className="w-5 h-5 text-[#7A8C85]" />}
+                        </button>
+                        {mostrarComparables && (
+                            <div className="border-t border-[#E0E5E2] animate-in slide-in-from-top-2 duration-300">
+                                <TablaComparables comparables={data.comparables} yieldMensualMercado={data.yield_mensual_mercado} />
+                            </div>
+                        )}
+                    </Card>
+                </>
             )}
 
             {/* 6. ANÁLISIS COMPLETO IA */}

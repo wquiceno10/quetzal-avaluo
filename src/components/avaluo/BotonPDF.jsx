@@ -56,6 +56,27 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
       const formatNumber = (val) =>
         val ? Math.round(val).toLocaleString('es-CO') : '—';
 
+      // Helpers para badges de fuente_validacion
+      const getBadgeClass = (validation) => {
+        switch (validation) {
+          case 'portal_verificado': return 'success';
+          case 'estimacion_zona': return 'info';
+          case 'zona_similar': return 'warning';
+          case 'promedio_municipal': return 'secondary';
+          default: return 'default';
+        }
+      };
+
+      const getFuenteLabel = (validation) => {
+        switch (validation) {
+          case 'portal_verificado': return '✓ Verificado';
+          case 'estimacion_zona': return '~ Est. Zona';
+          case 'zona_similar': return '→ Zona Similar';
+          case 'promedio_municipal': return '≈ Prom. Mun.';
+          default: return 'Dato';
+        }
+      };
+
       // Helper para generar tablas HTML con estilos
       const generateTableHtml = (rows) => {
         if (!rows.length) return '';
@@ -174,11 +195,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Raleway:wght@300;400;500;600&display=swap');
 
             /* CONFIGURACIÓN DE PÁGINA: Sin headers/footers */
-            @page {
-              size: auto;
-              margin: 15mm;
-            }
-
             body {
               font-family: 'Outfit', sans-serif;
               font-size: 13px;
@@ -306,6 +322,11 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             }
             .badge-venta { background: #4B7F52; }
             .badge-arriendo { background: #2C3D37; }
+            .badge-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+            .badge-info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+            .badge-warning { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+            .badge-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+            .note { font-size: 9px; color: #6b7280; font-style: italic; margin-top: 2px; display: block; }
             .sub-text {
               font-size: 9px;
               color: #888;
@@ -814,6 +835,11 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                       <td style="text-align:left;">
                         <strong style="display:block; margin-bottom:2px;">${item.titulo || 'Inmueble'}</strong>
                         <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
+                        <br>
+                        <span class="badge badge-${getBadgeClass(item.fuente_validacion || 'portal_verificado')}">
+                          ${getFuenteLabel(item.fuente_validacion || 'portal_verificado')}
+                        </span>
+                        ${item.nota_adicional ? `<br><span class="note">${item.nota_adicional}</span>` : ''}
                       </td>
                       <td style="text-align:center;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
                       <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>

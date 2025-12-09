@@ -50,9 +50,16 @@ export default function TablaComparables({ comparables }) {
                   <div className="p-1.5 bg-white border border-[#E0E5E2] rounded-md mt-0.5 shrink-0">
                     <Home className="w-3 h-3 text-[#C9C19D]" />
                   </div>
-                  <span className="text-sm line-clamp-2 leading-snug" title={item.titulo}>
-                    {item.titulo || 'Propiedad Comparable'}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-sm line-clamp-2 leading-snug" title={item.titulo}>
+                      {item.titulo || 'Propiedad Comparable'}
+                    </span>
+                    {item.nota_adicional && (
+                      <div className="text-xs text-gray-600 mt-1 italic border-l-2 border-blue-300 pl-2">
+                        {item.nota_adicional}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </TableCell>
 
