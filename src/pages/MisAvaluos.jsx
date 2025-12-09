@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Mail, Calendar, MapPin, ArrowRight, Home, RefreshCw } from 'lucide-react';
+import { Loader2, FileText, Mail, Calendar, MapPin, ArrowRight, Home, RefreshCw, Trash2 } from 'lucide-react';
 import BotonPDF from '@/components/avaluo/BotonPDF';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,6 +16,7 @@ export default function MisAvaluos() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [sendingEmailId, setSendingEmailId] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
     useEffect(() => {
         fetchAvaluos();
@@ -173,6 +174,36 @@ export default function MisAvaluos() {
         }
     };
 
+    const handleDeleteAvaluo = async (avaluoId, codigoAvaluo) => {
+        if (!confirm(`¿Estás seguro de eliminar el avalúo ${codigoAvaluo}? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+
+        setDeletingId(avaluoId);
+
+        try {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+            const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+            const { error } = await supabase
+                .from('avaluos')
+                .delete()
+                .eq('id', avaluoId);
+
+            if (error) throw error;
+
+            // Actualizar la lista localmente
+            setAvaluos(avaluos.filter(a => a.id !== avaluoId));
+            alert('Avalúo eliminado exitosamente');
+        } catch (e) {
+            console.error('Error eliminando avalúo:', e);
+            alert('Error al eliminar el avalúo. Por favor intenta de nuevo.');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     const formatCurrency = (val) => {
         if (!val && val !== 0) return '—';
         return '$ ' + Math.round(val).toLocaleString('es-CO');
@@ -243,7 +274,7 @@ export default function MisAvaluos() {
                             }
 
                             return (
-                                <Card key={avaluo.id} className="border-[#E0E5E2] hover:shadow-md transition-all duration-300 overflow-hidden">
+                                <Card key={avaluo.id} className="border-[#E0E5E2] hover:shadow-md transition-all duration-300 overflow-hidden relative">
                                     <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
@@ -255,9 +286,23 @@ export default function MisAvaluos() {
                                                     {formatDate(avaluo.created_at)}
                                                 </span>
                                             </div>
-                                            <Badge className="bg-[#DEE8E9] text-[#2C3D37] hover:bg-[#d0ddde]">
-                                                {avaluo.status || 'Completado'}
-                                            </Badge>
+                                            <div className="flex items-center gap-2">
+                                                <Badge className="bg-[#DEE8E9] text-[#2C3D37] hover:bg-[#d0ddde]">
+                                                    {avaluo.status || 'Completado'}
+                                                </Badge>
+                                                <button
+                                                    onClick={() => handleDeleteAvaluo(avaluo.id, avaluo.codigo_avaluo)}
+                                                    disabled={deletingId === avaluo.id}
+                                                    className="p-2 text-[#7A8C85] hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Eliminar avalúo"
+                                                >
+                                                    {deletingId === avaluo.id ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="w-4 h-4" />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="pt-6">
