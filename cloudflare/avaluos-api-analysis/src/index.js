@@ -190,7 +190,7 @@ TAREAS
 
 ## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES
 
-Primero, detalla brevemente la disponibilidad de información encontrada.
+Primero, detalla brevemente la solicitud del usuario y la disponibilidad de información encontrada.
 
 Luego presenta un listado de **entre 15 a 20 comparables** usando EXACTAMENTE este formato (usa la etiqueta <br> para saltos de línea):
 
