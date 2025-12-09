@@ -411,317 +411,319 @@ Devuelve SOLO JSON válido.
         }
 
         // --- 4. PROCESAMIENTO Y LÓGICA DE NEGOCIO ---
-        // Helpers robustos para parseo
-        const sanitizePrice = (n) => {
-            if (typeof n === 'number') return Number.isFinite(n) ? n : null;
-            if (typeof n === 'string') {
-                const clean = n.replace(/\D/g, '');
-                const val = parseInt(clean, 10);
-                return (Number.isFinite(val) && val > 0) ? val : null;
-            }
-            return null;
-        };
-
-        const sanitizeFloat = (n) => {
-            if (typeof n === 'number') return Number.isFinite(n) ? n : null;
-            if (typeof n === 'string') {
-                const clean = n.replace(',', '.').replace(/[^\d.]/g, '');
-                const val = parseFloat(clean);
-                return Number.isFinite(val) ? val : null;
-            }
-            return null;
-        };
-
-        const yieldDefault = 0.005;  // 0.5% mensual (6% anual) - solo fallback
-        const yieldExtracted = sanitizeFloat(extractedData.yield_zona);
-        const yieldFinal = yieldExtracted || yieldDefault;
-        console.log(`Yield usado: ${(yieldFinal * 100).toFixed(2)}% mensual (${yieldExtracted ? 'extraído de mercado' : 'fallback'})`);
-        const yieldFuente = yieldExtracted ? 'mercado' : 'fallback';
-
-        // Portales
-        const portalesUnicos = new Set(
-            citations.map((url) => {
-                try {
-                    return new URL(url).hostname.replace('www.', '').replace('.com.co', '').replace('.com', '');
-                } catch { return null; }
-            }).filter(Boolean)
-        );
-        const portalesList = Array.from(portalesUnicos);
-        if (portalesList.length === 0) portalesList.push('fincaraiz', 'metrocuadrado');
-
-        // Procesamiento de Comparables (SIN HEURÍSTICA)
-        const comparablesRaw = Array.isArray(extractedData.comparables) ? extractedData.comparables : [];
-        const comparables = comparablesRaw
-            .map((c) => {
-                const areaComp = sanitizeFloat(c.area);
-                const precioLista = sanitizePrice(c.precio_lista);
-
-                const esArriendo = c.tipo_operacion && typeof c.tipo_operacion === 'string' && c.tipo_operacion.toLowerCase().includes('arriendo');
-
-                // SI ES LOTE, IGNORAR ARRIENDOS
-                if (esLote && esArriendo) return null;
-
-                let precioVentaEstimado = 0;
-                let precioM2 = 0;
-
-                if (esArriendo) {
-                    // Arriendo -> Capitalización
-                    if (precioLista && yieldFinal > 0) {
-                        precioVentaEstimado = Math.round(precioLista / yieldFinal);
-                    }
-                    if (precioVentaEstimado && areaComp) {
-                        precioM2 = Math.round(precioVentaEstimado / areaComp);
-                    }
-                } else {
-                    // Venta -> Directo
-                    precioVentaEstimado = precioLista || 0;
-                    if (precioVentaEstimado && areaComp) {
-                        precioM2 = Math.round(precioVentaEstimado / areaComp);
-                    }
+        // GLOBAL TRY-CATCH: Captura CUALQUIER error no manejado
+        try {
+            // Helpers robustos para parseo
+            const sanitizePrice = (n) => {
+                if (typeof n === 'number') return Number.isFinite(n) ? n : null;
+                if (typeof n === 'string') {
+                    const clean = n.replace(/\D/g, '');
+                    const val = parseInt(clean, 10);
+                    return (Number.isFinite(val) && val > 0) ? val : null;
                 }
+                return null;
+            };
 
+            const sanitizeFloat = (n) => {
+                if (typeof n === 'number') return Number.isFinite(n) ? n : null;
+                if (typeof n === 'string') {
+                    const clean = n.replace(',', '.').replace(/[^\d.]/g, '');
+                    const val = parseFloat(clean);
+                    return Number.isFinite(val) ? val : null;
+                }
+                return null;
+            };
 
-                const comparable = {
-                    titulo: c.titulo || 'Inmueble',
-                    tipo_origen: esArriendo ? 'arriendo' : 'venta',
-                    tipo_inmueble: c.tipo_inmueble || tipoInmueble,
-                    barrio: c.barrio || c.ubicacion || formData.barrio,
-                    municipio: c.ciudad || formData.municipio,
-                    area_m2: areaComp,
-                    habitaciones: sanitizeFloat(c.habitaciones),
-                    banos: sanitizeFloat(c.banos),
+            const yieldDefault = 0.005;  // 0.5% mensual (6% anual) - solo fallback
+            const yieldExtracted = sanitizeFloat(extractedData.yield_zona);
+            const yieldFinal = yieldExtracted || yieldDefault;
+            console.log(`Yield usado: ${(yieldFinal * 100).toFixed(2)}% mensual (${yieldExtracted ? 'extraído de mercado' : 'fallback'})`);
+            const yieldFuente = yieldExtracted ? 'mercado' : 'fallback';
 
-                    precio_publicado: precioLista,
-                    precio_cop: precioVentaEstimado,
-                    precio_m2: precioM2,
-                    yield_mensual: esArriendo ? yieldFinal : null,
-
-                    fuente_validacion: c.fuente_validacion || 'portal_verificado',
-                    nota_adicional: c.nota_adicional || null
-                };
-
-                // Logging interno para verificación (no se envía al frontend)
-                const notaSafe = comparable.nota_adicional ? String(comparable.nota_adicional) : '';
-                console.log(`[${comparable.titulo}] Validación: ${comparable.fuente_validacion}${notaSafe ? ' | Nota: ' + notaSafe.substring(0, 50) : ''}`);
-
-                return comparable;
-            })
-            .filter((c) => c && c.precio_cop > 0 && c.area_m2 > 0);
-
-        // Validación Mínima
-        if (comparables.length < 5) {
-            return new Response(
-                JSON.stringify({
-                    error: 'Datos insuficientes',
-                    details: `Solo se encontraron ${comparables.length} comparables válidos.`,
-                    perplexity_full_text: perplexityContent,
-                }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            // Portales
+            const portalesUnicos = new Set(
+                citations.map((url) => {
+                    try {
+                        return new URL(url).hostname.replace('www.', '').replace('.com.co', '').replace('.com', '');
+                    } catch { return null; }
+                }).filter(Boolean)
             );
-        }
+            const portalesList = Array.from(portalesUnicos);
+            if (portalesList.length === 0) portalesList.push('fincaraiz', 'metrocuadrado');
 
-        // Cálculos Finales
-        const compsVenta = comparables.filter((c) => c.tipo_origen === 'venta');
-        const compsArriendo = comparables.filter((c) => c.tipo_origen === 'arriendo');
+            // Procesamiento de Comparables (SIN HEURÍSTICA)
+            const comparablesRaw = Array.isArray(extractedData.comparables) ? extractedData.comparables : [];
+            const comparables = comparablesRaw
+                .map((c) => {
+                    const areaComp = sanitizeFloat(c.area);
+                    const precioLista = sanitizePrice(c.precio_lista);
 
-        // 1. Venta Directa (CON PODA DE OUTLIERS)
-        let valorVentaDirecta = null;
-        let precioM2Promedio = 0;
+                    const esArriendo = c.tipo_operacion && typeof c.tipo_operacion === 'string' && c.tipo_operacion.toLowerCase().includes('arriendo');
 
-        if (compsVenta.length > 0) {
-            const sortedByM2 = [...compsVenta].sort((a, b) => a.precio_m2 - b.precio_m2);
-            // Poda del 10%
-            let filteredComps = sortedByM2;
-            if (sortedByM2.length >= 5) {
-                const cut = Math.floor(sortedByM2.length * 0.1);
-                filteredComps = sortedByM2.slice(cut, sortedByM2.length - cut);
-            }
+                    // SI ES LOTE, IGNORAR ARRIENDOS
+                    if (esLote && esArriendo) return null;
 
-            const sumM2 = filteredComps.reduce((acc, c) => acc + c.precio_m2, 0);
-            precioM2Promedio = Math.round(sumM2 / filteredComps.length);
-            valorVentaDirecta = Math.round(precioM2Promedio * area);
-        }
+                    let precioVentaEstimado = 0;
+                    let precioM2 = 0;
 
-        // 2. Rentabilidad
-        let valorRentabilidad = null;
-        let canonPromedio = 0;
+                    if (esArriendo) {
+                        // Arriendo -> Capitalización
+                        if (precioLista && yieldFinal > 0) {
+                            precioVentaEstimado = Math.round(precioLista / yieldFinal);
+                        }
+                        if (precioVentaEstimado && areaComp) {
+                            precioM2 = Math.round(precioVentaEstimado / areaComp);
+                        }
+                    } else {
+                        // Venta -> Directo
+                        precioVentaEstimado = precioLista || 0;
+                        if (precioVentaEstimado && areaComp) {
+                            precioM2 = Math.round(precioVentaEstimado / areaComp);
+                        }
+                    }
 
-        if (!esLote) {
-            if (compsArriendo.length > 0) {
-                const sumCanon = compsArriendo.reduce((acc, c) => acc + c.precio_publicado, 0);
-                canonPromedio = Math.round(sumCanon / compsArriendo.length);
-                valorRentabilidad = Math.round(canonPromedio / yieldFinal);
-            } else {
-                if (valorVentaDirecta) {
-                    valorRentabilidad = valorVentaDirecta;
-                    canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
-                }
-            }
-        }
 
-        // 3. Valor Recomendado Perplexity
-        const valorRecomendado = sanitizePrice(extractedData.valor_recomendado_venta);
+                    const comparable = {
+                        titulo: c.titulo || 'Inmueble',
+                        tipo_origen: esArriendo ? 'arriendo' : 'venta',
+                        tipo_inmueble: c.tipo_inmueble || tipoInmueble,
+                        barrio: c.barrio || c.ubicacion || formData.barrio,
+                        municipio: c.ciudad || formData.municipio,
+                        area_m2: areaComp,
+                        habitaciones: sanitizeFloat(c.habitaciones),
+                        banos: sanitizeFloat(c.banos),
 
-        let valorPonderado = null;
-        if (esLote) {
-            valorPonderado = valorVentaDirecta;
-        } else {
-            valorPonderado = (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0)
-                ? Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4)
-                : null;
-        }
+                        precio_publicado: precioLista,
+                        precio_cop: precioVentaEstimado,
+                        precio_m2: precioM2,
+                        yield_mensual: esArriendo ? yieldFinal : null,
 
-        const valorFinal = valorRecomendado || valorVentaDirecta || valorRentabilidad || 0;
-        const valorFuente = valorRecomendado ? 'perplexity' : 'calculado';
+                        fuente_validacion: c.fuente_validacion || 'portal_verificado',
+                        nota_adicional: c.nota_adicional || null
+                    };
 
-        // Corrección Lotes
-        if (esLote && valorRecomendado) {
-            valorVentaDirecta = valorRecomendado;
-            precioM2Promedio = Math.round(valorRecomendado / area);
-        }
+                    // Logging interno para verificación (no se envía al frontend)
+                    const notaSafe = comparable.nota_adicional ? String(comparable.nota_adicional) : '';
+                    console.log(`[${comparable.titulo}] Validación: ${comparable.fuente_validacion}${notaSafe ? ' | Nota: ' + notaSafe.substring(0, 50) : ''}`);
 
-        console.log(`Valor final: $${valorFinal.toLocaleString()} (fuente: ${valorFuente})`);
+                    return comparable;
+                })
+                .filter((c) => c && c.precio_cop > 0 && c.area_m2 > 0);
 
-        const precioM2Usado = precioM2Promedio || (valorFinal > 0 ? Math.round(valorFinal / area) : 0);
-
-        // 4. Rangos
-        const rangoMin = sanitizePrice(extractedData.rango_sugerido_min) || Math.round(valorFinal * 1.00);
-        const rangoMax = sanitizePrice(extractedData.rango_sugerido_max) || Math.round(valorFinal * 1.04);
-        const rangoFuente = extractedData.rango_sugerido_min ? 'perplexity' : 'calculado';
-
-        // --- 5. DEDUPLICACIÓN Y FILTRADO (V10) ---
-        const uniqueComparables = [];
-        for (const comp of comparables) {
-            const isDuplicate = uniqueComparables.some(existing => {
-                const precioBaseExisting = existing.precio_cop || existing.precio_publicado || 0;
-                const precioBaseComp = comp.precio_cop || comp.precio_publicado || 0;
-                const areaBaseExisting = existing.area_m2 || 0;
-                const areaBaseComp = comp.area_m2 || 0;
-
-                const priceMatch = precioBaseExisting > 0
-                    ? Math.abs(precioBaseExisting - precioBaseComp) / precioBaseExisting < 0.01
-                    : false;
-                const areaMatch = areaBaseExisting > 0
-                    ? Math.abs(areaBaseExisting - areaBaseComp) / areaBaseExisting < 0.01
-                    : false;
-                const titleSim = getSimilarity(existing.titulo, comp.titulo);
-
-                return priceMatch && areaMatch && titleSim >= 0.7;
-            });
-            if (!isDuplicate) uniqueComparables.push(comp);
-        }
-
-        // Filtro Area
-        let comparablesFiltradosPorArea = uniqueComparables;
-        if (!esLote || area <= 1000) {
-            comparablesFiltradosPorArea = uniqueComparables.filter(c => {
-                const a = c.area_m2 || 0;
-                return a >= area * 0.5 && a <= area * 1.5;
-            });
-        }
-
-        // Filtro Lote Grande
-        let comparablesParaTabla = comparablesFiltradosPorArea;
-        if (esLote && area > 1000) {
-            const filtrados = comparablesFiltradosPorArea.filter(c => (c.area_m2 || 0) >= 500);
-            comparablesParaTabla = filtrados.length >= 3 ? filtrados : comparablesFiltradosPorArea;
-        }
-
-        // D) FILTRO IQR (New V10 Logic)
-        if (comparablesParaTabla.length >= 5) {
-            const preciosM2 = comparablesParaTabla.map(c => c.precio_m2).filter(p => p > 0).sort((a, b) => a - b);
-            if (preciosM2.length >= 4) {
-                const q1Index = Math.floor(preciosM2.length * 0.25);
-                const q3Index = Math.floor(preciosM2.length * 0.75);
-                const q1 = preciosM2[q1Index];
-                const q3 = preciosM2[q3Index];
-                const iqr = q3 - q1;
-                const minThreshold = q1 - iqr * 1.5;
-                const maxThreshold = q3 + iqr * 1.5;
-
-                const filtradosIQR = comparablesParaTabla.filter(c =>
-                    c.precio_m2 >= minThreshold && c.precio_m2 <= maxThreshold
+            // Validación Mínima
+            if (comparables.length < 5) {
+                return new Response(
+                    JSON.stringify({
+                        error: 'Datos insuficientes',
+                        details: `Solo se encontraron ${comparables.length} comparables válidos.`,
+                        perplexity_full_text: perplexityContent,
+                    }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                 );
+            }
 
-                if (filtradosIQR.length >= 5) {
-                    console.log(`Filtro IQR aplicado.`);
-                    comparablesParaTabla = filtradosIQR;
+            // Cálculos Finales
+            const compsVenta = comparables.filter((c) => c.tipo_origen === 'venta');
+            const compsArriendo = comparables.filter((c) => c.tipo_origen === 'arriendo');
+
+            // 1. Venta Directa (CON PODA DE OUTLIERS)
+            let valorVentaDirecta = null;
+            let precioM2Promedio = 0;
+
+            if (compsVenta.length > 0) {
+                const sortedByM2 = [...compsVenta].sort((a, b) => a.precio_m2 - b.precio_m2);
+                // Poda del 10%
+                let filteredComps = sortedByM2;
+                if (sortedByM2.length >= 5) {
+                    const cut = Math.floor(sortedByM2.length * 0.1);
+                    filteredComps = sortedByM2.slice(cut, sortedByM2.length - cut);
+                }
+
+                const sumM2 = filteredComps.reduce((acc, c) => acc + c.precio_m2, 0);
+                precioM2Promedio = Math.round(sumM2 / filteredComps.length);
+                valorVentaDirecta = Math.round(precioM2Promedio * area);
+            }
+
+            // 2. Rentabilidad
+            let valorRentabilidad = null;
+            let canonPromedio = 0;
+
+            if (!esLote) {
+                if (compsArriendo.length > 0) {
+                    const sumCanon = compsArriendo.reduce((acc, c) => acc + c.precio_publicado, 0);
+                    canonPromedio = Math.round(sumCanon / compsArriendo.length);
+                    valorRentabilidad = Math.round(canonPromedio / yieldFinal);
+                } else {
+                    if (valorVentaDirecta) {
+                        valorRentabilidad = valorVentaDirecta;
+                        canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
+                    }
                 }
             }
-        }
 
-        // Normalización Nombres
-        comparablesParaTabla = comparablesParaTabla.map(c => {
-            let fuente = c.fuente || 'Portal Inmobiliario';
-            if (typeof fuente === 'string') {
-                fuente = fuente.replace(/Clencuadras/i, 'Ciencuadras')
-                    .replace(/Fincaraiz/i, 'FincaRaíz')
-                    .replace(/MetroCuadrado/i, 'Metrocuadrado')
-                    .replace(/Mercadolibre/i, 'MercadoLibre');
+            // 3. Valor Recomendado Perplexity
+            const valorRecomendado = sanitizePrice(extractedData.valor_recomendado_venta);
+
+            let valorPonderado = null;
+            if (esLote) {
+                valorPonderado = valorVentaDirecta;
+            } else {
+                valorPonderado = (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0)
+                    ? Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4)
+                    : null;
             }
-            return { ...c, fuente };
-        });
 
-        // Sincronización de Conteos
-        const totalReal = comparablesParaTabla.length;
-        const totalVenta = comparablesParaTabla.filter(c => c.tipo_origen === 'venta').length;
-        const totalArriendo = comparablesParaTabla.filter(c => c.tipo_origen === 'arriendo').length;
+            const valorFinal = valorRecomendado || valorVentaDirecta || valorRentabilidad || 0;
+            const valorFuente = valorRecomendado ? 'perplexity' : 'calculado';
 
-        let finalPerplexityText = perplexityContent || '';
-        finalPerplexityText = finalPerplexityText.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
+            // Corrección Lotes
+            if (esLote && valorRecomendado) {
+                valorVentaDirecta = valorRecomendado;
+                precioM2Promedio = Math.round(valorRecomendado / area);
+            }
 
-        let resumenFinal = extractedData.resumen_mercado || 'Análisis de mercado realizado.';
-        resumenFinal = resumenFinal.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
+            console.log(`Valor final: $${valorFinal.toLocaleString()} (fuente: ${valorFuente})`);
 
-        const resultado = {
-            resumen_busqueda: resumenFinal,
-            valor_final: valorFinal,
-            valor_fuente: valorFuente,
-            valor_ponderado_referencia: valorPonderado,
-            rango_valor_min: rangoMin,
-            rango_valor_max: rangoMax,
-            rango_fuente: rangoFuente,
+            const precioM2Usado = precioM2Promedio || (valorFinal > 0 ? Math.round(valorFinal / area) : 0);
 
-            valor_estimado_venta_directa: valorVentaDirecta,
-            valor_estimado_rentabilidad: valorRentabilidad,
+            // 4. Rangos
+            const rangoMin = sanitizePrice(extractedData.rango_sugerido_min) || Math.round(valorFinal * 1.00);
+            const rangoMax = sanitizePrice(extractedData.rango_sugerido_max) || Math.round(valorFinal * 1.04);
+            const rangoFuente = extractedData.rango_sugerido_min ? 'perplexity' : 'calculado';
 
-            // ERROR 2
-            precio_m2_final: precioM2Usado,
+            // --- 5. DEDUPLICACIÓN Y FILTRADO (V10) ---
+            const uniqueComparables = [];
+            for (const comp of comparables) {
+                const isDuplicate = uniqueComparables.some(existing => {
+                    const precioBaseExisting = existing.precio_cop || existing.precio_publicado || 0;
+                    const precioBaseComp = comp.precio_cop || comp.precio_publicado || 0;
+                    const areaBaseExisting = existing.area_m2 || 0;
+                    const areaBaseComp = comp.area_m2 || 0;
 
-            // ERROR 3
-            metodo_mercado_label: 'Enfoque de Mercado (promedio real)',
-            metodo_ajuste_label: valorRecomendado ? 'Ajuste de Perplexity (criterio técnico)' : 'Promedio de Mercado',
+                    const priceMatch = precioBaseExisting > 0
+                        ? Math.abs(precioBaseExisting - precioBaseComp) / precioBaseExisting < 0.01
+                        : false;
+                    const areaMatch = areaBaseExisting > 0
+                        ? Math.abs(areaBaseExisting - areaBaseComp) / areaBaseExisting < 0.01
+                        : false;
+                    const titleSim = getSimilarity(existing.titulo, comp.titulo);
 
-            comparables: comparablesParaTabla,
-            total_comparables: comparablesParaTabla.length,
-            total_comparables_venta: totalVenta,
-            total_comparables_arriendo: totalArriendo,
+                    return priceMatch && areaMatch && titleSim >= 0.7;
+                });
+                if (!isDuplicate) uniqueComparables.push(comp);
+            }
 
-            // Nivel de confianza y estadísticas de fuentes (V11)
-            nivel_confianza: nivelConfianza,
-            estadisticas_fuentes: {
-                total_portal_verificado: comparablesParaTabla.filter(c => c.fuente_validacion === 'portal_verificado').length,
-                total_estimacion_zona: comparablesParaTabla.filter(c => c.fuente_validacion === 'estimacion_zona').length,
-                total_zona_similar: comparablesParaTabla.filter(c => c.fuente_validacion === 'zona_similar').length,
-                total_promedio_municipal: comparablesParaTabla.filter(c => c.fuente_validacion === 'promedio_municipal').length,
-            },
+            // Filtro Area
+            let comparablesFiltradosPorArea = uniqueComparables;
+            if (!esLote || area <= 1000) {
+                comparablesFiltradosPorArea = uniqueComparables.filter(c => {
+                    const a = c.area_m2 || 0;
+                    return a >= area * 0.5 && a <= area * 1.5;
+                });
+            }
 
-            // ERROR 1: Defaults
-            ficha_tecnica_defaults: {
-                habitaciones: 'No especificado',
-                banos: 'No especificado',
-                garajes: 'No especificado',
-                estrato: 'No especificado',
-                antiguedad: 'No especificado'
-            },
+            // Filtro Lote Grande
+            let comparablesParaTabla = comparablesFiltradosPorArea;
+            if (esLote && area > 1000) {
+                const filtrados = comparablesFiltradosPorArea.filter(c => (c.area_m2 || 0) >= 500);
+                comparablesParaTabla = filtrados.length >= 3 ? filtrados : comparablesFiltradosPorArea;
+            }
 
-            yield_mensual_mercado: yieldFinal,
-            area_construida: area,
-            perplexity_full_text: finalPerplexityText
-        };
+            // D) FILTRO IQR (New V10 Logic)
+            if (comparablesParaTabla.length >= 5) {
+                const preciosM2 = comparablesParaTabla.map(c => c.precio_m2).filter(p => p > 0).sort((a, b) => a - b);
+                if (preciosM2.length >= 4) {
+                    const q1Index = Math.floor(preciosM2.length * 0.25);
+                    const q3Index = Math.floor(preciosM2.length * 0.75);
+                    const q1 = preciosM2[q1Index];
+                    const q3 = preciosM2[q3Index];
+                    const iqr = q3 - q1;
+                    const minThreshold = q1 - iqr * 1.5;
+                    const maxThreshold = q3 + iqr * 1.5;
 
-        return new Response(JSON.stringify(resultado), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-    },
-};
+                    const filtradosIQR = comparablesParaTabla.filter(c =>
+                        c.precio_m2 >= minThreshold && c.precio_m2 <= maxThreshold
+                    );
+
+                    if (filtradosIQR.length >= 5) {
+                        console.log(`Filtro IQR aplicado.`);
+                        comparablesParaTabla = filtradosIQR;
+                    }
+                }
+            }
+
+            // Normalización Nombres
+            comparablesParaTabla = comparablesParaTabla.map(c => {
+                let fuente = c.fuente || 'Portal Inmobiliario';
+                if (typeof fuente === 'string') {
+                    fuente = fuente.replace(/Clencuadras/i, 'Ciencuadras')
+                        .replace(/Fincaraiz/i, 'FincaRaíz')
+                        .replace(/MetroCuadrado/i, 'Metrocuadrado')
+                        .replace(/Mercadolibre/i, 'MercadoLibre');
+                }
+                return { ...c, fuente };
+            });
+
+            // Sincronización de Conteos
+            const totalReal = comparablesParaTabla.length;
+            const totalVenta = comparablesParaTabla.filter(c => c.tipo_origen === 'venta').length;
+            const totalArriendo = comparablesParaTabla.filter(c => c.tipo_origen === 'arriendo').length;
+
+            let finalPerplexityText = perplexityContent || '';
+            finalPerplexityText = finalPerplexityText.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
+
+            let resumenFinal = extractedData.resumen_mercado || 'Análisis de mercado realizado.';
+            resumenFinal = resumenFinal.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
+
+            const resultado = {
+                resumen_busqueda: resumenFinal,
+                valor_final: valorFinal,
+                valor_fuente: valorFuente,
+                valor_ponderado_referencia: valorPonderado,
+                rango_valor_min: rangoMin,
+                rango_valor_max: rangoMax,
+                rango_fuente: rangoFuente,
+
+                valor_estimado_venta_directa: valorVentaDirecta,
+                valor_estimado_rentabilidad: valorRentabilidad,
+
+                // ERROR 2
+                precio_m2_final: precioM2Usado,
+
+                // ERROR 3
+                metodo_mercado_label: 'Enfoque de Mercado (promedio real)',
+                metodo_ajuste_label: valorRecomendado ? 'Ajuste de Perplexity (criterio técnico)' : 'Promedio de Mercado',
+
+                comparables: comparablesParaTabla,
+                total_comparables: comparablesParaTabla.length,
+                total_comparables_venta: totalVenta,
+                total_comparables_arriendo: totalArriendo,
+
+                // Nivel de confianza y estadísticas de fuentes (V11)
+                nivel_confianza: nivelConfianza,
+                estadisticas_fuentes: {
+                    total_portal_verificado: comparablesParaTabla.filter(c => c.fuente_validacion === 'portal_verificado').length,
+                    total_estimacion_zona: comparablesParaTabla.filter(c => c.fuente_validacion === 'estimacion_zona').length,
+                    total_zona_similar: comparablesParaTabla.filter(c => c.fuente_validacion === 'zona_similar').length,
+                    total_promedio_municipal: comparablesParaTabla.filter(c => c.fuente_validacion === 'promedio_municipal').length,
+                },
+
+                // ERROR 1: Defaults
+                ficha_tecnica_defaults: {
+                    habitaciones: 'No especificado',
+                    banos: 'No especificado',
+                    garajes: 'No especificado',
+                    estrato: 'No especificado',
+                    antiguedad: 'No especificado'
+                },
+
+                yield_mensual_mercado: yieldFinal,
+                area_construida: area,
+                perplexity_full_text: finalPerplexityText
+            };
+
+            return new Response(JSON.stringify(resultado), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        },
+    };
