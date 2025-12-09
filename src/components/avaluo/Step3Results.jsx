@@ -253,6 +253,34 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
 
+            {/* MINIMALIST NAVIGATION LINKS */}
+            <div className="flex justify-end gap-6 text-sm">
+                <button
+                    onClick={() => pdfButtonRef.current?.click()}
+                    className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium"
+                >
+                    <Download className="w-4 h-4" />
+                    Descargar PDF
+                </button>
+                {onReset && (
+                    <button
+                        onClick={onReset}
+                        className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium"
+                    >
+                        <ArrowRight className="w-4 h-4" />
+                        Nuevo Avalúo
+                    </button>
+                )}
+                <button
+                    onClick={handleAction}
+                    disabled={!valorPrincipal || sendEmailMutation.isPending}
+                    className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <Mail className="w-4 h-4" />
+                    Enviar al Correo
+                </button>
+            </div>
+
             {/* 1. SECCIÓN HERO */}
             <Card className="border-none shadow-lg bg-gradient-to-br from-[#2C3D37] to-[#1a2620] text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[#C9C19D] opacity-10 rounded-full blur-2xl"></div>
@@ -536,7 +564,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
             )}
 
             {/* 7. NAVEGACIÓN (BOTONES ALINEADOS) */}
-            <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4 pt-6 border-t border-[#E0E5E2] mt-8">
+            <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4 pt-3 border-t border-[#E0E5E2] mt-8">
                 <div className="flex gap-3">
                     <Button variant="ghost" onClick={onBack} className="text-[#7A8C85] hover:text-[#2C3D37] hover:bg-[#F5F7F6]">
                         <ArrowLeft className="w-4 h-4 mr-2" /> Editar Datos
@@ -545,7 +573,11 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
                     <BotonPDF ref={pdfButtonRef} formData={formData} />
                     {onReset && (
-                        <Button variant="outline" onClick={onReset} className="text-[#7A8C85] border-[#B0BDB4] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-6">
+                        <Button
+                            variant="outline"
+                            onClick={onReset}
+                            className="bg-transparent text-[#2C3D37] border-2 border-[#2C3D37] hover:bg-[#2C3D37]/5 rounded-full py-6 text-lg font-medium"
+                        >
                             Nuevo Avalúo
                         </Button>
                     )}

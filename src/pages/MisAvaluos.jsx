@@ -196,9 +196,18 @@ export default function MisAvaluos() {
 
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col min-h-[80vh]">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-[#2C3D37] font-outfit">Mis Avalúos</h1>
-                <p className="text-[#4F5B55] mt-2">Historial de tus valoraciones generadas</p>
+            <div className="mb-8 flex items-start justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-[#2C3D37] font-outfit">Mis Avalúos</h1>
+                    <p className="text-[#4F5B55] mt-2">Historial de tus valoraciones generadas</p>
+                </div>
+                <button
+                    onClick={() => navigate('/avaluo')}
+                    className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium text-sm mt-1"
+                >
+                    <RefreshCw className="w-4 h-4" />
+                    Nuevo Avalúo
+                </button>
             </div>
 
             <div className="flex-grow">
@@ -326,9 +335,9 @@ export default function MisAvaluos() {
                 )}
             </div>
 
-            <div className="mt-12 mb-[50px] flex justify-center">
+            <div className="mt-12 mb-6 flex justify-center">
                 <Button
-                    onClick={() => window.location.href = '/AvaluoInmobiliario'}
+                    onClick={() => window.location.href = '/avaluo'}
                     className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-10 py-6 text-lg font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
                 >
                     <RefreshCw className="w-5 h-5 mr-2" />
