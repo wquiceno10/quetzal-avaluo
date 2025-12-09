@@ -51,7 +51,7 @@ export default function AvaluoInmobiliario() {
             const { count } = await supabase
               .from('avaluos')
               .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id); // Note: We stopped saving user_id in insert for safety, but if we wanted to list them we might need it. For now, this checks strictly owned ones.
+              .eq('email', user.email);
 
             setHasAvaluos(count > 0);
           }
