@@ -88,6 +88,7 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
             ${!esLote ? `
             <tr><td class="data-label">Habitaciones</td><td class="data-val">${data.habitaciones || comparablesData.habitaciones || '-'}</td></tr>
             <tr><td class="data-label">Baños</td><td class="data-val">${data.banos || comparablesData.banos || '-'}</td></tr>
+            <tr><td class="data-label">Estrato</td><td class="data-val">${data.estrato || comparablesData.estrato || 'No especificado'}</td></tr>
             <tr><td class="data-label">Estado</td><td class="data-val" style="text-transform: capitalize;">${(data.estado_inmueble || data.estado || comparablesData.estado_inmueble || comparablesData.estado || '—').replace(/_/g, ' ')}</td></tr>
             ` : `
             <tr><td class="data-label">Uso del Lote</td><td class="data-val">${data.uso_lote || '-'}</td></tr>
