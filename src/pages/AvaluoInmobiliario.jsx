@@ -216,6 +216,7 @@ export default function AvaluoInmobiliario() {
             formData={avaluoData}
             onUpdate={handleUpdateData}
             onNext={handleNext}
+            hasAvaluos={hasAvaluos}
           />
         )}
 
