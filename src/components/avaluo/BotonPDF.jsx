@@ -509,7 +509,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             /* Print Styles */
             @media print {
               @page {
-                margin: 0;
+                margin: 20mm 15mm;
                 size: letter;
               }
               body {
@@ -517,7 +517,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
                 margin: 0 !important;
-                padding: 60px 20mm 60px 20mm !important;
+                padding: 0 !important;
               }
 
               .analysis-content {
@@ -548,14 +548,15 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 page-break-inside: avoid;
               }
               table {
-                page-break-inside: auto;
-              }
-              tr {
                 page-break-inside: avoid;
-                page-break-after: auto;
+                break-inside: avoid;
               }
               thead {
                 display: table-header-group;
+              }
+              tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
               }
             }
             

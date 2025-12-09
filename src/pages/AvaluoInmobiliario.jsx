@@ -181,8 +181,8 @@ export default function AvaluoInmobiliario() {
         <StepIndicator currentStep={currentStep} />
       </div>
 
-      {/* Botón Mis Avalúos - Debajo del StepIndicator (solo si tiene avalúos) */}
-      {hasAvaluos && (
+      {/* Botón Mis Avalúos - Debajo del StepIndicator (solo si tiene avalúos Y NO está en análisis) */}
+      {hasAvaluos && currentStep !== 2 && (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-end">
           <a
             href="/mis-avaluos"
