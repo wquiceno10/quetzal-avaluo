@@ -233,7 +233,7 @@ export default function MisAvaluos() {
                     <p className="text-[#4F5B55] mt-2">Historial de tus valoraciones generadas</p>
                 </div>
                 <button
-                    onClick={() => navigate('/avaluo')}
+                    onClick={() => navigate('/AvaluoInmobiliario')}
                     className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium text-sm mt-1"
                 >
                     <RefreshCw className="w-4 h-4" />
@@ -382,7 +382,7 @@ export default function MisAvaluos() {
 
             <div className="mt-12 flex justify-center">
                 <Button
-                    onClick={() => window.location.href = '/avaluo'}
+                    onClick={() => window.location.href = '/AvaluoInmobiliario'}
                     className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-10 py-6 text-lg font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
                 >
                     <RefreshCw className="w-5 h-5 mr-2" />
