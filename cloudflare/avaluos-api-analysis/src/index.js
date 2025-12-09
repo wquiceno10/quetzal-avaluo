@@ -674,7 +674,10 @@ Devuelve SOLO JSON válido.
             const totalArriendo = comparablesParaTabla.filter(c => c.tipo_origen === 'arriendo').length;
 
             let finalPerplexityText = perplexityContent || '';
+            // Reemplazar frases naturales
             finalPerplexityText = finalPerplexityText.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
+            // Reemplazar literal "total_comparables: X"
+            finalPerplexityText = finalPerplexityText.replace(/total_comparables:\s*\d+/gi, `total_comparables: ${totalReal}`);
 
             let resumenFinal = extractedData.resumen_mercado || 'Análisis de mercado realizado.';
             resumenFinal = resumenFinal.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
