@@ -360,7 +360,6 @@ Devuelve SOLO JSON válido.
         `.trim();
 
 
-        let extractedData = {};
         try {
             const dsResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
                 method: 'POST',
