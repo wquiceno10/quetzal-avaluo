@@ -725,5 +725,18 @@ Devuelve SOLO JSON válido.
             return new Response(JSON.stringify(resultado), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
-        },
-    };
+
+        } catch (processingError) {
+            // GLOBAL CATCH: Captura CUALQUIER error no manejado en el procesamiento
+            console.error('Error crítico en procesamiento:', processingError);
+            return new Response(
+                JSON.stringify({
+                    error: 'Error interno en procesamiento',
+                    details: processingError.message || 'Error desconocido',
+                    stack: processingError.stack || null
+                }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+    },
+};
