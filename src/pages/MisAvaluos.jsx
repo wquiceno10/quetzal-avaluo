@@ -335,7 +335,7 @@ export default function MisAvaluos() {
                 )}
             </div>
 
-            <div className="mt-12 mb-6 flex justify-center">
+            <div className="mt-12 mb-[75px] flex justify-center">
                 <Button
                     onClick={() => window.location.href = '/avaluo'}
                     className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-10 py-6 text-lg font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"

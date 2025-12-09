@@ -69,4 +69,3 @@ export async function guardarAvaluoEnSupabase({
     return data.id;
 }
 
-// Force rebuild - 2025-12-09
