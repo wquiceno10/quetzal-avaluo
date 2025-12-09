@@ -27,6 +27,22 @@ import {
 import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
 
+// Helper: Convertir texto a Title Case (Primera Letra Mayúscula)
+const toTitleCase = (str) => {
+    const smallWords = ['y', 'de', 'en', 'a', 'o', 'la', 'el', 'del', 'un', 'una', 'para', 'por', 'con', 'sin'];
+    return str
+        .toLowerCase()
+        .split(' ')
+        .map((word, index) => {
+            // Primera palabra siempre en mayúscula, o si no es palabra pequeña
+            if (index === 0 || !smallWords.includes(word)) {
+                return word.charAt(0).toUpperCase() + word.slice(1);
+            }
+            return word;
+        })
+        .join(' ');
+};
+
 // --- COMPONENTE DE FORMATO DE TEXTO ---
 // Force rebuild 2025-12-09 - Ensure 2 columns
 const AnalisisAI = ({ text }) => {
@@ -60,7 +76,7 @@ const AnalisisAI = ({ text }) => {
 
                 // HEADERS
                 if (trimmed.startsWith('#')) {
-                    const title = trimmed.replace(/^#+\s*/, '');
+                    const title = toTitleCase(trimmed.replace(/^#+\s*/, ''));
                     return (
                         <h3 key={index} className="font-outfit font-bold text-lg text-[#2C3D37] mt-6 first:mt-0 mb-3 border-b border-[#C9C19D]/50 pb-1 break-inside-avoid">
                             {title}

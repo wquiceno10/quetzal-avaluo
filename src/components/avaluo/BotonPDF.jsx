@@ -76,6 +76,22 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         }
       };
 
+      // Helper: Convertir texto a Title Case (Primera Letra Mayúscula)
+      const toTitleCase = (str) => {
+        const smallWords = ['y', 'de', 'en', 'a', 'o', 'la', 'el', 'del', 'un', 'una', 'para', 'por', 'con', 'sin'];
+        return str
+          .toLowerCase()
+          .split(' ')
+          .map((word, index) => {
+            // Primera palabra siempre en mayúscula, o si no es palabra pequeña
+            if (index === 0 || !smallWords.includes(word)) {
+              return word.charAt(0).toUpperCase() + word.slice(1);
+            }
+            return word;
+          })
+          .join(' ');
+      };
+
       // Helper para generar tablas HTML con estilos
       const generateTableHtml = (rows) => {
         if (!rows.length) return '';
@@ -162,11 +178,11 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         return cleanText
           // Negritas (asegurar que cierra)
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          // Encabezados MD "# Título" o "#### Título"
-          .replace(
-            /^#+\s*(.*?)$/gm,
-            '<h4 style="font-size:13px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">$1</h4>'
-          )
+          // Encabezados MD "# Título" o "#### Título" - Aplicar Title Case
+          .replace(/^#+\s*(.*?)$/gm, (match, title) => {
+            const formattedTitle = toTitleCase(title);
+            return `<h4 style="font-size:13px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
+          })
           // Listas
           .replace(
             /^\s*[-*•]\s+(.*?)$/gm,
