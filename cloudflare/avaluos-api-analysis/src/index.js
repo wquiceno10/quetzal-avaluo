@@ -449,12 +449,13 @@ Devuelve SOLO JSON válido.
         if (portalesList.length === 0) portalesList.push('fincaraiz', 'metrocuadrado');
 
         // Procesamiento de Comparables (SIN HEURÍSTICA)
-        const comparables = (extractedData.comparables || [])
+        const comparablesRaw = Array.isArray(extractedData.comparables) ? extractedData.comparables : [];
+        const comparables = comparablesRaw
             .map((c) => {
                 const areaComp = sanitizeFloat(c.area);
                 const precioLista = sanitizePrice(c.precio_lista);
 
-                const esArriendo = c.tipo_operacion?.toLowerCase().includes('arriendo');
+                const esArriendo = c.tipo_operacion && typeof c.tipo_operacion === 'string' && c.tipo_operacion.toLowerCase().includes('arriendo');
 
                 // SI ES LOTE, IGNORAR ARRIENDOS
                 if (esLote && esArriendo) return null;
