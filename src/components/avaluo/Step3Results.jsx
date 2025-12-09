@@ -301,14 +301,14 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
             {/* 1. SECCIÓN HERO */}
             <Card className="border-none shadow-lg bg-gradient-to-br from-[#2C3D37] to-[#1a2620] text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[#C9C19D] opacity-10 rounded-full blur-2xl"></div>
-                <CardHeader className="pb-2 relative z-10">
+                <CardHeader className="pb-1 relative z-10">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <CardTitle className="text-xl md:text-2xl font-outfit font-semibold flex items-center gap-3">
                                 <div className="p-2 bg-white/10 rounded-lg"><Home className="w-6 h-6 text-[#C9C19D]" /></div>
                                 Valor Comercial Estimado
                             </CardTitle>
-                            <p className="text-sm text-[#D3DDD6] mt-2 font-raleway max-w-lg">
+                            <p className="text-sm text-[#D3DDD6] mt-0 font-raleway max-w-lg">
                                 {esLote
                                     ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
                                     : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}
@@ -320,7 +320,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                         </span>
                     </div>
                 </CardHeader>
-                <CardContent className="pt-4 relative z-10">
+                <CardContent className="pt-2 relative z-10">
                     <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-8">
                         <div>
                             <div className="text-4xl md:text-6xl font-bold font-outfit tracking-tight">

@@ -404,8 +404,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               font-size: 12px;
               line-height: 1.2;
               opacity: 0.9;
-              margin-bottom: 0px;
-              margin-top: 8px;
+              margin-bottom: 8px;
+              margin-top: 0px;
               max-width: 90%; 
               font-weight: 300;
               font-family: 'Raleway', sans-serif;
