@@ -68,4 +68,3 @@ export async function guardarAvaluoEnSupabase({
     console.log("[SUPABASE] ✅ Avalúo guardado con ID:", data.id);
     return data.id;
 }
-

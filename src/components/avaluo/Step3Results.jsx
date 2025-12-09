@@ -28,6 +28,7 @@ import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
 
 // --- COMPONENTE DE FORMATO DE TEXTO ---
+// Force rebuild 2025-12-09 - Ensure 2 columns
 const AnalisisAI = ({ text }) => {
     if (!text) return null;
 
