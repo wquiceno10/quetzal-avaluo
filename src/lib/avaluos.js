@@ -68,3 +68,5 @@ export async function guardarAvaluoEnSupabase({
     console.log("[SUPABASE] ✅ Avalúo guardado con ID:", data.id);
     return data.id;
 }
+
+// Force rebuild - 2025-12-09
