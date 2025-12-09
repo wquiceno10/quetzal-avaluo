@@ -392,6 +392,7 @@ Devuelve SOLO JSON válido.
             }
 
             extractedData = JSON.parse(content);
+            if (!extractedData || typeof extractedData !== 'object') extractedData = {};
 
             // Procesar nivel_confianza y estadísticas
             const nivelConfianza = extractedData.nivel_confianza || 'Medio';
