@@ -402,7 +402,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               margin: 25px 0;
             }
             .analysis-content {
-              /* Single column layout to match results page */
+              column-count: 2;
+              column-gap: 30px;
               font-size: 13px;
               line-height: 1.2;
               text-align: justify;
@@ -521,7 +522,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               }
 
               .analysis-content {
-                /* Single column layout to match results page */
+                column-count: 2;
+                column-gap: 30px;
               }
               
               .analysis-content p, 
