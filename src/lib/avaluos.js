@@ -26,27 +26,45 @@ export async function guardarAvaluoEnSupabase({
     codigoAvaluo,
     payloadJson,
 }) {
-    // La tabla 'avaluos' no tiene columna user_id, solo usamos email para identificar
+    const insertData = {
+        email,
+        tipo_inmueble: tipoInmueble,
+        barrio,
+        ciudad,
+        valor_final: valorFinal,
+        codigo_avaluo: codigoAvaluo,
+        payload_json: payloadJson,
+        estrato: payloadJson?.estrato || null,
+        estado_inmueble: payloadJson?.estado_inmueble || null,
+    };
+
+    console.log("[SUPABASE] Inserting avalúo:", {
+        email,
+        tipo_inmueble: tipoInmueble,
+        barrio,
+        ciudad,
+        codigo_avaluo: codigoAvaluo,
+        valor_final: valorFinal
+    });
+
     const { data, error } = await supabase
         .from("avaluos")
-        .insert({
-            email,
-            tipo_inmueble: tipoInmueble,
-            barrio,
-            ciudad,
-            valor_final: valorFinal,
-            codigo_avaluo: codigoAvaluo,
-            payload_json: payloadJson,
-            estrato: payloadJson.estrato,
-            estado_inmueble: payloadJson.estado_inmueble,
-        })
+        .insert(insertData)
         .select("id")
         .single();
 
     if (error) {
-        console.error("Error guardando avalúo en Supabase:", error);
+        console.error("[SUPABASE] ❌ Error guardando avalúo:", {
+            error,
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            insertData
+        });
         throw error;
     }
 
+    console.log("[SUPABASE] ✅ Avalúo guardado con ID:", data.id);
     return data.id;
 }

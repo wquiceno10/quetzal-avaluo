@@ -185,24 +185,24 @@ export default function Step4Contact({ formData, onBack, onReset }) {
               </div>
             </div>
 
-            <div className="flex gap-4 justify-center flex-wrap">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
               <Button
                 onClick={() => navigate(`/resultados/${sendEmailMutation.data?.id}`)}
                 variant="outline"
-                className="border-[#B0BDB4] text-[#2C3D37] rounded-full px-8 py-6 text-lg font-medium"
+                className="w-full sm:w-auto border-[#B0BDB4] text-[#2C3D37] rounded-full px-8 py-6 text-lg font-medium"
               >
                 Volver a Resultados
               </Button>
               <Button
                 onClick={onReset}
-                className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-8 py-6 text-lg font-medium"
+                className="w-full sm:w-auto bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-8 py-6 text-lg font-medium"
               >
                 <RefreshCw className="w-5 h-5 mr-2" />
                 Crear Nuevo Avalúo
               </Button>
               <Button
                 onClick={() => window.open('https://wa.me/573186383809', '_blank')}
-                className="bg-green-600 hover:bg-green-700 text-white rounded-full px-8 py-6 text-lg font-medium"
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white rounded-full px-8 py-6 text-lg font-medium"
               >
                 <MessageCircle className="w-5 h-5 mr-2" />
                 Contactar
@@ -277,18 +277,18 @@ export default function Step4Contact({ formData, onBack, onReset }) {
           </AlertDescription>
         </Alert>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <Button
             onClick={onBack}
             variant="outline"
-            className="border-[#B0BDB4] text-[#2C3D37] rounded-full py-6 text-lg font-medium"
+            className="w-full sm:w-auto border-[#B0BDB4] text-[#2C3D37] rounded-full py-6 text-lg font-medium"
           >
             Volver
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!isValid || sendEmailMutation.isPending}
-            className="flex-1 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium"
+            className="w-full sm:flex-1 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium"
           >
             {sendEmailMutation.isPending ? (
               <>
@@ -307,7 +307,7 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         {sendEmailMutation.isError && (
           <Alert className="border-red-300 bg-red-50">
             <AlertDescription className="text-red-800">
-              Ocurrió un error al enviar el reporte. Por favor, verifica tu correo e intenta de nuevo.
+              {sendEmailMutation.error?.message || "Ocurrió un error al enviar el reporte. Por favor, verifica tu correo e intenta de nuevo."}
             </AlertDescription>
           </Alert>
         )}

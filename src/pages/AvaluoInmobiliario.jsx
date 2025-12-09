@@ -81,6 +81,8 @@ export default function AvaluoInmobiliario() {
     // AUTO-SAVE LOGIC: If moving to Step 3 (Results) and user is logged in
     if (currentStep === 2 && nextStep === 3 && currentUser) {
       try {
+        console.log("[AUTO-SAVE] Starting auto-save...", { user: currentUser.email, tipo_inmueble: effectiveAvaluoData.tipo_inmueble });
+
         const data = effectiveAvaluoData.comparables_data || {};
 
         // Generate Code if missing
@@ -113,6 +115,16 @@ export default function AvaluoInmobiliario() {
           estado_inmueble: effectiveAvaluoData.estado_inmueble,
         };
 
+        console.log("[AUTO-SAVE] Payload prepared:", {
+          email: currentUser.email,
+          tipoInmueble: effectiveAvaluoData.tipo_inmueble,
+          barrio: effectiveAvaluoData.barrio,
+          ciudad: effectiveAvaluoData.municipio,
+          valorFinal: valFinal,
+          codigoAvaluo: cod,
+          payloadKeys: Object.keys(payload)
+        });
+
         const savedId = await guardarAvaluoEnSupabase({
           email: currentUser.email,
           tipoInmueble: effectiveAvaluoData.tipo_inmueble,
@@ -129,11 +141,19 @@ export default function AvaluoInmobiliario() {
           codigo_avaluo: cod,
           comparables_data: payload
         });
-        console.log("Auto-saved avaluo:", savedId);
+        console.log("[AUTO-SAVE] ✅ Success! Avaluo ID:", savedId);
         setHasAvaluos(true);
 
       } catch (err) {
-        console.error("Auto-save failed", err);
+        console.error("[AUTO-SAVE] ❌ Failed:", {
+          error: err,
+          message: err.message,
+          details: err.details,
+          hint: err.hint,
+          code: err.code
+        });
+        // Even if auto-save fails, allow user to continue to results
+        // They can still save manually via email in Step 4
       }
     }
 
