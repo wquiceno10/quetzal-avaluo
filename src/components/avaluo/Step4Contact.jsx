@@ -58,6 +58,8 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         area_construida: formData.area_construida,
         habitaciones: formData.habitaciones,
         banos: formData.banos,
+        estrato: formData.estrato,
+        estado_inmueble: formData.estado_inmueble,
       };
 
       let avaluoId = formData.id;

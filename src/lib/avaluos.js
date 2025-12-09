@@ -36,7 +36,9 @@ export async function guardarAvaluoEnSupabase({
             ciudad,
             valor_final: valorFinal,
             codigo_avaluo: codigoAvaluo,
-            payload_json: payloadJson
+            payload_json: payloadJson,
+            estrato: payloadJson.estrato,
+            estado_inmueble: payloadJson.estado_inmueble,
         })
         .select("id")
         .single();
