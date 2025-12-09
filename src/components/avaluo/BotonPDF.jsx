@@ -390,7 +390,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               opacity: 0.9;
               margin-bottom: 12px;
               margin-top: 2px;
-              max-width: 85%; 
+              max-width: 90%; 
               font-weight: 300;
               font-family: 'Raleway', sans-serif;
             }
@@ -464,12 +464,12 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               color: #D3DDD6;
               opacity: 0.8;
             }
-            .hero-details-box {
               background: rgba(255, 255, 255, 0.1);
               border: 1px solid rgba(255, 255, 255, 0.1);
               border-radius: 12px;
               padding: 14px 18px;
-              min-width: 240px;
+              min-width: 200px;
+              max-width: 280px;
             }
             .hero-detail-row {
               display: flex;
@@ -654,7 +654,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
               <div class="hero-content-row">
                 <div class="hero-left-col">
-                  <p class="hero-description" style="max-width: 85%;">
+                  <p class="hero-description" style="max-width: 90%;">
                     ${esLote
           ? 'Valor obtenido a partir del análisis de mercado y método residual, sin aplicar enfoque de rentabilidad.'
           : 'Determinación del valor comercial basada en un análisis técnico ponderado que integra el comportamiento real del mercado local y la validación experta de nuestra inteligencia artificial.'}

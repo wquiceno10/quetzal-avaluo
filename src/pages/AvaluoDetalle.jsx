@@ -88,7 +88,7 @@ export default function AvaluoDetalle() {
         area_construida: avaluo.area_construida,
         habitaciones: avaluo.habitaciones,
         banos: avaluo.banos,
-        estrato: avaluo.estrato,
+        estrato: avaluo.estrato || avaluo.payload_json?.estrato || avaluo.payload_json?.inmueble_objetivo?.estrato,
         edad_inmueble: avaluo.edad_inmueble,
         estado_inmueble: avaluo.estado_inmueble || avaluo.payload_json?.estado_inmueble || avaluo.payload_json?.estado || avaluo.payload_json?.inmueble_objetivo?.estado_inmueble || avaluo.payload_json?.inmueble_objetivo?.estado,
         // Contact info for direct resend
