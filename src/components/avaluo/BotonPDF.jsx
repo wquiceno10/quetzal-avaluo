@@ -843,9 +843,9 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                   <th style="text-align:center; vertical-align:middle; min-width: 180px;">Inmueble</th>
                   <th style="text-align:center; vertical-align:middle;">Tipo</th>
                   <th style="text-align:center; vertical-align:middle;">Área</th>
-                  <th style="text-align:center; vertical-align:middle; max-width: 50px;">Hab/<br>Baños</th>
+                  ${!esLote ? `<th style="text-align:center; vertical-align:middle; max-width: 50px;">Hab/<br>Baños</th>` : ''}
                   <th style="text-align:center; vertical-align:middle; min-width: 135px;">Precio Publicado</th>
-                  <th style="text-align:center; vertical-align:middle; min-width: 135px;">Precio de Venta</th>
+                  ${!esLote ? `<th style="text-align:center; vertical-align:middle; min-width: 135px;">Precio de Venta</th>` : ''}
                   <th style="text-align:center; vertical-align:middle; min-width: 130px;">Precio m²</th>
                 </tr>
               </thead>
@@ -872,17 +872,15 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                       </td>
                       <td style="text-align:center;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
                       <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>
-                      <td style="text-align:center; white-space: nowrap;">
+                      ${!esLote ? `<td style="text-align:center; white-space: nowrap;">
                         ${item.habitaciones || '—'} / ${item.banos || '—'}
-                      </td>
+                      </td>` : ''}
                       <td style="text-align:right;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
-                      <td style="text-align:right;">
+                      ${!esLote ? `<td style="text-align:right;">
                         <strong>${formatCurrency(item.precio_cop)}</strong>
                         ${notaArriendo}
-                      </td>
-                      <td style="text-align:right;">
-                        ${formatCurrency(item.precio_m2)}
-                      </td>
+                      </td>` : ''}
+                      <td style="text-align:right; white-space: nowrap;"><strong>${formatCurrency(item.precio_m2)}</strong></td>
                     </tr>
                   `;
           }).join('')}

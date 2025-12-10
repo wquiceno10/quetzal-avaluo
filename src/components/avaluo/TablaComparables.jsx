@@ -10,7 +10,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Home } from 'lucide-react';
 
-export default function TablaComparables({ comparables }) {
+export default function TablaComparables({ comparables, esLote = false }) {
 
   const formatCurrency = (value) => {
     if (!value && value !== 0) return 'Por consultar';
@@ -31,11 +31,15 @@ export default function TablaComparables({ comparables }) {
             <TableHead className="text-[#2C3D37] font-semibold text-sm">Tipo</TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm">Ubicación</TableHead>
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-center">Área</TableHead>
-            <TableHead className="text-[#2C3D37] font-semibold text-sm text-center w-[80px] leading-tight">
-              Hab<br /><span className="text-xs font-normal">Baños</span>
-            </TableHead>
+            {!esLote && (
+              <TableHead className="text-[#2C3D37] font-semibold text-sm text-center w-[80px] leading-tight">
+                Hab<br /><span className="text-xs font-normal">Baños</span>
+              </TableHead>
+            )}
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio Publicado</TableHead>
-            <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio de Venta</TableHead>
+            {!esLote && (
+              <TableHead className="text-[#2C3D37] font-semibold text-sm text-right">Precio de Venta</TableHead>
+            )}
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-right w-[120px]">$/m²</TableHead>
           </TableRow>
         </TableHeader>
@@ -90,13 +94,15 @@ export default function TablaComparables({ comparables }) {
                 {formatNumber(item.area_m2)} m²
               </TableCell>
 
-              <TableCell className="text-sm text-[#4F5B55] text-center align-top py-3">
-                <div className="flex flex-col items-center leading-tight">
-                  <span>{item.habitaciones || '-'}</span>
-                  <span className="text-[#E0E5E2] -my-1">__</span>
-                  <span>{item.banos || '-'}</span>
-                </div>
-              </TableCell>
+              {!esLote && (
+                <TableCell className="text-sm text-[#4F5B55] text-center align-top py-3">
+                  <div className="flex flex-col items-center leading-tight">
+                    <span>{item.habitaciones || '-'}</span>
+                    <span className="text-[#E0E5E2] -my-1">__</span>
+                    <span>{item.banos || '-'}</span>
+                  </div>
+                </TableCell>
+              )}
 
               <TableCell className="align-top py-3 text-right">
                 <div className="flex flex-col items-end">
@@ -109,19 +115,21 @@ export default function TablaComparables({ comparables }) {
                 </div>
               </TableCell>
 
-              <TableCell className="align-top py-3 text-right">
-                <div className="flex flex-col items-end">
-                  <span className="text-sm font-semibold text-[#2C3D37]">
-                    {formatCurrency(item.precio_cop)}
-                  </span>
-
-                  {item.tipo_origen === 'arriendo' && (
-                    <span className="text-[9px] text-[#A3B2AA] leading-tight max-w-[100px]">
-                      Estimado por rentabilidad{item.yield_mensual ? ` (Yield ${(item.yield_mensual * 100).toFixed(2)}% según mercado)` : ''}
+              {!esLote && (
+                <TableCell className="align-top py-3 text-right">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-semibold text-[#2C3D37]">
+                      {formatCurrency(item.precio_cop)}
                     </span>
-                  )}
-                </div>
-              </TableCell>
+
+                    {item.tipo_origen === 'arriendo' && (
+                      <span className="text-[9px] text-[#A3B2AA] leading-tight max-w-[100px]">
+                        Estimado por rentabilidad{item.yield_mensual ? ` (Yield ${(item.yield_mensual * 100).toFixed(2)}% según mercado)` : ''}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+              )}
 
               {/* PRECIO M2 - Ahora tendrá espacio suficiente */}
               <TableCell className="text-right align-top py-3 whitespace-nowrap">
@@ -135,9 +143,11 @@ export default function TablaComparables({ comparables }) {
         </TableBody>
       </Table>
 
-      <p className="text-xs text-gray-500 mt-3 px-4 pb-3">
-        * Para arriendos, el "Precio Venta (Est)" es el valor estimado por capitalización usando el yield de mercado investigado.
-      </p>
+      {!esLote && (
+        <p className="text-xs text-gray-500 mt-3 px-4 pb-3">
+          * Para arriendos, el "Precio Venta (Est)" es el valor estimado por capitalización usando el yield de mercado investigado.
+        </p>
+      )}
     </div>
   );
 }

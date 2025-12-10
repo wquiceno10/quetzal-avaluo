@@ -633,7 +633,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                         </button>
                         {mostrarComparables && (
                             <div className="border-t border-[#E0E5E2] animate-in slide-in-from-top-2 duration-300">
-                                <TablaComparables comparables={data.comparables} yieldMensualMercado={data.yield_mensual_mercado} />
+                                <TablaComparables comparables={data.comparables} yieldMensualMercado={data.yield_mensual_mercado} esLote={esLote} />
                             </div>
                         )}
                     </Card>
