@@ -175,11 +175,8 @@ export default function AvaluoInmobiliario() {
   };
 
   useEffect(() => {
-    if (currentStep > 1 && contentRef.current) {
-      contentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else if (currentStep === 1) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    // Siempre hacer scroll al top cuando cambia el step
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
   return (
