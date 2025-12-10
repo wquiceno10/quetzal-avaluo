@@ -412,20 +412,15 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               font-family: 'Raleway', sans-serif;
               text-align: justify;
             }
-            .analysis-section {
-              background: #F9FAF9;
-              border: 1px solid #E0E5E2;
-              border-radius: 12px;
-              padding: 20px;
-              margin: 25px 0;
-            }
             .analysis-content {
-              /* Remove grid to prevent text breaking */
               font-size: 13px;
               line-height: 1.2;
               text-align: justify;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
+              /* Doble columna - igual que en la página web */
+              column-count: 2;
+              column-gap: 30px;
             }
              .analysis-content h4 {
               column-span: all;
@@ -441,12 +436,16 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
               font-size: 12px;
+              break-inside: avoid;
+              page-break-inside: avoid;
             }
             .analysis-content p {
               margin-bottom: 12px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
               font-size: 12px;
+              break-inside: avoid;
+              page-break-inside: avoid;
             }
             .hero-badge {
               background: rgba(201, 193, 157, 0.9);
@@ -536,18 +535,6 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 color-adjust: exact !important;
                 margin: 0 !important;
                 padding: 0 !important;
-              }
-
-              .analysis-content {
-                /* Simple 2-column layout without breaking text */
-                column-count: 2;
-                column-gap: 30px;
-              }
-              
-              .analysis-content p, 
-              .analysis-content li {
-                break-inside: avoid;
-                page-break-inside: avoid;
               }
 
               .hero-header {
