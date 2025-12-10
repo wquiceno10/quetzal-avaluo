@@ -56,8 +56,42 @@ export default function TablaComparables({ comparables, esLote = false }) {
                     <span className="text-sm line-clamp-2 leading-snug" title={item.titulo}>
                       {item.titulo || 'Propiedad Comparable'}
                     </span>
+
+                    {/* Badge de fuente (condicional) */}
+                    {(() => {
+                      const { fuente_validacion, nota_adicional } = item;
+
+                      // portal_verificado → Badge verde
+                      if (fuente_validacion === 'portal_verificado') {
+                        return (
+                          <Badge
+                            variant="outline"
+                            className="mt-1.5 w-fit bg-green-50 text-green-700 border-green-200 text-[10px] px-2 py-0.5"
+                          >
+                            ✓ Verificado
+                          </Badge>
+                        );
+                      }
+
+                      // zona_similar → Badge azul (solo si tiene nota explicativa)
+                      if (fuente_validacion === 'zona_similar' && nota_adicional) {
+                        return (
+                          <Badge
+                            variant="outline"
+                            className="mt-1.5 w-fit bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5"
+                          >
+                            → Zona Similar
+                          </Badge>
+                        );
+                      }
+
+                      // estimacion_zona, promedio_municipal → SIN badge
+                      return null;
+                    })()}
+
+                    {/* Nota adicional (siempre visible si existe) */}
                     {item.nota_adicional && (
-                      <div className="text-xs text-gray-600 mt-1 italic border-l-2 border-blue-300 pl-2">
+                      <div className="text-xs text-gray-600 mt-1.5 italic border-l-2 border-blue-300 pl-2 leading-snug">
                         {item.nota_adicional}
                       </div>
                     )}
