@@ -423,12 +423,14 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               column-gap: 30px;
             }
              .analysis-content h4 {
-              column-span: all;
+              /* NO column-span para que fluya continuamente en columnas */
               margin: 16px 0 8px 0;
               font-size: 15px;
               color: #2C3D37;
               font-weight: 700;
               font-family: 'Outfit', sans-serif;
+              break-inside: avoid;
+              page-break-inside: avoid;
             }
              .analysis-content li {
               margin-left: 18px;
