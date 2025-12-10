@@ -179,6 +179,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         return cleanText
           // Negritas (asegurar que cierra)
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          // Limpiar ## inline que no están al inicio de línea
+          .replace(/\s+##\s+/g, ' - ')
           // Encabezados MD "# Título" o "#### Título" - Aplicar Title Case
           .replace(/^#+\s*(.*?)$/gm, (match, title) => {
             const formattedTitle = toTitleCase(title);
