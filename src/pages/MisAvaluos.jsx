@@ -147,7 +147,12 @@ export default function MisAvaluos() {
 
             // Usar el helper compartido
             const htmlBody = generateAvaluoEmailHtml({
-                data: { ...avaluo, ...comparablesData },
+                data: {
+                    ...avaluo,
+                    ...comparablesData,
+                    // Asegurar uso_lote desde cualquier fuente posible
+                    uso_lote: avaluo.uso_lote || comparablesData.uso_lote || comparablesData.ficha_tecnica_defaults?.uso_lote
+                },
                 codigoAvaluo,
                 valorEstimadoFinal,
                 rangoMin,
@@ -217,6 +222,23 @@ export default function MisAvaluos() {
         });
     };
 
+    // Helper: Convertir texto a Title Case (Primera Letra Mayúscula)
+    const toTitleCase = (str) => {
+        if (!str) return '';
+        const smallWords = ['y', 'de', 'en', 'a', 'o', 'la', 'el', 'del', 'un', 'una', 'para', 'por', 'con', 'sin'];
+        return str
+            .toLowerCase()
+            .split(' ')
+            .map((word, index) => {
+                // Primera palabra siempre en mayúscula, o si no es palabra pequeña
+                if (index === 0 || !smallWords.includes(word)) {
+                    return word.charAt(0).toUpperCase() + word.slice(1);
+                }
+                return word;
+            })
+            .join(' ');
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -262,7 +284,9 @@ export default function MisAvaluos() {
                         {avaluos.map((avaluo) => {
                             const formDataForPDF = {
                                 ...avaluo,
-                                comparables_data: avaluo.payload_json || {}
+                                comparables_data: avaluo.payload_json || {},
+                                // Asegurar uso_lote para el PDF
+                                uso_lote: avaluo.uso_lote || avaluo.payload_json?.uso_lote || avaluo.payload_json?.ficha_tecnica_defaults?.uso_lote
                             };
                             const compData = avaluo.payload_json || {};
                             let valorMostrar = avaluo.valor_final;
@@ -314,9 +338,17 @@ export default function MisAvaluos() {
                                                         <Home className="w-5 h-5 text-[#2C3D37]" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-[#2C3D37] capitalize text-lg">{avaluo.tipo_inmueble}</p>
+                                                        <p className="font-semibold text-[#2C3D37] capitalize text-lg">{toTitleCase(avaluo.tipo_inmueble)}</p>
                                                         <p className="text-sm text-[#4F5B55]">
-                                                            {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {avaluo.habitaciones || avaluo.payload_json?.habitaciones || '—'} Hab • {avaluo.banos || avaluo.payload_json?.banos || '—'} Baños
+                                                            {(avaluo.tipo_inmueble || '').toLowerCase().includes('lote') ? (
+                                                                <>
+                                                                    {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {toTitleCase(avaluo.uso_lote || avaluo.payload_json?.uso_lote || '—')} • {toTitleCase(avaluo.municipio || avaluo.ciudad || '—')}
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {avaluo.habitaciones || avaluo.payload_json?.habitaciones || '—'} Hab • {avaluo.banos || avaluo.payload_json?.banos || '—'} Baños
+                                                                </>
+                                                            )}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -329,8 +361,8 @@ export default function MisAvaluos() {
                                                         <MapPin className="w-5 h-5 text-[#2C3D37]" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-[#2C3D37] text-lg">{avaluo.barrio}</p>
-                                                        <p className="text-sm text-[#4F5B55]">{avaluo.municipio || avaluo.ciudad}</p>
+                                                        <p className="font-semibold text-[#2C3D37] text-lg">{toTitleCase(avaluo.barrio)}</p>
+                                                        <p className="text-sm text-[#4F5B55]">{toTitleCase(avaluo.municipio || avaluo.ciudad)}</p>
                                                     </div>
                                                 </div>
                                             </div>

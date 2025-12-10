@@ -29,6 +29,7 @@ import {
 import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
 import { construirTextoConfianza } from '@/lib/confidenceHelper';
+import { isDevelopmentMode, getDevUser } from '@/utils/devAuth';
 
 // Helper: Convertir texto a Title Case (Primera Letra Mayúscula)
 const toTitleCase = (str) => {
@@ -52,6 +53,7 @@ const AnalisisAI = ({ text }) => {
     if (!text) return null;
 
     // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
+    // 1. Limpieza de LaTeX básico (Mejorada para soportar fórmulas matemáticas complejas)
     const cleanText = text
         .replace(/^-{3,}\s*$/gm, '')
         .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
@@ -60,13 +62,18 @@ const AnalisisAI = ({ text }) => {
         .replace(/\\\)/g, '')
         .replace(/\\\[/g, '')
         .replace(/\\\]/g, '')
-        .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1 / $2')
+        .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '($1 / $2)') // (Num / Den)
+        .replace(/\\times/g, ' × ')
         .replace(/\\text\{([^}]+)\}/g, '$1')
         .replace(/\\sum/g, '∑')
         .replace(/\\approx/g, '≈')
+        .replace(/\\cdot/g, '•')
+        .replace(/\\{/g, '')
+        .replace(/\\}/g, '')
+        .replace(/\^2/g, '²') // m^2 -> m²
         .replace(/\s+COP\/m²/g, ' COP/m²')
         .replace(/Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi, 'Promedio precio por m² ≈ $1 COP/m²')
-        .replace(/^[\d\.]+\s+(?=[A-Z])/gm, '')
+        .replace(/^[\d\.]+\\s+(?=[A-Z])/gm, '')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
     const blocks = cleanText.split('\n\n');
@@ -102,11 +109,24 @@ const AnalisisAI = ({ text }) => {
                                         const isHeader = rIdx === 0;
                                         return (
                                             <tr key={rIdx} className={isHeader ? "bg-[#F0ECD9] text-[#2C3D37] font-bold" : "border-t border-[#f0f0f0] text-[#4F5B55]"}>
-                                                {cells.map((cell, cIdx) => (
-                                                    <td key={cIdx} className="p-2 border-r border-[#f0f0f0] last:border-r-0 text-center last:text-right first:text-left">
-                                                        {cell.trim()}
-                                                    </td>
-                                                ))}
+                                                {cells.map((cell, cIdx) => {
+                                                    // Alineación: Primera columna Izquierda, Última Derecha, Resto Centro
+                                                    // Vertical: Middle
+                                                    let alignClass = "text-center";
+                                                    if (cIdx === 0) alignClass = "text-left";
+                                                    if (cIdx === cells.length - 1) alignClass = "text-right";
+
+                                                    // Padding: Menos padding vertical en el header para quitar espacio blanco
+                                                    const paddingClass = isHeader ? "px-2 py-1" : "p-2";
+
+                                                    return (
+                                                        <td
+                                                            key={cIdx}
+                                                            className={`${paddingClass} border-r border-[#f0f0f0] last:border-r-0 ${alignClass} align-middle`}
+                                                            dangerouslySetInnerHTML={{ __html: cell.trim() }}
+                                                        />
+                                                    );
+                                                })}
                                             </tr>
                                         )
                                     })}
@@ -143,7 +163,6 @@ const AnalisisAI = ({ text }) => {
 
 
 
-
 export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF }) {
     const [mostrarComparables, setMostrarComparables] = useState(false);
     const [hasAvaluos, setHasAvaluos] = useState(false);
@@ -154,6 +173,16 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
     useEffect(() => {
         const checkAvaluos = async () => {
             try {
+                // En modo desarrollo, usar usuario mock
+                if (isDevelopmentMode()) {
+                    const devUser = getDevUser();
+                    if (devUser) {
+                        console.log('🔧 Usuario de desarrollo:', devUser.email);
+                        setHasAvaluos(true);
+                    }
+                    return;
+                }
+
                 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
                 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
                 if (!supabaseUrl || !supabaseAnonKey) return;
@@ -272,6 +301,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
 
     const areaInmueble = validarNumero(formData.area_construida || formData.area_total || data.area_construida || data.area_total);
     const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
+    const usoLote = formData.uso_lote || data.uso_lote;
 
     const formatCurrency = (value) => {
         const num = validarNumero(value);
@@ -388,20 +418,20 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
                                             📐 {formatNumber(areaInmueble)} m²
                                         </span>
-                                        {formData.uso_lote && (
+                                        {usoLote && (
                                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
-                                                🏗️ {formData.uso_lote}
+                                                🏗️ {toTitleCase(usoLote)}
                                             </span>
                                         )}
                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
-                                            📍 {formData.municipio || formData.ciudad || '—'}
+                                            📍 {toTitleCase(formData.municipio || formData.ciudad || '—')}
                                         </span>
                                     </>
                                 ) : (
                                     <>
                                         {formData.tipo_inmueble && (
                                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
-                                                🏠 {formData.tipo_inmueble}
+                                                🏠 {toTitleCase(formData.tipo_inmueble)}
                                             </span>
                                         )}
                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
@@ -419,7 +449,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                         )}
                                         {(formData.estado_inmueble || formData.estado || data.estado_inmueble || data.estado) && (
                                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
-                                                ✨ {(formData.estado_inmueble || formData.estado || data.estado_inmueble || data.estado || '').replace(/_/g, ' ')}
+                                                ✨ {toTitleCase((formData.estado_inmueble || formData.estado || data.estado_inmueble || data.estado || '').replace(/_/g, ' '))}
                                             </span>
                                         )}
                                         {(formData.estrato || data.estrato) && (

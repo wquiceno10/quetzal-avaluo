@@ -47,7 +47,7 @@ export default function TablaComparables({ comparables, esLote = false }) {
           {comparables.map((item, index) => (
             <TableRow key={index} className="hover:bg-[#F5F7F6] transition-colors border-b border-[#E0E5E2]">
 
-              <TableCell className="font-medium text-[#2C3D37] align-top py-3">
+              <TableCell className="font-medium text-[#2C3D37] align-middle py-3">
                 <div className="flex items-start gap-2">
                   <div className="p-1.5 bg-white border border-[#E0E5E2] rounded-md mt-0.5 shrink-0">
                     <Home className="w-3 h-3 text-[#C9C19D]" />
@@ -99,7 +99,7 @@ export default function TablaComparables({ comparables, esLote = false }) {
                 </div>
               </TableCell>
 
-              <TableCell className="align-top py-3">
+              <TableCell className="align-middle py-3">
                 <Badge
                   variant="outline"
                   className={`
@@ -113,7 +113,7 @@ export default function TablaComparables({ comparables, esLote = false }) {
                 </Badge>
               </TableCell>
 
-              <TableCell className="align-top py-3">
+              <TableCell className="align-middle py-3">
                 <div className="flex flex-col">
                   <span className="text-sm text-[#4F5B55] font-medium leading-tight">
                     {item.barrio || item.fuente_zona || '—'}
@@ -124,12 +124,12 @@ export default function TablaComparables({ comparables, esLote = false }) {
                 </div>
               </TableCell>
 
-              <TableCell className="text-sm text-[#4F5B55] text-center align-top py-3">
+              <TableCell className="text-sm text-[#4F5B55] text-center align-middle py-3">
                 {formatNumber(item.area_m2)} m²
               </TableCell>
 
               {!esLote && (
-                <TableCell className="text-sm text-[#4F5B55] text-center align-top py-3">
+                <TableCell className="text-sm text-[#4F5B55] text-center align-middle py-3">
                   <div className="flex flex-col items-center leading-tight">
                     <span>{item.habitaciones || '-'}</span>
                     <span className="text-[#E0E5E2] -my-1">__</span>
@@ -138,19 +138,19 @@ export default function TablaComparables({ comparables, esLote = false }) {
                 </TableCell>
               )}
 
-              <TableCell className="align-top py-3 text-right">
-                <div className="flex flex-col items-end">
-                  <span className="text-sm text-[#4F5B55] font-medium">
+              <TableCell className="align-middle py-3 text-right">
+                <div className="flex flex-row items-baseline justify-end gap-1">
+                  <span className="text-sm text-[#4F5B55] font-medium whitespace-nowrap">
                     {formatCurrency(item.precio_publicado)}
                   </span>
                   {item.tipo_origen === 'arriendo' && (
-                    <span className="text-[10px] text-[#A3B2AA]">/mes</span>
+                    <span className="text-[10px] text-[#A3B2AA] whitespace-nowrap">/mes</span>
                   )}
                 </div>
               </TableCell>
 
               {!esLote && (
-                <TableCell className="align-top py-3 text-right">
+                <TableCell className="align-middle py-3 text-right">
                   <div className="flex flex-col items-end">
                     <span className="text-sm font-semibold text-[#2C3D37]">
                       {formatCurrency(item.precio_cop)}
@@ -166,7 +166,7 @@ export default function TablaComparables({ comparables, esLote = false }) {
               )}
 
               {/* PRECIO M2 - Ahora tendrá espacio suficiente */}
-              <TableCell className="text-right align-top py-3 whitespace-nowrap">
+              <TableCell className="text-right align-middle py-3 whitespace-nowrap">
                 <span className="text-sm font-medium text-[#2C3D37]">
                   {formatCurrency(item.precio_m2)}
                 </span>

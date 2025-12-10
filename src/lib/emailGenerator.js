@@ -8,8 +8,31 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
   const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
   const formatNumber = (val) => val ? Math.round(val).toLocaleString('es-CO') : '—';
 
+  // Helper: Convertir texto a Title Case (Primera Letra Mayúscula)
+  const toTitleCase = (str) => {
+    if (!str) return '';
+    const smallWords = ['y', 'de', 'en', 'a', 'o', 'la', 'el', 'del', 'un', 'una', 'para', 'por', 'con', 'sin'];
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map((word, index) => {
+        // Primera palabra siempre en mayúscula, o si no es palabra pequeña
+        if (index === 0 || !smallWords.includes(word)) {
+          return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+      })
+      .join(' ');
+  };
+
   const esLote = (data.tipo_inmueble || '').toLowerCase().includes('lote');
   const comparablesData = data.comparables_data || data.payload_json || data;
+
+  // Fallback robusto para uso_lote
+  const usoLote = data.uso_lote ||
+    comparablesData.uso_lote ||
+    (comparablesData.ficha_tecnica_defaults && comparablesData.ficha_tecnica_defaults.uso_lote) ||
+    '-';
 
   return `
     <!DOCTYPE html>
@@ -30,13 +53,13 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
         .section-title { color: #2C3D37; font-size: 16px; font-weight: bold; border-bottom: 2px solid #C9C19D; padding-bottom: 8px; margin-bottom: 15px; margin-top: 25px; }
         
         .data-grid { width: 100%; border-collapse: collapse; }
-        .data-grid td { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+        .data-grid td { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; vertical-align: middle; }
         .data-label { color: #666; width: 40%; font-weight: bold; font-size: 11px; text-transform: uppercase; }
         .data-val { color: #333; font-weight: bold; text-align: right; }
         
         .comp-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-        .comp-table th { text-align: left; background: #F0ECD9; padding: 8px; font-size: 11px; }
-        .comp-table td { border-bottom: 1px solid #eee; padding: 8px; }
+        .comp-table th { text-align: left; background: #F0ECD9; padding: 8px; font-size: 11px; vertical-align: middle; }
+        .comp-table td { border-bottom: 1px solid #eee; padding: 8px; vertical-align: middle; }
         
         .footer-dark { background-color: #2C3D37; padding: 30px 20px; text-align: center; color: #8FA396; font-size: 11px; }
         
@@ -79,13 +102,13 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
         
         <div class="content">
           <p>Hola,</p>
-          <p>Aquí tienes el detalle de la valoración para tu inmueble ubicado en <strong>${data.barrio && data.barrio !== '—' && data.barrio !== '-' ? `${data.barrio}, ` : ''}${data.municipio || data.ciudad || '-'}</strong>. Este reporte refleja el comportamiento real del mercado local.</p>
+          <p>Aquí tienes el detalle de la valoración para tu inmueble ubicado en <strong>${toTitleCase(data.barrio && data.barrio !== '—' && data.barrio !== '-' ? `${data.barrio}, ` : '')}${toTitleCase(data.municipio || data.ciudad || '-')}</strong>. Este reporte refleja el comportamiento real del mercado local.</p>
 
           <!-- INFORMACIÓN DETALLADA -->
           <div class="section-title">Información Detallada</div>
           <table class="data-grid">
-            <tr><td class="data-label">Tipo Inmueble</td><td class="data-val">${data.tipo_inmueble || '—'}</td></tr>
-            <tr><td class="data-label">Ubicación</td><td class="data-val">${data.barrio && data.barrio !== '—' && data.barrio !== '-' ? `${data.barrio}, ` : ''}${data.municipio || data.ciudad || '-'}</td></tr>
+            <tr><td class="data-label">Tipo Inmueble</td><td class="data-val">${toTitleCase(data.tipo_inmueble || '—')}</td></tr>
+            <tr><td class="data-label">Ubicación</td><td class="data-val">${toTitleCase(data.barrio && data.barrio !== '—' && data.barrio !== '-' ? `${data.barrio}, ` : '')}${toTitleCase(data.municipio || data.ciudad || '-')}</td></tr>
             <tr><td class="data-label">Área Construida</td><td class="data-val">${formatNumber(data.area_construida || comparablesData.area_construida)} m²</td></tr>
             ${!esLote ? `
             <tr><td class="data-label">Habitaciones</td><td class="data-val">${data.habitaciones || comparablesData.habitaciones || '-'}</td></tr>
@@ -93,7 +116,7 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
             <tr><td class="data-label">Estrato</td><td class="data-val">${data.estrato || comparablesData.estrato || 'No especificado'}</td></tr>
             <tr><td class="data-label">Estado</td><td class="data-val" style="text-transform: capitalize;">${(data.estado_inmueble || data.estado || comparablesData.estado_inmueble || comparablesData.estado || '—').replace(/_/g, ' ')}</td></tr>
             ` : `
-            <tr><td class="data-label">Uso del Lote</td><td class="data-val">${data.uso_lote || '-'}</td></tr>
+            <tr><td class="data-label">Uso del Lote</td><td class="data-val">${toTitleCase(usoLote)}</td></tr>
             `}
           </table>
 
@@ -155,8 +178,8 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
               ${(comparablesData.comparables || []).slice(0, 5).map(item => `
               <tr>
                 <td>
-                  <strong style="color:#2C3D37;">${item.titulo || 'Propiedad'}</strong><br>
-                  <span style="color:#888; font-size:10px;">${item.barrio || ''}</span>
+                  <strong style="color:#2C3D37;">${toTitleCase(item.titulo || 'Propiedad')}</strong><br>
+                  <span style="color:#888; font-size:10px;">${toTitleCase(item.barrio || '')}</span>
                 </td>
                 <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>
                 <td style="text-align:right;">

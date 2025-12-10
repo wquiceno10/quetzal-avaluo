@@ -7,10 +7,27 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node / build
 node_modules
 dist
 dist-ssr
 *.local
+
+# Env files (no subir claves reales)
+.env
+.env.local
+.env.*
+!.env.example
+
+# Cloudflare Workers local env
+.dev.vars
+*.dev.vars
+
+# Local Netlify folder
+.netlify
+
+# Wrangler (Cloudflare)
+.wrangler
 
 # Editor directories and files
 .vscode/*
@@ -23,6 +40,8 @@ dist-ssr
 *.sln
 *.sw?
 
-.env
-# Local Netlify folder
-.netlify
+# Otros comunes
+.coverage
+coverage
+.tmp
+.temp

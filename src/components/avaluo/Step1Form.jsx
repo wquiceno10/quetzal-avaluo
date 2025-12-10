@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowRight, Upload, X, FileText, Loader2 } from 'lucide-react';
+import { isDevelopmentMode, getDevUser } from '@/utils/devAuth';
 
 const DEPARTAMENTOS_COLOMBIA = [
   "Amazonas", "Antioquia", "Arauca", "Atlántico", "Bolívar", "Boyacá", "Caldas",
@@ -27,6 +28,17 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
   useEffect(() => {
     const checkAvaluos = async () => {
       try {
+        // En modo desarrollo, usar usuario mock
+        if (isDevelopmentMode()) {
+          const devUser = getDevUser();
+          if (devUser) {
+            console.log('🔧 Usando usuario de desarrollo:', devUser.email);
+            // Simular que tiene avalúos para mostrar el botón
+            setHasAvaluos(true);
+          }
+          return;
+        }
+
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         if (!supabaseUrl || !supabaseAnonKey) return;

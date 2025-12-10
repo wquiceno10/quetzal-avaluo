@@ -8,7 +8,10 @@
     "dev:netlify": "netlify dev",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "worker:analysis": "cd cloudflare/avaluos-api-analysis && npx wrangler dev --port 8787",
+    "worker:email": "cd cloudflare/avaluos-api-email && npx wrangler dev --port 8788",
+    "worker:upload": "cd cloudflare/avaluos-api-upload && npx wrangler dev --port 8789"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.2",

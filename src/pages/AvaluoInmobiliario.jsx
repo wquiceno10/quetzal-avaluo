@@ -20,6 +20,7 @@ const initialState = {
   tipo_parqueadero: '',
   estado_inmueble: '',
   tipo_remodelacion: '',
+  uso_lote: '',
   informacion_complementaria: '',
   documentos_urls: [],
   comparables_data: null,
@@ -29,6 +30,15 @@ const initialState = {
 export default function AvaluoInmobiliario() {
   const [currentStep, setCurrentStep] = useState(1);
   const contentRef = useRef(null);
+  const workAreaRef = useRef(null);
+
+  useEffect(() => {
+    // Scroll to the work area (Step Indicator) when step changes,
+    // to keep user context but avoid jumping to the global hero header.
+    if (workAreaRef.current) {
+      workAreaRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [currentStep]);
   const [avaluoData, setAvaluoData] = useState(initialState);
   const [hasAvaluos, setHasAvaluos] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -78,82 +88,109 @@ export default function AvaluoInmobiliario() {
 
     const effectiveAvaluoData = { ...avaluoData, ...dataOverride };
 
-    // AUTO-SAVE LOGIC: If moving to Step 3 (Results) and user is logged in
-    if (currentStep === 2 && nextStep === 3 && currentUser) {
-      try {
-        console.log("[AUTO-SAVE] Starting auto-save...", { user: currentUser.email, tipo_inmueble: effectiveAvaluoData.tipo_inmueble });
+    // AUTO-SAVE LOGIC: If moving to Step 3 (Results)
+    // We explicitly check the session here to ensure we save even if the currentUser state is stale.
+    // Wrapped in try/catch to ensure we don't crash the flow if session check fails.
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-        const data = effectiveAvaluoData.comparables_data || {};
+    let activeUser = currentUser;
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) {
+        activeUser = data.session.user;
+      }
+    } catch (err) {
+      console.warn("[AUTO-SAVE] Session check warning (using fallback):", err);
+    }
 
-        // Generate Code if missing
-        const cod = effectiveAvaluoData.codigo_avaluo || `QZ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
+    if (currentStep === 2 && nextStep === 3) {
+      // DEV MODE FALLBACK: If we are in dev mode and have no user, create a mock one to allow saving
+      if (!activeUser && isDevMode) {
+        console.warn("[AUTO-SAVE] Dev Mode: using mock user for auto-save");
+        activeUser = { email: 'dev_test@quetzal.com', id: 'dev-id' };
+      }
 
-        // Calculate Value (Simple logic mirror)
-        let valFinal = data.valor_final;
-        if (!valFinal) {
-          const v1 = data.valor_estimado_venta_directa;
-          const v2 = data.valor_estimado_rentabilidad;
-          const min = data.rango_valor_min;
-          const max = data.rango_valor_max;
+      console.log("[DEBUG] Auto-save condition check. ActiveUser:", activeUser ? 'YES' : 'NO');
 
-          if (min && max) valFinal = (min + max) / 2;
-          else if (v1 && v2) valFinal = (v1 * 0.8 + v2 * 0.2);
-          else valFinal = v1 || v2 || 0;
+      if (activeUser) {
+        try {
+          console.log("[AUTO-SAVE] Starting auto-save...", { user: activeUser.email, tipo_inmueble: effectiveAvaluoData.tipo_inmueble });
+
+          const data = effectiveAvaluoData.comparables_data || {};
+
+          // Generate Code if missing
+          const cod = effectiveAvaluoData.codigo_avaluo || `QZ-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(Math.random() * 10000)}`;
+
+          // Calculate Value (Simple logic mirror)
+          let valFinal = data.valor_final;
+          if (!valFinal) {
+            const v1 = data.valor_estimado_venta_directa;
+            const v2 = data.valor_estimado_rentabilidad;
+            const min = data.rango_valor_min;
+            const max = data.rango_valor_max;
+
+            if (min && max) valFinal = (min + max) / 2;
+            else if (v1 && v2) valFinal = (v1 * 0.8 + v2 * 0.2);
+            else valFinal = v1 || v2 || 0;
+          }
+
+          const payload = {
+            ...data,
+            codigo_avaluo: cod,
+            valor_final: valFinal,
+            tipo_inmueble: effectiveAvaluoData.tipo_inmueble,
+            barrio: effectiveAvaluoData.barrio,
+            municipio: effectiveAvaluoData.municipio,
+            area_construida: effectiveAvaluoData.area_construida,
+            habitaciones: effectiveAvaluoData.habitaciones,
+            banos: effectiveAvaluoData.banos,
+            estrato: effectiveAvaluoData.estrato,
+            estado_inmueble: effectiveAvaluoData.estado_inmueble,
+            uso_lote: effectiveAvaluoData.uso_lote,
+          };
+
+          console.log("[AUTO-SAVE] Payload prepared:", {
+            email: activeUser.email,
+            tipoInmueble: effectiveAvaluoData.tipo_inmueble,
+            barrio: effectiveAvaluoData.barrio,
+            ciudad: effectiveAvaluoData.municipio,
+            valorFinal: valFinal,
+            codigoAvaluo: cod,
+            payloadKeys: Object.keys(payload)
+          });
+
+          const savedId = await guardarAvaluoEnSupabase({
+            email: activeUser.email,
+            tipoInmueble: effectiveAvaluoData.tipo_inmueble,
+            barrio: effectiveAvaluoData.barrio,
+            ciudad: effectiveAvaluoData.municipio,
+            valorFinal: valFinal,
+            codigoAvaluo: cod,
+            payloadJson: payload,
+          });
+
+          // Update local state with saved ID and Code AND the payload (to ensure Step 3 renders with data)
+          handleUpdateData({
+            id: savedId,
+            codigo_avaluo: cod,
+            comparables_data: payload
+          });
+          console.log("[AUTO-SAVE] ✅ Success! Avaluo ID:", savedId);
+          setHasAvaluos(true);
+
+        } catch (err) {
+          console.error("[AUTO-SAVE] ❌ Failed:", {
+            error: err,
+            message: err.message,
+            details: err.details,
+            hint: err.hint,
+            code: err.code
+          });
+          // Even if auto-save fails, allow user to continue to results
+          // They can still save manually via email in Step 4
         }
-
-        const payload = {
-          ...data,
-          codigo_avaluo: cod,
-          valor_final: valFinal,
-          tipo_inmueble: effectiveAvaluoData.tipo_inmueble,
-          barrio: effectiveAvaluoData.barrio,
-          municipio: effectiveAvaluoData.municipio,
-          area_construida: effectiveAvaluoData.area_construida,
-          habitaciones: effectiveAvaluoData.habitaciones,
-          banos: effectiveAvaluoData.banos,
-          estrato: effectiveAvaluoData.estrato,
-          estado_inmueble: effectiveAvaluoData.estado_inmueble,
-        };
-
-        console.log("[AUTO-SAVE] Payload prepared:", {
-          email: currentUser.email,
-          tipoInmueble: effectiveAvaluoData.tipo_inmueble,
-          barrio: effectiveAvaluoData.barrio,
-          ciudad: effectiveAvaluoData.municipio,
-          valorFinal: valFinal,
-          codigoAvaluo: cod,
-          payloadKeys: Object.keys(payload)
-        });
-
-        const savedId = await guardarAvaluoEnSupabase({
-          email: currentUser.email,
-          tipoInmueble: effectiveAvaluoData.tipo_inmueble,
-          barrio: effectiveAvaluoData.barrio,
-          ciudad: effectiveAvaluoData.municipio,
-          valorFinal: valFinal,
-          codigoAvaluo: cod,
-          payloadJson: payload,
-        });
-
-        // Update local state with saved ID and Code AND the payload (to ensure Step 3 renders with data)
-        handleUpdateData({
-          id: savedId,
-          codigo_avaluo: cod,
-          comparables_data: payload
-        });
-        console.log("[AUTO-SAVE] ✅ Success! Avaluo ID:", savedId);
-        setHasAvaluos(true);
-
-      } catch (err) {
-        console.error("[AUTO-SAVE] ❌ Failed:", {
-          error: err,
-          message: err.message,
-          details: err.details,
-          hint: err.hint,
-          code: err.code
-        });
-        // Even if auto-save fails, allow user to continue to results
-        // They can still save manually via email in Step 4
       }
     }
 
@@ -166,7 +203,13 @@ export default function AvaluoInmobiliario() {
   };
 
   const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    // If we are in Step 3 (Results) or Step 4 (Contact), we want to go back to Step 1 (Form) directly
+    // to allow editing, skipping the analysis step (Step 2) which would re-trigger the calculation.
+    if (currentStep >= 3) {
+      setCurrentStep(1);
+    } else {
+      setCurrentStep(prev => Math.max(prev - 1, 1));
+    }
   };
 
   const handleReset = () => {
@@ -174,10 +217,7 @@ export default function AvaluoInmobiliario() {
     setCurrentStep(1);
   };
 
-  useEffect(() => {
-    // Siempre hacer scroll al top cuando cambia el step
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentStep]);
+
 
   return (
     <div className="min-h-screen bg-[#F5F4F0]">
@@ -196,7 +236,7 @@ export default function AvaluoInmobiliario() {
       </div>
 
       {/* Step Indicator - siempre visible */}
-      <div className="bg-white shadow-sm">
+      <div ref={workAreaRef} className="bg-white shadow-sm">
         <StepIndicator currentStep={currentStep} />
       </div>
 

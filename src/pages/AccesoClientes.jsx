@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, CheckCircle } from 'lucide-react';
-// import { api } from '@/api/client'; // Removed legacy import
 import { createPageUrl } from '@/utils';
+import { isDevelopmentMode } from '@/utils/devAuth';
 
 export default function AccesoClientes() {
   const [email, setEmail] = useState('');
@@ -17,18 +17,10 @@ export default function AccesoClientes() {
 
   useEffect(() => {
     const initSupabase = async () => {
-      // Detectar modo desarrollo
-      const href = window.location.href;
-      const isDevMode =
-        href.includes('/editor/preview/') ||
-        href.includes('/sandbox/preview-url') ||
-        href.includes('server_url=') ||
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1';
-
-      // En modo desarrollo, no verificar sesión ni redirigir
-      if (isDevMode) {
-        setCheckingSession(false);
+      // En modo desarrollo, redirigir directo a la app
+      if (isDevelopmentMode()) {
+        console.log('🔧 Modo desarrollo detectado - bypass de autenticación activado');
+        window.location.href = createPageUrl('AvaluoInmobiliario');
         return;
       }
 

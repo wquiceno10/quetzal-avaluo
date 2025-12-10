@@ -1050,8 +1050,10 @@ Devuelve SOLO JSON válido.
                     total_promedio_municipal: comparablesParaTabla.filter(c => c.fuente_validacion === 'promedio_municipal').length,
                 },
 
-                // ERROR 1: Defaults
-                ficha_tecnica_defaults: {
+                // Defaults condicionales según tipo de inmueble
+                ficha_tecnica_defaults: esLote ? {
+                    uso_lote: 'No especificado'
+                } : {
                     habitaciones: 'No especificado',
                     banos: 'No especificado',
                     garajes: 'No especificado',
@@ -1061,6 +1063,7 @@ Devuelve SOLO JSON válido.
 
                 yield_mensual_mercado: esLote ? null : yieldFinal,
                 area_construida: area,
+                uso_lote: usoLote,  // ✅ AGREGADO - Campo principal
                 perplexity_full_text: finalPerplexityText
             };
 

@@ -91,6 +91,7 @@ export default function AvaluoDetalle() {
         estrato: avaluo.estrato || avaluo.payload_json?.estrato,
         edad_inmueble: avaluo.edad_inmueble,
         estado_inmueble: avaluo.estado_inmueble || avaluo.payload_json?.estado_inmueble || avaluo.payload_json?.estado,
+        uso_lote: avaluo.uso_lote || avaluo.payload_json?.uso_lote,  // ✅ AGREGADO
         // Contact info for direct resend
         email: avaluo.email,
         nombre_contacto: avaluo.nombre_contacto || avaluo.contacto_nombre,
@@ -117,7 +118,7 @@ export default function AvaluoDetalle() {
                     <ArrowLeft className="w-5 h-5 mr-2" />
                     Volver al reporte
                 </Button>
-                <Step4Contact formData={formData.comparables_data || formData} />
+                <Step4Contact formData={formData} />
             </div>
         );
     }

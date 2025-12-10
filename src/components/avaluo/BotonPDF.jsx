@@ -100,15 +100,25 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           const cells = row.split('|').filter(c => c.trim() !== '');
           if (cells.length === 0) return '';
           const tag = i === 0 ? 'th' : 'td';
-          const style = i === 0
-            ? 'style="background:#F0ECD9; font-weight:600; padding:8px; text-align:left; border-bottom:1px solid #ddd; color:#2C3D37;"'
-            : 'style="padding:8px; border-bottom:1px solid #f0f0f0; text-align:center; color:#4F5B55;"';
-          const inner = cells.map(c => `<${tag} ${style}>${c.trim()}</${tag}>`).join('');
+
+          const inner = cells.map((c, cIdx) => {
+            let align = 'center';
+            if (cIdx === 0) align = 'left';
+            else if (cIdx === cells.length - 1) align = 'right';
+
+            let style = `padding:8px; border-bottom:1px solid #f0f0f0; color:#4F5B55; vertical-align:middle; text-align:${align};`;
+            if (i === 0) {
+              // Header: Menos padding vertical
+              style = `background:#F0ECD9; font-weight:600; padding:4px 8px; border-bottom:1px solid #ddd; color:#2C3D37; vertical-align:middle; text-align:${align};`;
+            }
+
+            return `<${tag} style="${style}">${c.trim()}</${tag}>`;
+          }).join('');
           return `<tr>${inner}</tr>`;
         }).join('');
         return `
           <div style="overflow-x:auto; margin:15px 0; border:1px solid #E0E5E2; border-radius:8px; background:#fff;">
-            <table style="width:100%; border-collapse:collapse; font-size:11px;">
+            <table style="width:100%; border-collapse:collapse; font-size:12px;">
               <tbody>${htmlRows}</tbody>
             </table>
           </div>
@@ -184,17 +194,17 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           // Encabezados MD "# Título" o "#### Título" - Aplicar Title Case
           .replace(/^#+\s*(.*?)$/gm, (match, title) => {
             const formattedTitle = toTitleCase(title);
-            return `<h4 style="font-size:13px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
+            return `<h4 style="font-size:14px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
           })
           // Listas
           .replace(
             /^\s*[-*•]\s+(.*?)$/gm,
-            '<li style="margin-left:18px; font-size:11px; margin-bottom:6px; color:#4F5B55; line-height:1.2;">$1</li>'
+            '<li style="margin-left:18px; font-size:14px; margin-bottom:6px; color:#4F5B55; line-height:1.4;">$1</li>'
           )
           // Párrafos (líneas sueltas que no son tags HTML)
           .replace(
             /^(?!<(h4|li|table|div|strong))(.+)$/gm,
-            '<p style="font-size:11px; line-height:1.2; margin:8px 0; text-align:justify; color:#4F5B55;">$2</p>'
+            '<p style="font-size:14px; line-height:1.4; margin:8px 0; text-align:justify; color:#4F5B55;">$2</p>'
           );
       };
 
@@ -222,48 +232,18 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               color: #2C3D37;
             }
 
+
             .container {
               max-width: 960px;
               margin: 0 auto;
               padding: 0;
             }
 
-            @media print {
-              @page {
-                margin: 20mm 15mm 20mm 15mm;
-                size: letter;
-              }
-              body {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color-adjust: exact !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              .container {
-                max-width: 100%;
-                padding: 0 10mm;
-              }
-            }
 
             /* --- ESTILOS ORIGINALES CONSERVADOS --- */
             
-            .header-logo {
-              height: 50px;
-              margin-bottom: 15px;
-              filter: brightness(0) invert(1);
-            }
-            .header-title {
-              font-size: 28px;
-              font-weight: 700;
-              margin-bottom: 8px;
-            }
-            .header-subtitle {
-              font-size: 14px;
-              opacity: 0.9;
-            }
-            h1 { font-size: 26px; font-weight: 700; margin-bottom: 5px; }
-            h2 { font-size: 20px; font-weight: 600; margin: 12px 0 4px; }
+            h1 { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
+            h2 { font-size: 18px; font-weight: 600; margin: 12px 0 4px; }
             h3 { font-size: 16px; font-weight: 600; margin: 10px 0 6px; }
             .grid-2 {
               display: grid;
@@ -427,7 +407,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
              .analysis-content h4 {
               /* NO column-span para que fluya continuamente en columnas */
               margin: 16px 0 8px 0;
-              font-size: 15px;
+              font-size: 14px;
               color: #2C3D37;
               font-weight: 700;
               font-family: 'Outfit', sans-serif;
@@ -439,7 +419,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               margin-bottom: 6px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
-              font-size: 12px;
+              font-size: 14px;
               break-inside: avoid;
               page-break-inside: avoid;
             }
@@ -447,7 +427,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               margin-bottom: 12px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
-              font-size: 12px;
+              font-size: 14px;
               break-inside: avoid;
               page-break-inside: avoid;
             }
@@ -530,15 +510,19 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             /* Print Styles */
             @media print {
               @page {
-                margin: 20mm 15mm;
+                margin: 15mm 15mm;
                 size: letter;
               }
               body {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
-                margin: 0 !important;
                 padding: 0 !important;
+              }
+
+              h1, h2, h3, h4, h5, h6 {
+                page-break-after: avoid;
+                break-after: avoid;
               }
 
               .hero-header {
@@ -558,10 +542,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 page-break-inside: avoid;
               }
               table {
-                page-break-before: auto;
-                page-break-after: auto;
                 page-break-inside: auto;
-                break-inside: auto;
+                width: 100%;
               }
               thead {
                 display: table-header-group;
@@ -574,11 +556,11 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             
             /* Analysis Styles */
             .analysis-section {
-              margin-top: 30px;
-              border-top: 2px solid #E0E5E2;
-              padding-top: 20px;
-              page-break-inside: avoid;
-              break-inside: avoid;
+              /*margin-top: 30px;*/
+              /*border-top: 2px solid #E0E5E2;*/
+              padding-top: 0px;
+              page-break-inside: auto;
+              break-inside: auto;
             }
             .analysis-content h4 {
               color: #2C3D37;
@@ -587,13 +569,13 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             }
              .analysis-content li {
               margin-bottom: 5px;
-              font-size: 12px;
+              font-size: 14px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
             }
             .analysis-content p {
               margin-bottom: 10px;
-              font-size: 12px;
+              font-size: 14px;
               text-align: justify;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
@@ -640,7 +622,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               ${!esLote ? `
               <div style="display: flex; gap: 20px; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); position: relative; z-index: 1;">
                 <span style="font-size: 14px; color: #D3DDD6;">
-                  🏠 ${formData.tipo_inmueble || 'Inmueble'}
+                  🏠 ${toTitleCase(formData.tipo_inmueble || 'Inmueble')}
                 </span>
                 <span style="font-size: 14px; color: #D3DDD6;">
                   📐 ${formatNumber(area)} m²
@@ -655,13 +637,13 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               ` : `
               <div style="display: flex; gap: 20px; padding: 10px 0; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); position: relative; z-index: 1;">
                 <span style="font-size: 14px; color: #D3DDD6;">
-                  🏠 ${formData.tipo_inmueble || 'Lote'}
+                  🏠 ${toTitleCase(formData.tipo_inmueble || 'Lote')}
                 </span>
                 <span style="font-size: 14px; color: #D3DDD6;">
                   📐 ${formatNumber(area)} m²
                 </span>
                 <span style="font-size: 14px; color: #D3DDD6;">
-                  📍 ${formData.uso_lote || 'Uso no especificado'}
+                  📍 ${toTitleCase(formData.uso_lote || comparablesData.uso_lote || defaults.uso_lote || 'Uso no especificado')}
                 </span>
               </div>
               `}
@@ -750,11 +732,11 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               <div class="info-grid">
                 <div class="info-item">
                   <span class="info-label">Tipo de Inmueble:</span>
-                  <span class="info-value">${formData.tipo_inmueble || '—'}</span>
+                  <span class="info-value">${toTitleCase(formData.tipo_inmueble || '—')}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Ubicación:</span>
-                  <span class="info-value">${formData.barrio && formData.barrio !== '—' ? `${formData.barrio}, ` : ''}${formData.municipio || formData.ciudad || '—'}</span>
+                  <span class="info-value">${toTitleCase((formData.barrio && formData.barrio !== '—' ? `${formData.barrio}, ` : '') + (formData.municipio || formData.ciudad || '—'))}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Área Construida:</span>
@@ -791,7 +773,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 ` : `
                 <div class="info-item">
                   <span class="info-label">Uso del Lote:</span>
-                  <span class="info-value">${formData.uso_lote || '—'}</span>
+                  <span class="info-value">${toTitleCase(formData.uso_lote || comparablesData.uso_lote || defaults.uso_lote || '—')}</span>
                 </div>
                 `}
                 <div class="info-item">
@@ -865,7 +847,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
             return `
                     <tr>
-                      <td style="text-align:left;">
+                      <td style="text-align:left; vertical-align:middle;">
                         <strong style="display:block; margin-bottom:2px;">${item.titulo || 'Inmueble'}</strong>
                         <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
                         <br>
@@ -874,17 +856,17 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                         </span>
                         ${item.nota_adicional ? `<br><span class="note">${item.nota_adicional}</span>` : ''}
                       </td>
-                      <td style="text-align:center;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
-                      <td style="text-align:center;">${formatNumber(item.area_m2)} m²</td>
-                      ${!esLote ? `<td style="text-align:center; white-space: nowrap;">
+                      <td style="text-align:center; vertical-align:middle;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
+                      <td style="text-align:center; vertical-align:middle;">${formatNumber(item.area_m2)} m²</td>
+                      ${!esLote ? `<td style="text-align:center; white-space: nowrap; vertical-align:middle;">
                         ${item.habitaciones || '—'} / ${item.banos || '—'}
                       </td>` : ''}
-                      <td style="text-align:right;">${formatCurrency(item.precio_publicado)}${esArriendo ? '<br><span class="sub-text">/mes</span>' : ''}</td>
-                      ${!esLote ? `<td style="text-align:right;">
+                      <td style="text-align:right; vertical-align:middle;">${formatCurrency(item.precio_publicado)}${esArriendo ? ' <span class="sub-text">/mes</span>' : ''}</td>
+                      ${!esLote ? `<td style="text-align:right; vertical-align:middle;">
                         <strong>${formatCurrency(item.precio_cop)}</strong>
                         ${notaArriendo}
                       </td>` : ''}
-                      <td style="text-align:right; white-space: nowrap;"><strong>${formatCurrency(item.precio_m2)}</strong></td>
+                      <td style="text-align:right; white-space: nowrap; vertical-align:middle;"><strong>${formatCurrency(item.precio_m2)}</strong></td>
                     </tr>
                   `;
           }).join('')}

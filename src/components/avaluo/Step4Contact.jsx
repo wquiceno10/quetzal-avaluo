@@ -17,10 +17,6 @@ export default function Step4Contact({ formData, onBack, onReset }) {
   const [telefono, setTelefono] = useState('');
   const [enviado, setEnviado] = useState(false);
 
-  // Scroll automático al top al montar componente
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
 
   const sendEmailMutation = useMutation({
     mutationFn: async (data) => {
@@ -60,6 +56,7 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         banos: formData.banos,
         estrato: formData.estrato,
         estado_inmueble: formData.estado_inmueble,
+        uso_lote: formData.uso_lote, // ✅ AGREGADO
       };
 
       let avaluoId = formData.id;
@@ -87,12 +84,40 @@ export default function Step4Contact({ formData, onBack, onReset }) {
         rangoMax
       });
 
+      const toTitleCase = (str) => {
+        if (!str) return '';
+        const smallWords = ['y', 'de', 'en', 'a', 'o', 'la', 'el', 'del', 'un', 'una', 'para', 'por', 'con', 'sin'];
+        return str
+          .toLowerCase()
+          .split(' ')
+          .map((word, index) => {
+            if (index === 0 || !smallWords.includes(word)) {
+              return word.charAt(0).toUpperCase() + word.slice(1);
+            }
+            return word;
+          })
+          .join(' ');
+      };
+
+      const isLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
+      const tipo = toTitleCase(formData.tipo_inmueble);
+      const barrio = toTitleCase(formData.barrio);
+      const ciudad = toTitleCase(formData.municipio || formData.ciudad);
+
+      let subjectLine;
+      if (isLote) {
+        // En caso de lotes, ignorar barrio (User Request)
+        subjectLine = `Reporte de Avalúo: ${tipo} en ${ciudad}`;
+      } else {
+        subjectLine = `Reporte de Avalúo: ${tipo} en ${barrio ? `${barrio}, ` : ''}${ciudad}`;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_WORKER_EMAIL_URL}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: email, // String, not array
-          subject: `Reporte de Avalúo: ${formData.tipo_inmueble} en ${formData.barrio || formData.municipio || 'ubicación'}`,
+          subject: subjectLine,
           htmlBody: emailHtml // Worker expects "htmlBody", not "html"
         }),
       });
