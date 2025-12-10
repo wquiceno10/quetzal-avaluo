@@ -51,13 +51,8 @@ const toTitleCase = (str) => {
 const AnalisisAI = ({ text }) => {
     if (!text) return null;
 
-    // 1. Limpieza de typos comunes + LaTeX básico (Sincronizado con BotonPDF)
+    // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
     const cleanText = text
-        // CORRECCIONES DE TYPOS COMUNES (Perplexity)
-        .replace(/m³/g, 'm²')                    // m³ → m²
-        .replace(/m3\b/g, 'm²')                  // m3 (sin superíndice) → m²
-        .replace(/arriendas\b/gi, 'arriendos')   // arriendas → arriendos
-        .replace(/\s{2,}/g, ' ')                 // Normalizar espacios múltiples
         .replace(/^-{3,}\s*$/gm, '')
         .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
         .replace(/\n{3,}/g, '\n\n')
@@ -71,7 +66,8 @@ const AnalisisAI = ({ text }) => {
         .replace(/\\approx/g, '≈')
         .replace(/\s+COP\/m²/g, ' COP/m²')
         .replace(/Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi, 'Promedio precio por m² ≈ $1 COP/m²')
-        .replace(/^[\d\.]+\s+(?=[A-Z])/gm, '');
+        .replace(/^[\d\.]+\s+(?=[A-Z])/gm, '')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
     const blocks = cleanText.split('\n\n');
 
