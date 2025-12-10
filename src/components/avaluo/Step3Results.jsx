@@ -71,8 +71,7 @@ const AnalisisAI = ({ text }) => {
         .replace(/\\approx/g, '≈')
         .replace(/\s+COP\/m²/g, ' COP/m²')
         .replace(/Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi, 'Promedio precio por m² ≈ $1 COP/m²')
-        .replace(/^[\d\.]+\s+(?=[A-Z])/gm, '')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        .replace(/^[\d\.]+\s+(?=[A-Z])/gm, '');
 
     const blocks = cleanText.split('\n\n');
 
