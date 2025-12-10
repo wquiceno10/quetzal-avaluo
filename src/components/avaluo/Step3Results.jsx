@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
 import { generateAvaluoEmailHtml } from '@/lib/emailGenerator';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -144,7 +146,33 @@ const AnalisisAI = ({ text }) => {
 
 export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF }) {
     const [mostrarComparables, setMostrarComparables] = useState(false);
+    const [hasAvaluos, setHasAvaluos] = useState(false);
     const pdfButtonRef = useRef(null);
+    const navigate = useNavigate();
+
+    // Verificar si el usuario tiene avalúos guardados
+    useEffect(() => {
+        const checkAvaluos = async () => {
+            try {
+                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+                if (!supabaseUrl || !supabaseAnonKey) return;
+                const supabase = createClient(supabaseUrl, supabaseAnonKey);
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const { count } = await supabase
+                    .from('avaluos')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('email', user.email);
+
+                setHasAvaluos(count && count > 0);
+            } catch (e) {
+                console.error("Error checking avaluos:", e);
+            }
+        };
+        checkAvaluos();
+    }, []);
 
     // Auto-download PDF cuando viene desde email
     useEffect(() => {
@@ -268,35 +296,59 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
     const totalArriendo = validarNumero(data.total_comparables_arriendo);
     const portales = data.portales_consultados || [];
 
+    // Código de avalúo
+    const codigoAvaluo = formData.codigo_avaluo || data.codigo_avaluo;
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
 
             {/* MINIMALIST NAVIGATION LINKS */}
-            <div className="flex justify-end gap-6 text-sm">
-                <button
-                    onClick={() => pdfButtonRef.current?.click()}
-                    className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium"
-                >
-                    <Download className="w-4 h-4" />
-                    Descargar PDF
-                </button>
-                {onReset && (
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
+                {/* IZQUIERDA: Código de Avalúo + Botón Mis Avalúos */}
+                <div className="flex items-center gap-3">
+                    {hasAvaluos && codigoAvaluo && (
+                        <Badge variant="outline" className="bg-[#C9C19D]/10 text-[#2C3D37] border-[#C9C19D] px-4 py-2 text-sm font-semibold">
+                            {codigoAvaluo}
+                        </Badge>
+                    )}
+                    {hasAvaluos && (
+                        <button
+                            onClick={() => navigate('/mis-avaluos')}
+                            className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium"
+                        >
+                            <FileText className="w-4 h-4" />
+                            Mis Avalúos
+                        </button>
+                    )}
+                </div>
+
+                {/* DERECHA: Acciones */}
+                <div className="flex flex-wrap gap-6">
                     <button
-                        onClick={onReset}
+                        onClick={() => pdfButtonRef.current?.click()}
                         className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium"
                     >
-                        <ArrowRight className="w-4 h-4" />
-                        Nuevo Avalúo
+                        <Download className="w-4 h-4" />
+                        Descargar PDF
                     </button>
-                )}
-                <button
-                    onClick={handleAction}
-                    disabled={!valorPrincipal || sendEmailMutation.isPending}
-                    className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <Mail className="w-4 h-4" />
-                    Enviar al Correo
-                </button>
+                    {onReset && (
+                        <button
+                            onClick={onReset}
+                            className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium"
+                        >
+                            <ArrowRight className="w-4 h-4" />
+                            Nuevo Avalúo
+                        </button>
+                    )}
+                    <button
+                        onClick={handleAction}
+                        disabled={!valorPrincipal || sendEmailMutation.isPending}
+                        className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Mail className="w-4 h-4" />
+                        Enviar al Correo
+                    </button>
+                </div>
             </div>
 
             {/* 1. SECCIÓN HERO */}
