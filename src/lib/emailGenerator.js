@@ -79,13 +79,13 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
         
         <div class="content">
           <p>Hola,</p>
-          <p>Aquí tienes el detalle de la valoración para tu inmueble ubicado en <strong>${data.barrio || '-'}, ${data.municipio || data.ciudad || '-'}</strong>. Este reporte refleja el comportamiento real del mercado local.</p>
+          <p>Aquí tienes el detalle de la valoración para tu inmueble ubicado en <strong>${data.barrio && data.barrio !== '—' && data.barrio !== '-' ? `${data.barrio}, ` : ''}${data.municipio || data.ciudad || '-'}</strong>. Este reporte refleja el comportamiento real del mercado local.</p>
 
           <!-- INFORMACIÓN DETALLADA -->
           <div class="section-title">Información Detallada</div>
           <table class="data-grid">
             <tr><td class="data-label">Tipo Inmueble</td><td class="data-val">${data.tipo_inmueble || '—'}</td></tr>
-            <tr><td class="data-label">Ubicación</td><td class="data-val">${data.barrio || '-'}, ${data.municipio || data.ciudad || '-'}</td></tr>
+            <tr><td class="data-label">Ubicación</td><td class="data-val">${data.barrio && data.barrio !== '—' && data.barrio !== '-' ? `${data.barrio}, ` : ''}${data.municipio || data.ciudad || '-'}</td></tr>
             <tr><td class="data-label">Área Construida</td><td class="data-val">${formatNumber(data.area_construida || comparablesData.area_construida)} m²</td></tr>
             ${!esLote ? `
             <tr><td class="data-label">Habitaciones</td><td class="data-val">${data.habitaciones || comparablesData.habitaciones || '-'}</td></tr>

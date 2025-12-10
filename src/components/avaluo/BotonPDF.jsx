@@ -750,7 +750,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 </div>
                 <div class="info-item">
                   <span class="info-label">Ubicación:</span>
-                  <span class="info-value">${formData.barrio || '—'}, ${formData.municipio || formData.ciudad || '—'}</span>
+                  <span class="info-value">${formData.barrio && formData.barrio !== '—' ? `${formData.barrio}, ` : ''}${formData.municipio || formData.ciudad || '—'}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Área Construida:</span>
