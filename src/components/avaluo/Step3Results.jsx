@@ -51,8 +51,13 @@ const toTitleCase = (str) => {
 const AnalisisAI = ({ text }) => {
     if (!text) return null;
 
-    // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
+    // 1. Limpieza de typos comunes + LaTeX básico (Sincronizado con BotonPDF)
     const cleanText = text
+        // CORRECCIONES DE TYPOS COMUNES (Perplexity)
+        .replace(/m³/g, 'm²')                    // m³ → m²
+        .replace(/m3\b/g, 'm²')                  // m3 (sin superíndice) → m²
+        .replace(/arriendas\b/gi, 'arriendos')   // arriendas → arriendos
+        .replace(/\s{2,}/g, ' ')                 // Normalizar espacios múltiples
         .replace(/^-{3,}\s*$/gm, '')
         .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
         .replace(/\n{3,}/g, '\n\n')

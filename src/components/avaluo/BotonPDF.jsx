@@ -118,8 +118,13 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
       const formatText = (text) => {
         if (!text) return '';
 
-        // 1. Limpieza Inicial (Artefactos y LaTeX) - Sincronizado con Step3Results
+        // 1. Limpieza Inicial: Corrección de typos comunes + Artefactos LaTeX
         let cleanText = text
+          // CORRECCIONES DE TYPOS COMUNES (Perplexity)
+          .replace(/m³/g, 'm²')                    // m³ → m²
+          .replace(/m3\b/g, 'm²')                  // m3 (sin superíndice) → m²
+          .replace(/arriendas\b/gi, 'arriendos')   // arriendas → arriendos
+          .replace(/\s{2,}/g, ' ')                 // Normalizar espacios múltiples
           // Eliminar líneas horizontales MD (reforzado)
           .replace(/^-{3,}\s*$/gm, '')
           .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
@@ -579,6 +584,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               padding-top: 20px;
               page-break-inside: avoid;
               break-inside: avoid;
+              page-break-before: avoid;
             }
             .analysis-content h4 {
               color: #2C3D37;
@@ -822,6 +828,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                 </h4>
               </div>
               <p style="font-size: 11px; line-height: 1.5; margin: 0; 
+                        white-space: normal; word-wrap: break-word; overflow-wrap: break-word;
                         color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e3a8a' : '#78350f'};">
                 ${construirTextoConfianza(comparablesData.nivel_confianza, comparablesData.nivel_confianza_detalle)}
               </p>
