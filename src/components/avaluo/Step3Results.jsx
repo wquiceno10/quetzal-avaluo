@@ -54,10 +54,20 @@ const AnalisisAI = ({ text }) => {
 
     // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
     // 1. Limpieza de LaTeX básico (Mejorada para soportar fórmulas matemáticas complejas)
-    const cleanText = text
+    let cleanText = text
         .replace(/^-{3,}\s*$/gm, '')
         .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
         .replace(/\n{3,}/g, '\n\n')
+        // LaTeX spacing commands (NEW)
+        .replace(/\\quad/g, '<br>')        // \quad → line break
+        .replace(/\\qquad/g, '<br>')       // \qquad → line break
+        .replace(/\\,/g, ' ')              // thin space
+        .replace(/\\:/g, ' ')              // medium space
+        .replace(/\\;/g, ' ')              // thick space
+        .replace(/\\!/g, '')               // negative thin space
+        .replace(/\\enspace/g, ' ')
+        .replace(/\\hspace\{[^}]*\}/g, ' ')
+        // End LaTeX spacing commands
         .replace(/\\\(/g, '')
         .replace(/\\\)/g, '')
         .replace(/\\\[/g, '')
@@ -76,7 +86,86 @@ const AnalisisAI = ({ text }) => {
         .replace(/^[\d\.]+\\s+(?=[A-Z])/gm, '')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-    const blocks = cleanText.split('\n\n');
+    // Limpiar notación científica: 3.18 × 10^6 → 3.180.000
+    cleanText = cleanText.replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
+        const num = parseFloat(coefficient.replace(',', '.'));
+        const power = parseInt(exponent);
+        const result = num * Math.pow(10, power);
+        return Math.round(result).toLocaleString('es-CO');
+    });
+
+    // Helper para convertir validación a HTML badge (como en PDF)
+    const getBadgeHtml = (validation, includeNote = false) => {
+        const val = validation.trim().toLowerCase();
+        let badgeClass = '';
+        let badgeText = validation.trim();
+        let note = '';
+
+        if (val === 'portal_verificado') {
+            badgeClass = 'bg-green-100 text-green-700 border-green-300';
+            badgeText = '✓ Coincidencia';
+            if (includeNote) {
+                note = '<span style="display:block; font-size:12px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3;"><strong>NOTA:</strong> Anuncio de listado en la misma zona.</span>';
+            }
+        } else if (val === 'estimacion_zona') {
+            badgeClass = 'bg-red-100 text-red-700 border-red-300';
+            badgeText = '~ Est. Zona';
+        } else if (val === 'zona_similar') {
+            badgeClass = 'bg-blue-100 text-blue-700 border-blue-300';
+            badgeText = '→ Zona Similar';
+        } else if (val === 'promedio_municipal') {
+            badgeClass = 'bg-orange-100 text-orange-700 border-orange-300';
+            badgeText = '≈ Prom. Mun.';
+        } else {
+            badgeClass = 'bg-gray-100 text-gray-600 border-gray-300';
+        }
+
+        const badge = `<span class="inline-block px-2 py-1 rounded text-xs font-medium border ${badgeClass}">${badgeText}</span>`;
+        return note ? `${badge}${note}` : badge;
+    };
+
+    // PROCESAR PATRONES INLINE (como en PDF) - convertir a HTML directamente
+    // Detectar patrón: <strong>Portal</strong> (con posible salto de línea) fuente_validacion: xxx
+    // IMPORTANTE: Los ** ya fueron convertidos a <strong> antes
+    cleanText = cleanText.replace(/(<strong>[^<]+<\/strong>)[\s\r\n]*fuente_validacion:\s*([^\r\n]+)/gi, (match, portal, validation) => {
+        return `${portal} ${getBadgeHtml(validation.trim(), true)}`; // includeNote=true
+    });
+
+    // Si encuentra fuente_validacion sin portal antes (legacy), solo mostrar badge
+    cleanText = cleanText.replace(/^fuente_validacion:\s*(.+)$/gim, (match, validation) => {
+        return getBadgeHtml(validation.trim(), true); // includeNote=true
+    });
+
+    // FORMATEAR NOTA en tamaño pequeño (8pt) debajo del badge (para zona_similar u otros)
+    // Mejorar el formato: "Centro está a 3 km..." → "A 3 km de distancia, tiene características..."
+    cleanText = cleanText.replace(/<strong>NOTA:<\/strong>\s*([^\n]+)/gi, (match, noteText) => {
+        // Extraer distancia y características del texto original
+        let formattedNote = noteText.trim();
+
+        // Patrón 1: "Ciudad está a X km de Objetivo, [con/condiciones] características..."
+        const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
+        const match1 = formattedNote.match(pattern1);
+
+        if (match1) {
+            const distance = match1[2];
+            let characteristics = match1[3];
+
+            // Normalizar: "con características" o "condiciones" → "tiene características"
+            characteristics = characteristics
+                .replace(/^con\s+/i, 'tiene ')
+                .replace(/^condiciones\s+/i, 'tiene condiciones ');
+
+            formattedNote = `A ${distance} km de distancia, ${characteristics}`;
+        }
+
+        return `<span style="display:block; font-size:12px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3;"><strong>NOTA:</strong> ${formattedNote}</span>`;
+    });
+
+    // Primero dividir en bloques por doble salto de línea
+    const blocks = cleanText.split('\n\n').map(block => {
+        // Dentro de cada bloque, convertir saltos de línea simples a <br>
+        return block.replace(/\n/g, '<br>');
+    });
 
     return (
         <div className="text-[#4F5B55] font-raleway columns-2 gap-10 space-y-4">
@@ -151,7 +240,7 @@ const AnalisisAI = ({ text }) => {
                     );
                 }
 
-                // PARRAGRAFOS
+                // PARRAGRAFOS (ahora incluyen badges inline)
                 return (
                     <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: trimmed }} />
                 );

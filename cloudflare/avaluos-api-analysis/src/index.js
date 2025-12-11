@@ -33,6 +33,60 @@ function getSimilarity(s1, s2) {
             );
         }
     }
+
+    const distance = matrix[len1][len2];
+    const maxLen = Math.max(len1, len2);
+    return maxLen > 0 ? 1 - distance / maxLen : 1;
+}
+
+// --- HELPER: Clean LaTeX Commands from Text ---
+function cleanLatexCommands(text) {
+    if (!text) return '';
+
+    let cleanedText = text
+        // LaTeX spacing commands
+        .replace(/\\quad/g, '<br>')        // \quad → line break for clarity
+        .replace(/\\qquad/g, '<br>')       // \qquad → line break
+        .replace(/\\,/g, ' ')              // thin space
+        .replace(/\\:/g, ' ')              // medium space
+        .replace(/\\;/g, ' ')              // thick space
+        .replace(/\\!/g, '')               // negative thin space
+        .replace(/\\enspace/g, ' ')
+        .replace(/\\hspace\{[^}]*\}/g, ' ')
+
+        // Other common LaTeX artifacts
+        .replace(/\\times/g, ' × ')
+        .replace(/\\cdot/g, ' · ')
+        .replace(/\\approx/g, ' ≈ ')
+        .replace(/\\text\{([^}]+)\}/g, '$1')
+
+        // Limpiar LaTeX mal formateado (incluyendo los que ya estaban y nuevos)
+        .replace(/\\quad/gi, '<br>')
+        .replace(/\\qquad/gi, '<br>')
+        .replace(/\\text\{([^}]+)\}/g, '$1')
+        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
+        .replace(/(\d+)\s*mil(?:\s+millones)?/gi, (match, num) => {
+            return (parseFloat(num) * 1000000).toLocaleString('es-CO');
+        })
+        .replace(/(\d+(?:\.\d+)?)\s*M(?!\w)/gi, (match, num) => {
+            return (parseFloat(num) * 1000000).toLocaleString('es-CO');
+        })
+        .replace(/(\d+(?:\.\d+)?)\s*K(?!\w)/gi, (match, num) => {
+            return (parseFloat(num) * 1000).toLocaleString('es-CO');
+        });
+
+    // Limpiar notación científica: 3.18 × 10^6 → 3.180.000
+    cleanedText = cleanedText.replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
+        const num = parseFloat(coefficient.replace(',', '.'));
+        const power = parseInt(exponent);
+        const result = num * Math.pow(10, power);
+        return Math.round(result).toLocaleString('es-CO');
+    });
+
+    return cleanedText
+        // Clean up multiple spaces (but keep <br> tags)
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 }
 
 // --- HELPER: Construcción Dinámica de Prompt Perplexity ---
@@ -112,30 +166,34 @@ INSTRUCCIONES GENERALES
 
 **4. FORMATO DE LISTADO (ESTRICTO):**
 
-**[Título descriptivo]**<br>
-[Tipo] | [Venta/Arriendo]<br>
-$[Precio con puntos] | [Área] m² | [Hab] hab | [Baños] baños<br>
-[Barrio] | [Ciudad]<br>
-**[Fuente: Nombre portal]**<br>
-fuente_validacion: [etiqueta]<br>
-[NOTA: Obligatoria si zona_similar - explicar contexto]
+**[Título descriptivo]**
+[Tipo] | [Venta/Arriendo]
+$[Precio con puntos] | [Área] m² | [Hab] hab | [Baños] baños
+[Barrio] | [Ciudad]
+**[Fuente: Nombre portal]** fuente_validacion: [etiqueta]
+
+**IMPORTANTE:** NO incluyas la línea "NOTA:" en el análisis detallado. Las notas solo van en el PDF.
 
 Ejemplo:
 
-**Lote urbano comercial en Circasia**<br>
-Lote | Venta<br>
-$850.000.000 | 4200 m² | - hab | - baños<br>
-Centro | Circasia<br>
-**Fincaraíz**<br>
-fuente_validacion: zona_similar<br>
-**NOTA:** Circasia está a 8 km de ${formData.municipio || 'la zona objetivo'}. Se incluye por estar en el mismo corredor turístico, con características de uso comercial comparables.
+**Lote urbano comercial en Circasia**
+Lote | Venta
+$850.000.000 | 4200 m² | - hab | - baños
+Centro | Circasia
+**Fincaraíz** fuente_validacion: zona_similar
 
-**5. CIFRAS:**
+**5. CIFRAS (CRÍTICO - SIN ABREVIATURAS):**
    - SIEMPRE en pesos colombianos completos
    - CON puntos para miles: $4.200.000 (NO 4.2M ni $4200000)
+   - PROHIBIDO usar abreviaturas: NO "19.4 mil", NO "1.2M", NO "500K"
+   - En TODOS los cálculos usa números completos (sin decimales):
+     * CORRECTO: "19.400 pesos/m²" o "19.400"
+     * INCORRECTO: "19.4 mil pesos/m²"
+   - Esto aplica para PRECIOS, CÁNONES, PROMEDIOS y CÁLCULOS
 
 **6. FORMATO FINAL:**
-   - Usa <br> para saltos de línea en listados
+   - Cada línea de información en un renglón separado (saltos de línea simples)
+   - Separa cada comparable completo con DOS saltos de línea
    - NO incluyas URLs ni hipervínculos
    - Responde en español
    - NO devuelvas JSON
@@ -401,6 +459,10 @@ export default {
 
             const data = await response.json();
             perplexityContent = data.choices?.[0]?.message?.content || '';
+
+            // Clean LaTeX commands from Perplexity response
+            perplexityContent = cleanLatexCommands(perplexityContent);
+
             citations = data.citations || [];
             console.log(`Perplexity completado. Fuentes: ${citations.length}`);
 
@@ -807,6 +869,9 @@ Devuelve SOLO JSON válido.
             finalPerplexityText = finalPerplexityText.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
             // Eliminar literal "total_comparables: X" (no debe ser visible)
             finalPerplexityText = finalPerplexityText.replace(/total_comparables:\s*\d+/gi, '');
+
+            // Clean LaTeX commands again (extra safety for any that might have been added during processing)
+            finalPerplexityText = cleanLatexCommands(finalPerplexityText);
 
             let resumenFinal = extractedData.resumen_mercado || 'Análisis de mercado realizado.';
             resumenFinal = resumenFinal.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);

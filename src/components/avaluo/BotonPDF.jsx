@@ -135,6 +135,16 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
           // Eliminar saltos de línea excesivos
           .replace(/\n{3,}/g, '\n\n')
+          // LaTeX spacing commands (NEW)
+          .replace(/\\quad/g, '<br>')        // \quad → line break
+          .replace(/\\qquad/g, '<br>')       // \qquad → line break
+          .replace(/\\,/g, ' ')              // thin space
+          .replace(/\\:/g, ' ')              // medium space
+          .replace(/\\;/g, ' ')              // thick space
+          .replace(/\\!/g, '')               // negative thin space
+          .replace(/\\enspace/g, ' ')
+          .replace(/\\hspace\{[^}]*\}/g, ' ')
+          // End LaTeX spacing commands
           // Limpiar LaTeX básico
           .replace(/\\\(/g, '')
           .replace(/\\\)/g, '')
@@ -185,6 +195,14 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
         cleanText = newLines.join('\n');
 
+        // Limpiar notación científica: 3.18 × 10^6 → 3.180.000
+        cleanText = cleanText.replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
+          const num = parseFloat(coefficient.replace(',', '.'));
+          const power = parseInt(exponent);
+          const result = num * Math.pow(10, power);
+          return Math.round(result).toLocaleString('es-CO');
+        });
+
         // 3. Convertir markdown a HTML con estilos mejorados
         return cleanText
           // Negritas (asegurar que cierra)
@@ -196,6 +214,78 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             const formattedTitle = toTitleCase(title);
             return `<h4 style="font-size:14px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
           })
+          // FUENTE_VALIDACION inline con portal (ACTUALIZADO para coincidir con la página)
+          .replace(/(<strong>[^<]+<\/strong>)[\s\r\n]*fuente_validacion:\s*([^\r\n]+)/gi, (match, portal, validation) => {
+            const val = validation.trim().toLowerCase();
+            let badgeStyle = '';
+            let badgeText = validation.trim();
+            let note = '';
+
+            if (val === 'portal_verificado') {
+              badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
+              badgeText = '✓ Coincidencia';
+              note = '<span style="display:block; font-size:10px; color:#6B7280; font-style:italic; margin-top:4px; margin-bottom:12px; line-height:1.3;"><strong>NOTA:</strong> Anuncio de listado en la misma zona.</span>';
+            } else if (val === 'estimacion_zona') {
+              badgeStyle = 'background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;';
+              badgeText = '~ Est. Zona';
+            } else if (val === 'zona_similar') {
+              badgeStyle = 'background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;';
+              badgeText = '→ Zona Similar';
+            } else if (val === 'promedio_municipal') {
+              badgeStyle = 'background:#ffedd5; color:#c2410c; border:1px solid #fdba74;';
+              badgeText = '≈ Prom. Mun.';
+            } else {
+              badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
+            }
+
+            const badge = `<span style="display:inline-block; padding:3px 7px; border-radius:6px; font-size:10px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
+            return `${portal} ${badge}${note}`;
+          })
+          // FUENTE_VALIDACION legacy (sin portal antes)
+          .replace(/^fuente_validacion:\s*(.+)$/gim, (match, validation) => {
+            const val = validation.trim().toLowerCase();
+            let badgeStyle = '';
+            let badgeText = validation.trim();
+
+            if (val === 'portal_verificado') {
+              badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
+              badgeText = '✓ Coincidencia';
+            } else if (val === 'estimacion_zona') {
+              badgeStyle = 'background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;';
+              badgeText = '~ Est. Zona';
+            } else if (val === 'zona_similar') {
+              badgeStyle = 'background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;';
+              badgeText = '→ Zona Similar';
+            } else if (val === 'promedio_municipal') {
+              badgeStyle = 'background:#ffedd5; color:#c2410c; border:1px solid #fdba74;';
+              badgeText = '≈ Prom. Mun.';
+            } else {
+              badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
+            }
+
+            return `<span style="display:inline-block; padding:3px 7px; border-radius:6px; font-size:10px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
+          })
+          // NOTA con formato mejorado (tamaño 12px y NOTA: en negrita)
+          .replace(/<strong>NOTA:<\/strong>\s*([^\n]+)/gi, (match, noteText) => {
+            let formattedNote = noteText.trim();
+
+            // Patrón: "Ciudad está a X km de Objetivo, [con/condiciones] características..."
+            const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
+            const match1 = formattedNote.match(pattern1);
+
+            if (match1) {
+              const distance = match1[2];
+              let characteristics = match1[3];
+
+              characteristics = characteristics
+                .replace(/^con\s+/i, 'tiene ')
+                .replace(/^condiciones\s+/i, 'tiene condiciones ');
+
+              formattedNote = `A ${distance} km de distancia, ${characteristics}`;
+            }
+
+            return `<span style="display:block; font-size:10px; color:#6B7280; font-style:italic; margin-top:4px; margin-bottom:12px; line-height:1.3;"><strong>NOTA:</strong> ${formattedNote}</span>`;
+          })
           // Listas
           .replace(
             /^\s*[-*•]\s+(.*?)$/gm,
@@ -203,7 +293,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           )
           // Párrafos (líneas sueltas que no son tags HTML)
           .replace(
-            /^(?!<(h4|li|table|div|strong))(.+)$/gm,
+            /^(?!<(h4|li|table|div|strong|span|p))(.+)$/gm,
             '<p style="font-size:14px; line-height:1.4; margin:8px 0; text-align:justify; color:#4F5B55;">$2</p>'
           );
       };
