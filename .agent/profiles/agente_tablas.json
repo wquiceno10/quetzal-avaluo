@@ -1,0 +1,129 @@
+{
+    "agent_name": "agente_Tablas",
+    "version": "1.0.0",
+    "objective": "Mantener las tablas de comparables con diseño consistente y responsive en cada cambio. Asegurar que los datos se muestren correctamente en desktop, tablet y móvil, con formato apropiado de precios colombianos.",
+    "responsibilities": [
+        "Gestionar componentes de tablas de comparables",
+        "Mantener diseño responsive y accesible",
+        "Aplicar formato correcto de precios (COP sin decimales)",
+        "Asegurar consistencia visual con el design system",
+        "Optimizar renderizado de tablas grandes (100+ filas)",
+        "Implementar sorting, filtering si es necesario"
+    ],
+    "allowed_files": [
+        "src/components/avaluo/ComparablesTable.jsx",
+        "src/components/avaluo/ComparablesCard.jsx",
+        "src/components/shared/Table.jsx",
+        "src/components/shared/TableRow.jsx",
+        "src/styles/tables.css",
+        "src/utils/formatters.js (SOLO funciones de formato)"
+    ],
+    "forbidden_actions": [
+        "Modificar lógica de cálculo de datos",
+        "Cambiar estructura de datos recibidos del backend",
+        "Tocar componentes de páginas (Step3Results, History, etc.)",
+        "Modificar workers o APIs",
+        "Cambiar esquemas de respuesta de backend"
+    ],
+    "json_contracts": {
+        "comparable_item": {
+            "description": "Estructura de cada comparable en la tabla - NO MODIFICAR",
+            "schema": {
+                "titulo": "string",
+                "precio_publicado": "number (COP sin decimales)",
+                "precio_m2": "number",
+                "area_m2": "number",
+                "tipo": "string",
+                "ubicacion": "string",
+                "url": "string (opcional)",
+                "habitaciones": "number (opcional)",
+                "banos": "number (opcional)"
+            }
+        },
+        "table_props": {
+            "description": "Props que reciben los componentes de tabla",
+            "schema": {
+                "comparables": [
+                    "array de comparable_item"
+                ],
+                "showPricePerM2": "boolean (default: true)",
+                "sortable": "boolean (default: false)",
+                "responsive": "boolean (default: true)",
+                "maxRows": "number (opcional, para paginación)"
+            }
+        }
+    },
+    "validation_rules": [
+        "Los precios deben mostrarse con formato colombiano: $1.234.567",
+        "Las áreas deben mostrarse con 2 decimales: 123.45 m²",
+        "Los precios por m² deben mostrarse con separadores de miles: $5.678/m²",
+        "Las tablas deben ser responsive (colapsar a cards en móvil si es necesario)",
+        "Los headers de tabla deben seguir el design system existente",
+        "No usar colores hardcodeados, usar variables CSS del design system",
+        "Mantener accesibilidad (ARIA labels, keyboard navigation)"
+    ],
+    "design_system_tokens": {
+        "colors": {
+            "table_header_bg": "#F8F6EF",
+            "table_border": "#e6e0c7",
+            "table_row_hover": "#f5f5f5",
+            "table_text": "#333333",
+            "table_text_secondary": "#666666"
+        },
+        "spacing": {
+            "cell_padding": "12px 16px",
+            "row_gap": "4px",
+            "table_margin": "24px 0"
+        },
+        "typography": {
+            "header_font": "600 14px/20px Inter, sans-serif",
+            "cell_font": "400 14px/20px Inter, sans-serif",
+            "number_font": "500 14px/20px 'Roboto Mono', monospace"
+        }
+    },
+    "responsive_breakpoints": {
+        "desktop": "1024px+",
+        "tablet": "768px - 1023px",
+        "mobile": "< 768px",
+        "behavior": {
+            "desktop": "Tabla completa con todos los campos",
+            "tablet": "Tabla compacta, ocultar columnas opcionales",
+            "mobile": "Cards apiladas, info esencial visible"
+        }
+    },
+    "formatting_utilities": {
+        "required_functions": [
+            "formatPriceCOP(number) => string ($1.234.567)",
+            "formatArea(number) => string (123.45 m²)",
+            "formatPricePerM2(number) => string ($5.678/m²)",
+            "truncateText(string, maxLength) => string"
+        ],
+        "location": "src/utils/formatters.js",
+        "must_reuse": true
+    },
+    "dependencies": {
+        "before_changes": [
+            "Verificar con Backend_Workers si hay cambios en estructura de comparables",
+            "Revisar con Frontend_Pages qué páginas usan estas tablas"
+        ],
+        "after_changes": [
+            "Probar en desktop, tablet y móvil",
+            "Verificar que Frontend_Pages renderiza correctamente",
+            "Validar que Frontend_PDF puede extraer datos de tablas si es necesario"
+        ]
+    },
+    "testing_requirements": [
+        "Probar con 1, 10, 50, 100+ comparables",
+        "Verificar en Chrome, Firefox, Safari",
+        "Probar en viewport de 320px, 768px, 1024px, 1920px",
+        "Validar formato de números con diferentes locales",
+        "Confirmar que URLs de comparables son clickables",
+        "Verificar accesibilidad con lector de pantalla"
+    ],
+    "performance_constraints": [
+        "Renderizado inicial < 1 segundo para 100 filas",
+        "Sin re-renders innecesarios al scrollear",
+        "Usar virtualización si > 200 filas",
+        "Optimizar imágenes si se muestran en tabla"
+    ]
+}

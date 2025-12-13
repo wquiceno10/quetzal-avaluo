@@ -50,14 +50,25 @@ const toTitleCase = (str) => {
 // --- COMPONENTE DE FORMATO DE TEXTO ---
 // Force rebuild 2025-12-09 - Ensure 2 columns
 const AnalisisAI = ({ text }) => {
+    console.log('📝 RAW ANALISIS TEXT (Frontend):', text);
     if (!text) return null;
 
     // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
     // 1. Limpieza de LaTeX básico (Mejorada para soportar fórmulas matemáticas complejas)
     let cleanText = text
         .replace(/^-{3,}\s*$/gm, '')
-        .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
-        .replace(/\n{3,}/g, '\n\n')
+        // INJECT DEFAULT NOTES IF MISSING (Fallback)
+        // Detecta si falta nota (considerando variantes como *Nota:, Nota:, **NOTA:**, *TextoItalico*)
+        // CRÍTICO: Soporta CRLF (Windows) y LF (Unix) line endings
+        .replace(/(fuente_validacion:\s*(?:estimacion_zona|promedio_municipal|portal_verificado|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
+            let note = "";
+            let p = prefix.toLowerCase();
+            if (p.includes("estimacion_zona")) note = "Basado en datos de propiedades similares en la zona.";
+            else if (p.includes("promedio_municipal")) note = "Basado en datos de propiedades similares en ciudad/municipio.";
+            else if (p.includes("portal_verificado")) note = "Anuncio de listado en la misma zona.";
+            else if (p.includes("zona_similar")) note = "Propiedad en zona con características similares.";
+            return `${prefix}\n**NOTA:** ${note}`;
+        })
         // LaTeX spacing commands (NEW)
         .replace(/\\quad/g, '<br>')        // \quad → line break
         .replace(/\\qquad/g, '<br>')       // \qquad → line break
@@ -83,8 +94,25 @@ const AnalisisAI = ({ text }) => {
         .replace(/\^2/g, '²') // m^2 -> m²
         .replace(/\s+COP\/m²/g, ' COP/m²')
         .replace(/Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi, 'Promedio precio por m² ≈ $1 COP/m²')
-        .replace(/^[\d\.]+\\s+(?=[A-Z])/gm, '')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Convertir markdown bold a HTML (IGUAL QUE PDF - PASO 1)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Eliminar citaciones numéricas [1][2][3]...
+        .replace(/\[\d+\]/g, '');
+
+    // Desescapear HTML entities que Perplexity pueda enviar escapadas
+    cleanText = cleanText
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+
+    // 4. Limpieza final de tags sobrantes si quedaron
+    // cleanText = cleanText.replace(/<\/?strong>/g, ''); // ELIMINADO: Queremos mantener strong para el parser HTML
+
+    console.log('🔍 DESPUÉS DE HTML entities cleanup:', cleanText.substring(0, 500));
+    console.log('🔍 ¿Contiene <strong>?', cleanText.includes('<strong>'));
+    console.log('🔍 ¿Contiene **?', cleanText.includes('**'));
 
     // Limpiar notación científica: 3.18 × 10^6 → 3.180.000
     cleanText = cleanText.replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
@@ -95,52 +123,96 @@ const AnalisisAI = ({ text }) => {
     });
 
     // Helper para convertir validación a HTML badge (como en PDF)
-    const getBadgeHtml = (validation, includeNote = false) => {
+    const getBadgeHtml = (validation) => {
         const val = validation.trim().toLowerCase();
         let badgeClass = '';
         let badgeText = validation.trim();
-        let note = '';
 
         if (val === 'portal_verificado') {
             badgeClass = 'bg-green-100 text-green-700 border-green-300';
             badgeText = '✓ Coincidencia';
-            if (includeNote) {
-                note = '<span style="display:block; font-size:12px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3;"><strong>NOTA:</strong> Anuncio de listado en la misma zona.</span>';
-            }
         } else if (val === 'estimacion_zona') {
-            badgeClass = 'bg-red-100 text-red-700 border-red-300';
-            badgeText = '~ Est. Zona';
+            badgeClass = 'bg-orange-100 text-orange-700 border-orange-300';
+            badgeText = '≈ Estimación';
         } else if (val === 'zona_similar') {
             badgeClass = 'bg-blue-100 text-blue-700 border-blue-300';
             badgeText = '→ Zona Similar';
         } else if (val === 'promedio_municipal') {
-            badgeClass = 'bg-orange-100 text-orange-700 border-orange-300';
-            badgeText = '≈ Prom. Mun.';
+            badgeClass = 'bg-purple-100 text-purple-700 border-purple-300';
+            badgeText = '≈ Estimación';
         } else {
             badgeClass = 'bg-gray-100 text-gray-600 border-gray-300';
         }
 
-        const badge = `<span class="inline-block px-2 py-1 rounded text-xs font-medium border ${badgeClass}">${badgeText}</span>`;
-        return note ? `${badge}${note}` : badge;
+        return `<span class="inline-block px-2 py-1 rounded text-xs font-medium border ${badgeClass}">${badgeText}</span>`;
     };
 
     // PROCESAR PATRONES INLINE (como en PDF) - convertir a HTML directamente
+    // Limpiar HTML entities escapados (IGUAL QUE PDF - antes del procesamiento)
+    cleanText = cleanText
+        .replace(/&lt;strong&gt;/g, '<strong>')
+        .replace(/&lt;\/strong&gt;/g, '</strong>');
+
     // Detectar patrón: <strong>Portal</strong> (con posible salto de línea) fuente_validacion: xxx
-    // IMPORTANTE: Los ** ya fueron convertidos a <strong> antes
+    // REFUERZO: Reemplazar ** que puedan haber quedado (IGUAL QUE PDF - PASO 2)
+    cleanText = cleanText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // --- POST-PROCESAMIENTO: DESTACAR PALABRAS CLAVE ---
+    // Detectar y destacar automáticamente frases clave comunes para mejor legibilidad
+    const keyPhrasePatterns = [
+        // Análisis de métodos
+        /\b(Promedio de precios de venta de \d+ comparables):/gi,
+        /\b(Precio por m² promedio):/gi,
+        /\b(Precio\/m² ajustado):/gi,
+        /\b(Canon mensual estimado):/gi,
+        /\b(Yield promedio mercado):/gi,
+        /\b(Valor total):/gi,
+        /\b(Valor estimado):/gi,
+        /\b(Factor total):/gi,
+
+        // Ajustes
+        /^(Justificación):/gim,
+        /^(Porcentaje aplicado):/gim,
+        /\b(Ajuste por antigüedad):/gi,
+        /\b(Ajuste por estado):/gi,
+        /\b(Ajuste por ubicación):/gi,
+        /\b(Ajuste por reformas):/gi,
+
+        // Pasos metodológicos
+        /\b(PASO \d+):/gi,
+
+        // Resultados
+        /\b(Valor Recomendado de Venta):/gi,
+        /\b(Rango sugerido):/gi,
+        /\b(Precio m² final):/gi,
+    ];
+
+    keyPhrasePatterns.forEach(pattern => {
+        cleanText = cleanText.replace(pattern, (match, group1) => {
+            // Si ya está en <strong>, no duplicar
+            if (cleanText.includes(`<strong>${group1}</strong>`)) return match;
+            return `<strong>${group1}</strong>:`;
+        });
+    });
+
+    // Ahora procesar los badges
     cleanText = cleanText.replace(/(<strong>[^<]+<\/strong>)[\s\r\n]*fuente_validacion:\s*([^\r\n]+)/gi, (match, portal, validation) => {
-        return `${portal} ${getBadgeHtml(validation.trim(), true)}`; // includeNote=true
+        return `${portal} ${getBadgeHtml(validation.trim())}`;
     });
 
     // Si encuentra fuente_validacion sin portal antes (legacy), solo mostrar badge
     cleanText = cleanText.replace(/^fuente_validacion:\s*(.+)$/gim, (match, validation) => {
-        return getBadgeHtml(validation.trim(), true); // includeNote=true
+        return getBadgeHtml(validation.trim());
     });
 
     // FORMATEAR NOTA en tamaño pequeño (8pt) debajo del badge (para zona_similar u otros)
     // Mejorar el formato: "Centro está a 3 km..." → "A 3 km de distancia, tiene características..."
-    cleanText = cleanText.replace(/<strong>NOTA:<\/strong>\s*([^\n]+)/gi, (match, noteText) => {
+    // Regex flexible para capturar: "**NOTA:**", "*Nota:", "Nota:", "NOTA:", etc.
+    cleanText = cleanText.replace(/(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
         // Extraer distancia y características del texto original
-        let formattedNote = noteText.trim();
+        let formattedNote = noteText.trim()
+            // Limpiar asteriscos finales si quedaron (Markdown malformado)
+            .replace(/\*+$/, '');
 
         // Patrón 1: "Ciudad está a X km de Objetivo, [con/condiciones] características..."
         const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
@@ -158,14 +230,55 @@ const AnalisisAI = ({ text }) => {
             formattedNote = `A ${distance} km de distancia, ${characteristics}`;
         }
 
-        return `<span style="display:block; font-size:12px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3;"><strong>NOTA:</strong> ${formattedNote}</span>`;
-    });
+        return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
+    })
+        // Formatear notas "huerfanas" en itálicas (sin prefijo Nota:)
+        // Captura líneas enteras *Texto* que vengan después de un badge (o en contexto de validación)
+        .replace(/(?:^|\n)\s*\*([^*]{10,})\*\s*(?:\n|$)/g, (match, noteText) => {
+            let formattedNote = noteText.trim();
+            // Limpiar asteriscos si se capturaron
+            // El regex captura el grupo interno 1 sin asteriscos si hacemos *([^...])*, ajustemos:
+            // *([^*]{10,})* => captura lo de adentro.
+
+            // Misma lógica de limpieza de distancia
+            const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
+            const match1 = formattedNote.match(pattern1);
+            if (match1) {
+                const distance = match1[2];
+                let characteristics = match1[3];
+                characteristics = characteristics.replace(/^con\s+/i, 'tiene ').replace(/^condiciones\s+/i, 'tiene condiciones ');
+                formattedNote = `A ${distance} km de distancia, ${characteristics}`;
+            }
+
+            return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
+        });
+
+    // --- SMART FORMATTER: Rehidratar estructura ---
+    // 1. Reemplazar separadores "---" o líneas horizontales por saltos dobles
+    cleanText = cleanText.replace(/\s*-{3,}\s*/g, '\n\n');
+
+    // 2. Convertir títulos numerados ("1. TÍTULO") en Headers Markdown ("# 1. TÍTULO")
+    // Busca patrones como: "1. TÍTULO", "**1. TÍTULO**" (solo en la misma línea)
+    // Usamos [ \t] en vez de \s para NO capturar saltos de línea accidentalmente
+    cleanText = cleanText.replace(/(?:^|\n|\.)[ \t]*\**(\d+\.\s+[A-ZÁÉÍÓÚÑ ]{3,100}[:]??)\**/g, '\n\n# $1\n');
+
+    // 3. Separar fórmulas de bloque LaTeX (\[ ... \])
+    cleanText = cleanText.replace(/\\\[/g, '\n\n').replace(/\\\]/g, '\n\n');
+
+    // 4. Asegurar que las tablas tengan espacio antes (si una línea empieza con | y la anterior no es vacía)
+    cleanText = cleanText.replace(/([^\n])\n(\|)/g, '$1\n\n$2');
+
+    // 5. LISTAS DE COMPARABLES: Convertir bloques pegados ("**Casa...") en listas ("- **Casa...")
+    // Detecta inicio de comparable en medio de línea y fuerza nueva línea + viñeta
+    const comparableRegex = /([^\n])\s+(\*\*(?:Casa|Apartamento|Lote|Fincaraíz|Ciencuadras|Metrocudrado|Inmueble|Propiedad)\b)/g;
+    cleanText = cleanText.replace(comparableRegex, '$1\n\n- $2');
+
+    // También si ya está al inicio de línea pero sin viñeta
+    cleanText = cleanText.replace(/\n(\*\*(?:Casa|Apartamento|Lote)\b)/g, '\n- $1');
 
     // Primero dividir en bloques por doble salto de línea
-    const blocks = cleanText.split('\n\n').map(block => {
-        // Dentro de cada bloque, convertir saltos de línea simples a <br>
-        return block.replace(/\n/g, '<br>');
-    });
+    // CORRECCIÓN: NO reemplazar \n por <br> aquí, hacerlo solo al renderizar párrafos
+    const blocks = cleanText.split('\n\n');
 
     return (
         <div className="text-[#4F5B55] font-raleway columns-2 gap-10 space-y-4">
@@ -175,11 +288,23 @@ const AnalisisAI = ({ text }) => {
 
                 // HEADERS
                 if (trimmed.startsWith('#')) {
-                    const title = toTitleCase(trimmed.replace(/^#+\s*/, ''));
+                    // CRÍTICO: Solo tomar la PRIMERA LÍNEA como header
+                    // Si hay texto después del salto de línea, procesarlo como bloque separado
+                    const lines = trimmed.split('\n');
+                    const headerLine = lines[0];
+                    const remainingText = lines.slice(1).join('\n').trim();
+
+                    const title = toTitleCase(headerLine.replace(/^#+\s*/, ''));
+
                     return (
-                        <h3 key={index} className="font-outfit font-bold text-lg text-[#2C3D37] mt-6 first:mt-0 mb-3 border-b border-[#C9C19D]/50 pb-1 break-inside-avoid">
-                            {title}
-                        </h3>
+                        <React.Fragment key={index}>
+                            <h3 className="font-outfit font-medium text-lg text-[#2C3D37] mt-6 first:mt-0 mb-3 border-b border-[#C9C19D]/50 pb-1 break-inside-avoid">
+                                {title}
+                            </h3>
+                            {remainingText && (
+                                <p className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: remainingText.replace(/\n/g, '<br>') }} />
+                            )}
+                        </React.Fragment>
                     );
                 }
 
@@ -226,14 +351,32 @@ const AnalisisAI = ({ text }) => {
                 }
 
                 // LISTAS
-                if (trimmed.match(/^[-*•]|^\d+[\.\)]/)) {
-                    const items = trimmed.split('\n').map((line) => line.replace(/^[-*•\d+[\.\)]\s*/, ''));
+                // IMPORTANTE: NO capturar títulos con números (3.1., 3.2.) - solo listas reales
+                if (trimmed.match(/^[-*•]\s/) || (trimmed.match(/^\d+[\.\)]\s/) && !trimmed.match(/^\d+\.\d+/))) {
+                    // Dividir solo por líneas que EMPIEZAN con marcador de lista
+                    const lines = trimmed.split('\n');
+                    const items = [];
+                    let currentItem = '';
+
+                    for (const line of lines) {
+                        // Si la línea empieza con marcador de lista, es un nuevo item
+                        // PERO NO si es un título de sección (3.1., 3.2., etc.)
+                        if ((line.match(/^[-*•]\s/) || line.match(/^\d+[\.\)]\s/)) && !line.match(/^\d+\.\d+/)) {
+                            if (currentItem) items.push(currentItem);
+                            currentItem = line.replace(/^(?:[-*•]|\d+[\.\)])\s*/, '');
+                        } else if (line.trim()) {
+                            // Línea de continuación (cálculo, etc.) - agregar al item actual
+                            currentItem += '\n' + line;
+                        }
+                    }
+                    if (currentItem) items.push(currentItem);
+
                     return (
                         <ul key={index} className="list-none space-y-2 mb-4 break-inside-avoid">
                             {items.map((item, i) => (
                                 <li key={i} className="flex gap-2 text-sm leading-relaxed text-[#4F5B55]">
                                     <span className="font-bold mt-0.5">•</span>
-                                    <span dangerouslySetInnerHTML={{ __html: item }} />
+                                    <span dangerouslySetInnerHTML={{ __html: item.replace(/\n/g, '<br>') }} />
                                 </li>
                             ))}
                         </ul>
@@ -241,8 +384,10 @@ const AnalisisAI = ({ text }) => {
                 }
 
                 // PARRAGRAFOS (ahora incluyen badges inline)
+                // Convertir \n a <br> AQUÍ, solo para párrafos normales
+                const paragraphHtml = trimmed.replace(/\n/g, '<br>');
                 return (
-                    <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: trimmed }} />
+                    <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: paragraphHtml }} />
                 );
             })}
         </div>
@@ -357,9 +502,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
     const handleAction = () => {
         // Si ya tiene ID y datos de contacto, reenviar directamente
         if (formData.id && (formData.email || formData.contacto_email)) {
-            if (confirm(`¿Deseas reenviar el reporte a ${formData.email || formData.contacto_email}?`)) {
-                sendEmailMutation.mutate();
-            }
+            sendEmailMutation.mutate();
         } else {
             // Si es nuevo o no tiene datos, ir al formulario
             onNext();
@@ -375,7 +518,10 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
         }
     }
 
-    const valorVentaDirecta = validarNumero(data.valor_estimado_venta_directa);
+    // Priorizar nuevo campo valor_mercado, fallback a legacy
+    const valorMercado = validarNumero(data.valor_mercado) || validarNumero(data.valor_estimado_venta_directa);
+    const valorVentaDirecta = valorMercado;  // Alias para compatibilidad
+    const factorAjuste = validarNumero(data.factor_ajuste_total) || 1.0;
     const valorRentabilidad = validarNumero(data.valor_estimado_rentabilidad);
     const rangoMin = validarNumero(data.rango_valor_min);
     const rangoMax = validarNumero(data.rango_valor_max);
@@ -589,27 +735,32 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
             </Card>
 
             {/* 2. MÉTODOS DESGLOSADOS (ADAPTATIVO) */}
-            <div className={valorRentabilidad ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "max-w-lg mx-auto"}>
+            <div className={valorRentabilidad ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "flex justify-center"}>
                 {/* Venta Directa */}
-                <Card className="border-[#E0E5E2] shadow-sm hover:shadow-md transition-shadow duration-200">
-                    <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
+                <Card className="border-[#e6e0c7] shadow-sm hover:shadow-md transition-shadow duration-200 w-full max-w-lg bg-[#F8F6EF]">
+                    <CardHeader className="pb-3 bg-[#F8F6EF] border-b border-[#e6e0c7]">
                         <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
                             <TrendingUp className="w-4 h-4 text-[#C9C19D]" />
                             {esLote ? 'Metodología Ajustada (Lotes)' : 'Enfoque de Mercado (Comparables)'}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="pt-6 space-y-4">
-                        <div className="text-center">
+                    <CardContent className="pt-6 space-y-4 bg-[#F8F6EF]">
+                        <div className="text-center mb-[36px]">
                             <div className="text-3xl font-bold text-[#2C3D37] mt-1 font-outfit">
                                 {formatCurrency(valorVentaDirecta)}
                             </div>
                         </div>
-                        <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
-                            {esLote
-                                ? 'Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.'
-                                : 'Calculado a partir del precio promedio por m² de las propiedades comparables (precio promedio por m² × área del inmueble).'}
-                        </p>
-                        <div className="flex justify-between items-center pt-2 mt-1">
+                        <div className="min-h-[80px] flex flex-col justify-center">
+                            <p
+                                className="text-sm text-[#4F5B55] text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3 mb-[20px]"
+                                dangerouslySetInnerHTML={{
+                                    __html: esLote
+                                        ? 'Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.'
+                                        : 'Calculado a partir del <strong>precio promedio por m²</strong> de las propiedades comparables<br>(precio promedio por m² × área del inmueble).'
+                                }}
+                            />
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
                             <span className="text-sm text-[#7A8C85]">Precio m² estimado:</span>
                             <span className="text-sm font-semibold text-[#2C3D37]">
                                 {areaInmueble && valorVentaDirecta ? `${formatCurrency(valorVentaDirecta / areaInmueble)}/m²` : '—'}
@@ -620,29 +771,36 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
 
                 {/* Rentabilidad (Condicional) */}
                 {valorRentabilidad && (
-                    <Card className="border-[#E0E5E2] shadow-sm hover:shadow-md transition-shadow duration-200">
-                        <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
+                    <Card className="border-[#e6e0c7] shadow-sm hover:shadow-md transition-shadow duration-200 bg-[#F8F6EF]">
+                        <CardHeader className="pb-3 bg-[#F8F6EF] border-b border-[#e6e0c7]">
                             <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
                                 <Calculator className="w-4 h-4 text-[#C9C19D]" />
                                 Enfoque de Rentabilidad (Capitalización)
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-6 space-y-4">
+                        <CardContent className="pt-6 space-y-4 bg-[#F8F6EF]">
                             <div className="text-center">
                                 <div className="text-3xl font-bold text-[#2C3D37] mt-1 font-outfit">
                                     {formatCurrency(valorRentabilidad)}
                                 </div>
                             </div>
-                            <p className="text-sm text-[#4F5B55] leading-relaxed text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3">
-                                Calculado a partir del canon mensual estimado y la fórmula del rendimiento (yield) del sector (canon mensual estimado ÷ yield mensual).
-                            </p>
-                            {/* Corrección 5: Nota sobre Yield */}
-                            {data.yield_mensual_mercado && (
-                                <p className="text-xs text-[#7A8C85] italic px-4 mt-2">
-                                    El yield utilizado ({(data.yield_mensual_mercado * 100).toFixed(2)}% mensual) corresponde al promedio
-                                    observado en arriendos residenciales del sector, ajustado automáticamente por zona y disponibilidad de comparables.
-                                </p>
-                            )}
+                            <div className="min-h-[80px] flex flex-col justify-center">
+                                <p
+                                    className="text-sm text-[#4F5B55] text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3"
+                                    dangerouslySetInnerHTML={{
+                                        __html: 'Calculado a partir del <strong>canon mensual</strong> y la fórmula del rendimiento (yield) del sector<br>(canon mensual estimado ÷ yield mensual).'
+                                    }}
+                                />
+                                {/* Corrección 5: Nota sobre Yield */}
+                                {data.yield_mensual_mercado && (
+                                    <p
+                                        className="text-xs text-[#7A8C85] italic px-4 mt-2 text-center"
+                                        dangerouslySetInnerHTML={{
+                                            __html: `<strong>El yield utilizado (${(data.yield_mensual_mercado * 100).toFixed(2)}% mensual)</strong> (promedio observado en arriendos residenciales del sector, ajustado por valor del sector)`
+                                        }}
+                                    />
+                                )}
+                            </div>
                             <div className="flex justify-between items-center pt-2 mt-1">
                                 <span className="text-sm text-[#7A8C85]">Precio m² implícito:</span>
                                 <span className="text-sm font-semibold text-[#2C3D37]">

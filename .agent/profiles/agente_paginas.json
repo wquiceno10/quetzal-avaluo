@@ -1,0 +1,192 @@
+{
+    "agent_name": "agente_Paginas",
+    "version": "1.0.0",
+    "objective": "Mantener las páginas principales de la aplicación: resultados, formulario, steps, e historial. Asegurar flujo correcto de datos, navegación intuitiva, y UX consistente.",
+    "responsibilities": [
+        "Gestionar componentes de páginas completas",
+        "Coordinar flujo de datos entre steps del wizard",
+        "Implementar navegación y routing",
+        "Manejar estado de la aplicación (form data, results)",
+        "Integrar componentes de tablas, cards, y otros elementos",
+        "Asegurar UX consistente y responsive"
+    ],
+    "allowed_files": [
+        "src/pages/Home.jsx",
+        "src/pages/Avaluo.jsx",
+        "src/pages/History.jsx",
+        "src/components/avaluo/Step1Form.jsx",
+        "src/components/avaluo/Step2Processing.jsx",
+        "src/components/avaluo/Step3Results.jsx",
+        "src/components/avaluo/AvaluoWizard.jsx",
+        "src/components/shared/Navigation.jsx",
+        "src/components/shared/Header.jsx",
+        "src/components/shared/Footer.jsx",
+        "src/styles/pages.css",
+        "src/App.jsx (routing)"
+    ],
+    "forbidden_actions": [
+        "Modificar workers o backend APIs",
+        "Cambiar lógica de cálculo de avalúos",
+        "Modificar componentes de tablas directamente (usar props)",
+        "Tocar lógica de generación de PDF",
+        "Modificar templates de emails",
+        "Cambiar estructura de datos de backend (avaluo_response)"
+    ],
+    "json_contracts": {
+        "form_data": {
+            "description": "Datos del formulario de avalúo - Step 1",
+            "schema": {
+                "tipo_propiedad": "string ('Lote' | 'Casa' | 'Apartamento' | 'Finca')",
+                "direccion": "string",
+                "ciudad": "string",
+                "area_m2": "number",
+                "habitaciones": "number (opcional, no para Lote)",
+                "banos": "number (opcional, no para Lote)",
+                "estrato": "string (opcional)",
+                "estado": "string (opcional)",
+                "uso_lote": "string (opcional, solo para Lote)",
+                "user_email": "string (email válido)"
+            }
+        },
+        "avaluo_data": {
+            "description": "Datos completos del avalúo - recibido de Backend_Workers",
+            "must_match": "agente_workers.json -> avaluo_response",
+            "note": "NO modificar estructura, solo consumir"
+        },
+        "wizard_state": {
+            "description": "Estado del wizard de avalúo",
+            "schema": {
+                "current_step": "number (1-3)",
+                "form_data": "form_data schema",
+                "avaluo_result": "avaluo_data (null hasta step 3)",
+                "is_loading": "boolean",
+                "error": "string | null"
+            }
+        },
+        "history_item": {
+            "description": "Item en la lista de historial",
+            "schema": {
+                "avaluo_id": "string (UUID)",
+                "created_at": "ISO 8601 timestamp",
+                "tipo_propiedad": "string",
+                "direccion": "string",
+                "ciudad": "string",
+                "precio_final_cop": "number",
+                "nivel_confianza": "string"
+            }
+        }
+    },
+    "validation_rules": [
+        "Validar todos los campos del formulario antes de enviar (Step 1)",
+        "Mostrar loading states mientras se procesa el avalúo (Step 2)",
+        "No permitir navegación hacia atrás desde Step 3 sin confirmación",
+        "Guardar form_data en sessionStorage para recuperación",
+        "Mostrar errores de forma user-friendly (no mostrar stack traces)",
+        "Mantener consistencia de diseño entre todas las páginas",
+        "Respetar estructura de datos de avaluo_response del backend"
+    ],
+    "page_specific_rules": {
+        "Step1Form": {
+            "validations": [
+                "Tipo de propiedad: requerido",
+                "Dirección: mínimo 5 caracteres",
+                "Ciudad: requerido",
+                "Área m²: número positivo, máximo 100,000",
+                "Email: formato válido",
+                "Habitaciones/Baños: ocultar para tipo Lote",
+                "Uso lote: mostrar solo para tipo Lote"
+            ],
+            "ux_requirements": [
+                "Autocompletar ciudad con opciones predefinidas",
+                "Mostrar/ocultar campos dinámicamente según tipo",
+                "Deshabilitar submit si hay errores",
+                "Mostrar tooltips para campos opcionales"
+            ]
+        },
+        "Step2Processing": {
+            "requirements": [
+                "Mostrar spinner durante procesamiento",
+                "Mostrar mensaje de progreso actualizado",
+                "Timeout visual a los 45 segundos",
+                "Permitir cancelar request",
+                "Manejar errores de red gracefully"
+            ]
+        },
+        "Step3Results": {
+            "requirements": [
+                "Mostrar precio final prominente",
+                "Renderizar tablas de comparables usando Frontend_Tables",
+                "Mostrar métodos de valoración (cards)",
+                "Renderizar análisis detallado (markdown)",
+                "Botones: Descargar PDF, Enviar Email, Nueva Búsqueda",
+                "Guardar resultado en historial automáticamente"
+            ]
+        },
+        "History": {
+            "requirements": [
+                "Listar avalúos del usuario (últimos 50)",
+                "Permitir ver detalle de avalúo previo",
+                "Botón para descargar PDF de avalúo histórico",
+                "Botón para reenviar email",
+                "Filtrar por tipo de propiedad, ciudad, fecha",
+                "Pagination si hay más de 20 items"
+            ]
+        }
+    },
+    "navigation_flow": {
+        "routes": {
+            "/": "Home page",
+            "/avaluo": "Wizard de avalúo (steps 1-3)",
+            "/historial": "Lista de avalúos previos",
+            "/avaluo/:id": "Ver detalle de avalúo específico"
+        },
+        "protected_routes": [
+            "/historial (requiere auth)",
+            "/avaluo/:id (requiere auth)"
+        ]
+    },
+    "state_management": {
+        "local_state": [
+            "wizard_state (useState en AvaluoWizard)",
+            "form_errors (useState en Step1Form)"
+        ],
+        "session_storage": [
+            "form_data (recuperación de formulario)",
+            "last_avaluo_id (para navegación)"
+        ],
+        "supabase_state": [
+            "user (auth state)",
+            "avaluos_history (query de Supabase)"
+        ]
+    },
+    "dependencies": {
+        "before_changes": [
+            "Verificar con Backend_Workers si hay cambios en avaluo_response",
+            "Revisar con Frontend_Tables si hay cambios en props de tablas",
+            "Coordinar con Frontend_PDF si cambios afectan datos del PDF"
+        ],
+        "after_changes": [
+            "Probar flujo completo: formulario → procesamiento → resultados",
+            "Verificar que datos se guardan correctamente en historial",
+            "Validar que Frontend_Tables renderiza correctamente",
+            "Confirmar que botones de PDF y Email funcionan"
+        ]
+    },
+    "testing_requirements": [
+        "Probar wizard completo para cada tipo de propiedad",
+        "Validar formulario con datos válidos e inválidos",
+        "Probar manejo de errores de red",
+        "Verificar responsive en mobile, tablet, desktop",
+        "Confirmar que historial carga correctamente",
+        "Probar navegación entre páginas",
+        "Validar que sessionStorage funciona"
+    ],
+    "ux_requirements": [
+        "Loading states claros y consistentes",
+        "Mensajes de error user-friendly en español",
+        "Feedback visual inmediato en interacciones",
+        "Transiciones suaves entre steps",
+        "Diseño responsive en todos los breakpoints",
+        "Accesibilidad: keyboard navigation y ARIA labels"
+    ]
+}

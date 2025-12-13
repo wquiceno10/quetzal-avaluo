@@ -135,6 +135,18 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
           // Eliminar saltos de línea excesivos
           .replace(/\n{3,}/g, '\n\n')
+          // INJECT DEFAULT NOTES IF MISSING (Fallback) - Sincronizado con Step3Results
+          // Detecta si falta nota (considerando variantes como *Nota:, Nota:, **NOTA:**, *TextoItalico*)
+          // CRÍTICO: Soporta CRLF (Windows) y LF (Unix) line endings
+          .replace(/(fuente_validacion:\s*(?:estimacion_zona|promedio_municipal|portal_verificado|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
+            let note = "";
+            let p = prefix.toLowerCase();
+            if (p.includes("estimacion_zona")) note = "Basado en datos de propiedades similares en la zona.";
+            else if (p.includes("promedio_municipal")) note = "Basado en datos de propiedades similares en ciudad/municipio.";
+            else if (p.includes("portal_verificado")) note = "Anuncio de listado en la misma zona.";
+            else if (p.includes("zona_similar")) note = "Propiedad en zona con características similares.";
+            return `${prefix}\n**NOTA:** ${note}`;
+          })
           // LaTeX spacing commands (NEW)
           .replace(/\\quad/g, '<br>')        // \quad → line break
           .replace(/\\qquad/g, '<br>')       // \qquad → line break
@@ -156,7 +168,13 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           .replace(/\\sum/g, '∑')
           .replace(/\\approx/g, '≈')
           // Limpiar unidades duplicadas
-          .replace(/\s+COP\/m²/g, ' COP/m²');
+          .replace(/\s+COP\/m²/g, ' COP/m²')
+          // Convertir markdown bold a HTML
+          // CRÍTICO: Asegurar que esto es lo ÚLTIMO que se hace antes de retornar o que no se escape después
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          // Eliminar citaciones numéricas [1][2][3]...
+          .replace(/\[\d+\]/g, '');
+
 
         // Normalizar "Promedio precio..."
         cleanText = cleanText.replace(
@@ -204,9 +222,50 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         });
 
         // 3. Convertir markdown a HTML con estilos mejorados
+        cleanText = cleanText
+          // Limpiar HTML entities escapados (IGUAL QUE WEB - antes del procesamiento)
+          .replace(/&lt;strong&gt;/g, '<strong>').replace(/&lt;\/strong&gt;/g, '</strong>')
+          // Negritas (asegurar que cierra) - REFUERZO
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        // --- POST-PROCESAMIENTO: DESTACAR PALABRAS CLAVE (IGUAL QUE WEB) ---
+        const keyPhrasePatterns = [
+          // Análisis de métodos
+          /\b(Promedio de precios de venta de \d+ comparables):/gi,
+          /\b(Precio por m² promedio):/gi,
+          /\b(Precio\/m² ajustado):/gi,
+          /\b(Canon mensual estimado):/gi,
+          /\b(Yield promedio mercado):/gi,
+          /\b(Valor total):/gi,
+          /\b(Valor estimado):/gi,
+          /\b(Factor total):/gi,
+
+          // Ajustes
+          /^(Justificación):/gim,
+          /^(Porcentaje aplicado):/gim,
+          /\b(Ajuste por antigüedad):/gi,
+          /\b(Ajuste por estado):/gi,
+          /\b(Ajuste por ubicación):/gi,
+          /\b(Ajuste por reformas):/gi,
+
+          // Pasos metodológicos
+          /\b(PASO \d+):/gi,
+
+          // Resultados
+          /\b(Valor Recomendado de Venta):/gi,
+          /\b(Rango sugerido):/gi,
+          /\b(Precio m² final):/gi,
+        ];
+
+        keyPhrasePatterns.forEach(pattern => {
+          cleanText = cleanText.replace(pattern, (match, group1) => {
+            // Si ya está en <strong>, no duplicar
+            if (cleanText.includes(`<strong>${group1}</strong>`)) return match;
+            return `<strong>${group1}</strong>:`;
+          });
+        });
+
         return cleanText
-          // Negritas (asegurar que cierra)
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
           // Limpiar ## inline que no están al inicio de línea
           .replace(/\s+##\s+/g, ' - ')
           // Encabezados MD "# Título" o "#### Título" - Aplicar Title Case
@@ -239,6 +298,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             }
 
             const badge = `<span style="display:inline-block; padding:3px 7px; border-radius:6px; font-size:10px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
+            // Asegurarnos de que el 'portal' (que viene con <strong>) se mantenga limpio
             return `${portal} ${badge}${note}`;
           })
           // FUENTE_VALIDACION legacy (sin portal antes)
@@ -265,9 +325,12 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
             return `<span style="display:inline-block; padding:3px 7px; border-radius:6px; font-size:10px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
           })
-          // NOTA con formato mejorado (tamaño 12px y NOTA: en negrita)
-          .replace(/<strong>NOTA:<\/strong>\s*([^\n]+)/gi, (match, noteText) => {
-            let formattedNote = noteText.trim();
+          // NOTA con formato mejorado (tamaño 10px y NOTA: en negrita)
+          // Regex flexible Sincronizado con Step3Results
+          .replace(/(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
+            let formattedNote = noteText.trim()
+              // Limpiar asteriscos finales
+              .replace(/\*+$/, '');
 
             // Patrón: "Ciudad está a X km de Objetivo, [con/condiciones] características..."
             const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
@@ -284,17 +347,34 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               formattedNote = `A ${distance} km de distancia, ${characteristics}`;
             }
 
-            return `<span style="display:block; font-size:10px; color:#6B7280; font-style:italic; margin-top:4px; margin-bottom:12px; line-height:1.3;"><strong>NOTA:</strong> ${formattedNote}</span>`;
+            return `<span style="display:block; font-size:10px; color:#6B7280; font-style:italic; margin-top:4px; margin-bottom:12px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
           })
+          // Formatear notas "huerfanas" en itálicas (sin prefijo Nota:)
+          .replace(/(?:^|\n)\s*\*([^*]{10,})\*\s*(?:\n|$)/g, (match, noteText) => {
+            let formattedNote = noteText.trim();
+
+            // Misma lógica de limpieza de distancia
+            const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
+            const match1 = formattedNote.match(pattern1);
+            if (match1) {
+              const distance = match1[2];
+              let characteristics = match1[3];
+              characteristics = characteristics.replace(/^con\s+/i, 'tiene ').replace(/^condiciones\s+/i, 'tiene condiciones ');
+              formattedNote = `A ${distance} km de distancia, ${characteristics}`;
+            }
+
+            return `<span style="display:block; font-size:10px; color:#6B7280; font-style:italic; margin-top:4px; margin-bottom:12px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
+          })
+
           // Listas
           .replace(
             /^\s*[-*•]\s+(.*?)$/gm,
-            '<li style="margin-left:18px; font-size:14px; margin-bottom:6px; color:#4F5B55; line-height:1.4;">$1</li>'
+            '<li style="margin-left:18px; font-size:14px; margin-bottom:4px; color:#4F5B55; line-height:1.25;">$1</li>'
           )
           // Párrafos (líneas sueltas que no son tags HTML)
           .replace(
             /^(?!<(h4|li|table|div|strong|span|p))(.+)$/gm,
-            '<p style="font-size:14px; line-height:1.4; margin:8px 0; text-align:justify; color:#4F5B55;">$2</p>'
+            '<p style="font-size:14px; line-height:1.25; margin:6px 0; text-align:justify; color:#4F5B55;">$2</p>'
           );
       };
 
@@ -670,6 +750,21 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
             }
+            
+            /* Two-column layout for analysis content with balanced fill */
+            .analysis-content {
+              column-count: 2;
+              column-gap: 30px;
+              column-fill: balance;
+            }
+            
+            /* Centrar cajas de metodología y alertas */
+            .analysis-content > div[style*="background"],
+            .analysis-content div[style*="background"] {
+              margin-left: auto !important;
+              margin-right: auto !important;
+              max-width: 500px;
+            }
 
             /* Hero Layout Update */
             .hero-content-row {
@@ -944,7 +1039,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                         <span class="badge badge-${getBadgeClass(item.fuente_validacion || 'portal_verificado')}">
                           ${getFuenteLabel(item.fuente_validacion || 'portal_verificado')}
                         </span>
-                        ${item.nota_adicional ? `<br><span class="note">${item.nota_adicional}</span>` : ''}
+                        ${item.nota_adicional ? `<br><span class="note">${item.nota_adicional.replace(/\[\d+\]/g, '')}</span>` : ''}
                       </td>
                       <td style="text-align:center; vertical-align:middle;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>
                       <td style="text-align:center; vertical-align:middle;">${formatNumber(item.area_m2)} m²</td>

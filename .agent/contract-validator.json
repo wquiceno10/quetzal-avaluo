@@ -1,0 +1,246 @@
+{
+    "contract_validator": "Validador de Contratos JSON para Sistema Multiagente",
+    "version": "1.0.0",
+    "description": "Este archivo define cómo validar que los contratos JSON se mantengan consistentes entre agentes",
+    "contratos_criticos": {
+        "avaluo_response": {
+            "owner": "agente_Workers",
+            "consumers": [
+                "agente_Paginas",
+                "agente_PDF_correo"
+            ],
+            "location_definicion": "d:\\Desktop\\Diseño\\Quetzal Habitats\\01_Marketing\\quetzal-avaluo\\.agent\\profiles\\agente_workers.json",
+            "validacion": {
+                "schema_esperado": {
+                    "avaluo_id": "string (UUID)",
+                    "tipo_propiedad": "string ('Lote' | 'Casa' | 'Apartamento' | 'Finca')",
+                    "precio_final_cop": "number",
+                    "precio_m2_estimado": "number",
+                    "precio_m2_implicito": "number",
+                    "comparables": "array",
+                    "metodos_valoracion": "object",
+                    "nivel_confianza": "object",
+                    "analisis_detallado": "string",
+                    "ficha_tecnica": "object",
+                    "metadata": "object"
+                },
+                "archivos_a_revisar": [
+                    "workers/avaluos-api-analysis/src/index.js (debe retornar este schema)",
+                    "src/components/avaluo/Step3Results.jsx (debe consumir este schema)",
+                    "src/components/pdf/PDFDocument.jsx (debe consumir este schema)",
+                    "workers/avaluos-api-email/src/templates/*.html (debe consumir este schema)"
+                ]
+            }
+        },
+        "comparable_item": {
+            "owner": "agente_Workers",
+            "consumers": [
+                "agente_Tablas",
+                "agente_PDF_correo"
+            ],
+            "location_definicion": "d:\\Desktop\\Diseño\\Quetzal Habitats\\01_Marketing\\quetzal-avaluo\\.agent\\profiles\\agente_workers.json",
+            "validacion": {
+                "schema_esperado": {
+                    "titulo": "string",
+                    "precio_publicado": "number (COP)",
+                    "precio_m2": "number",
+                    "area_m2": "number",
+                    "tipo": "string",
+                    "ubicacion": "string",
+                    "url": "string (opcional)",
+                    "habitaciones": "number (opcional)",
+                    "banos": "number (opcional)"
+                },
+                "archivos_a_revisar": [
+                    "workers/avaluos-api-analysis/src/index.js (define estructura)",
+                    "src/components/avaluo/ComparablesTable.jsx (renderiza items)",
+                    "src/components/pdf/PDFTable.jsx (renderiza items)",
+                    "workers/avaluos-api-email/src/templates/*.html (renderiza items)"
+                ]
+            }
+        },
+        "form_data": {
+            "owner": "agente_Paginas",
+            "consumers": [
+                "agente_Workers"
+            ],
+            "location_definicion": "d:\\Desktop\\Diseño\\Quetzal Habitats\\01_Marketing\\quetzal-avaluo\\.agent\\profiles\\agente_paginas.json",
+            "validacion": {
+                "schema_esperado": {
+                    "tipo_propiedad": "string",
+                    "direccion": "string",
+                    "ciudad": "string",
+                    "area_m2": "number",
+                    "habitaciones": "number (opcional)",
+                    "banos": "number (opcional)",
+                    "estrato": "string (opcional)",
+                    "estado": "string (opcional)",
+                    "uso_lote": "string (opcional)",
+                    "user_email": "string"
+                },
+                "archivos_a_revisar": [
+                    "src/components/avaluo/Step1Form.jsx (genera este data)",
+                    "src/components/avaluo/AvaluoWizard.jsx (maneja state)",
+                    "workers/avaluos-api-analysis/src/index.js (recibe este data)"
+                ]
+            }
+        },
+        "ficha_tecnica": {
+            "owner": "agente_Workers",
+            "consumers": [
+                "agente_Paginas",
+                "agente_PDF_correo"
+            ],
+            "location_definicion": "d:\\Desktop\\Diseño\\Quetzal Habitats\\01_Marketing\\quetzal-avaluo\\.agent\\profiles\\agente_workers.json",
+            "validacion": {
+                "schema_esperado": {
+                    "direccion": "string",
+                    "ciudad": "string",
+                    "area_m2": "number",
+                    "habitaciones": "number (opcional)",
+                    "banos": "number (opcional)",
+                    "estrato": "string (opcional)",
+                    "estado": "string (opcional)",
+                    "uso_lote": "string (opcional para lotes)"
+                },
+                "archivos_a_revisar": [
+                    "workers/avaluos-api-analysis/src/index.js (genera esta estructura)",
+                    "src/components/avaluo/Step3Results.jsx (muestra ficha técnica)",
+                    "src/components/pdf/PDFDocument.jsx (renderiza ficha técnica en PDF)"
+                ]
+            }
+        }
+    },
+    "proceso_validacion": {
+        "cuando_ejecutar": [
+            "Después de que agente_Workers modifique un contrato",
+            "Antes de hacer commit de cambios multi-agente",
+            "Al finalizar una tarea compleja coordinada por Planner",
+            "Si hay bugs relacionados con datos faltantes o incorrectos"
+        ],
+        "pasos": [
+            {
+                "paso": 1,
+                "nombre": "Identificar contratos afectados",
+                "accion": "Listar qué contratos JSON tocó la tarea reciente"
+            },
+            {
+                "paso": 2,
+                "nombre": "Revisar definición en owner",
+                "accion": "Abrir el perfil del agente owner y leer el schema exacto"
+            },
+            {
+                "paso": 3,
+                "nombre": "Verificar implementación en owner",
+                "accion": "Revisar archivo de código del owner, confirmar que retorna/genera ese schema"
+            },
+            {
+                "paso": 4,
+                "nombre": "Verificar consumidores",
+                "accion": "Para cada consumer, abrir archivos y confirmar que consumen exactamente ese schema"
+            },
+            {
+                "paso": 5,
+                "nombre": "Detectar discrepancias",
+                "accion": "Si hay campos extra, faltantes, o tipos diferentes → PROBLEMA"
+            },
+            {
+                "paso": 6,
+                "nombre": "Reportar o corregir",
+                "accion": "Si hay problemas, decidir: rollback o actualizar consumers"
+            }
+        ]
+    },
+    "comandos_validacion": {
+        "validacion_completa": {
+            "comando": "Valida todos los contratos JSON del sistema",
+            "descripcion": "Revisa los 5 contratos críticos y reporta discrepancias"
+        },
+        "validacion_especifica": {
+            "comando": "Valida el contrato [nombre_contrato]",
+            "descripcion": "Revisa solo un contrato específico (ej: comparable_item)"
+        },
+        "diagnostico_error": {
+            "comando": "Como Planner, diagnostica: datos [campo] no aparecen en [contexto]",
+            "descripcion": "Identifica qué contrato está roto y por qué"
+        }
+    },
+    "errores_comunes": {
+        "error_1": {
+            "sintoma": "Frontend muestra 'undefined' para un campo",
+            "causa_probable": "Backend añadió campo pero Frontend no lo consume, o viceversa",
+            "solucion": "Sincronizar schema entre agente_Workers y agente_Paginas/agente_PDF_correo"
+        },
+        "error_2": {
+            "sintoma": "PDF no muestra datos que sí aparecen en la página",
+            "causa_probable": "agente_PDF_correo no está mapeando el campo de avaluo_response",
+            "solucion": "Actualizar PDFDocument.jsx para incluir el campo faltante"
+        },
+        "error_3": {
+            "sintoma": "Backend devuelve error 'campo requerido faltante'",
+            "causa_probable": "agente_Paginas no está enviando todos los campos de form_data",
+            "solucion": "Revisar Step1Form.jsx y asegurar que todos los campos requeridos se incluyen"
+        },
+        "error_4": {
+            "sintoma": "Tabla de comparables se rompe o muestra datos incorrectos",
+            "causa_probable": "Backend cambió estructura de comparable_item sin avisar a Frontend_Tables",
+            "solucion": "Sincronizar schema y actualizar ComparablesTable.jsx"
+        }
+    },
+    "ejemplo_validacion": {
+        "escenario": "agente_Workers añadió campo 'ano_construccion' a comparable_item",
+        "validacion_paso_a_paso": {
+            "paso_1": {
+                "accion": "Revisar agente_workers.json",
+                "verificar": "Schema de comparable_item incluye 'ano_construccion: number | null'"
+            },
+            "paso_2": {
+                "accion": "Revisar workers/avaluos-api-analysis/src/index.js",
+                "verificar": "La respuesta incluye ano_construccion en cada comparable"
+            },
+            "paso_3": {
+                "accion": "Revisar agente_tablas.json",
+                "verificar": "Schema de comparable_item debe coincidir con backend"
+            },
+            "paso_4": {
+                "accion": "Revisar src/components/avaluo/ComparablesTable.jsx",
+                "verificar": "Renderiza columna 'Año' con el campo ano_construccion"
+            },
+            "paso_5": {
+                "accion": "Revisar src/components/pdf/PDFTable.jsx",
+                "verificar": "Incluye columna 'Año' en tabla del PDF"
+            },
+            "paso_6": {
+                "accion": "Probar extremo a extremo",
+                "verificar": "Generar avalúo → Ver tabla en web → Generar PDF → Todo muestra año construcción"
+            }
+        },
+        "resultado_esperado": "✅ Todos los archivos manejan ano_construccion correctamente",
+        "resultado_error": "❌ PDF no muestra año construcción → Actualizar agente_PDF_correo"
+    },
+    "checklist_rapido": {
+        "pregunta_1": "¿Modificaste un schema en agente_Workers?",
+        "si_pregunta_1": "→ Validar que agente_Paginas y agente_PDF_correo se actualizaron",
+        "pregunta_2": "¿Añadiste un campo en el formulario (agente_Paginas)?",
+        "si_pregunta_2": "→ Validar que agente_Workers lo recibe y procesa",
+        "pregunta_3": "¿Cambiaste cómo se muestran los comparables (agente_Tablas)?",
+        "si_pregunta_3": "→ Validar que agente_Workers envía esos datos y agente_PDF_correo los incluye en PDF",
+        "pregunta_4": "¿Modificaste prompts (agente_Prompts)?",
+        "si_pregunta_4": "→ Validar que la estructura de respuesta no cambió (solo contenido/texto)"
+    },
+    "herramientas_automaticas_futuras": {
+        "nota": "En el futuro, puedes crear un script que haga esta validación automáticamente",
+        "script_sugerido": {
+            "nombre": "validate-contracts.js",
+            "ubicacion": ".agent/scripts/validate-contracts.js",
+            "funcionalidad": [
+                "Lee todos los perfiles JSON",
+                "Extrae los schemas de contratos",
+                "Busca las referencias en archivos de código",
+                "Valida que estructuras coinciden",
+                "Reporta discrepancias"
+            ],
+            "comando": "npm run validate-contracts"
+        }
+    }
+}

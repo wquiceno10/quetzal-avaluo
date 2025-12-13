@@ -1,0 +1,244 @@
+{
+    "agent_name": "agente_PDF_correo",
+    "version": "1.0.0",
+    "objective": "Mantener la generación de PDFs (web y navegador) y el diseño de correos electrónicos. Asegurar que los documentos generados reflejen fielmente los datos de resultados, con formato profesional y consistente.",
+    "responsibilities": [
+        "Gestionar componente de generación de PDF en navegador",
+        "Mantener estilos específicos para PDF (printable)",
+        "Diseñar y mantener templates de emails (HTML)",
+        "Asegurar que datos se mapeen correctamente a PDF y email",
+        "Optimizar rendimiento de generación de PDF",
+        "Mantener consistencia visual con resultados web"
+    ],
+    "allowed_files": [
+        "src/components/pdf/PDFDocument.jsx",
+        "src/components/pdf/PDFHeader.jsx",
+        "src/components/pdf/PDFTable.jsx",
+        "src/components/pdf/PDFAnalysis.jsx",
+        "src/styles/pdf.css",
+        "src/styles/print.css",
+        "workers/avaluos-api-email/src/templates/email-resultado.html",
+        "workers/avaluos-api-email/src/templates/email-historial.html",
+        "workers/avaluos-api-email/src/styles/email.css"
+    ],
+    "forbidden_actions": [
+        "Modificar lógica de backend de emails (solo templates)",
+        "Cambiar estructura de datos de avaluo_response",
+        "Modificar componentes de páginas principales",
+        "Tocar lógica de cálculo de precios",
+        "Cambiar configuración de Resend API"
+    ],
+    "json_contracts": {
+        "pdf_props": {
+            "description": "Props para componente de PDF",
+            "schema": {
+                "avaluo_data": "avaluo_response (de Backend_Workers)",
+                "generated_at": "ISO 8601 timestamp",
+                "include_comparables_table": "boolean (default: true)",
+                "include_detailed_analysis": "boolean (default: true)"
+            }
+        },
+        "email_data": {
+            "description": "Datos para templates de email",
+            "must_match": "agente_workers.json -> email_request",
+            "note": "Templates reciben avaluo_data completo + metadata"
+        }
+    },
+    "validation_rules": [
+        "El PDF debe reflejar EXACTAMENTE los datos de Step3Results",
+        "Los precios deben usar formato colombiano: $1.234.567",
+        "Las tablas en PDF deben tener el mismo contenido que en web",
+        "Los emails deben ser responsive (mobile-friendly)",
+        "Todos los fonts deben estar embebidos en PDF",
+        "No debe haber saltos de página que rompan contenido",
+        "Los colores deben ser print-friendly (CMYK compatible)"
+    ],
+    "pdf_specific_rules": {
+        "layout": {
+            "page_size": "Letter (8.5 x 11 inches)",
+            "margins": "0.75 inches all sides",
+            "orientation": "portrait",
+            "font_sizes": {
+                "h1": "24px",
+                "h2": "18px",
+                "h3": "16px",
+                "body": "12px",
+                "small": "10px"
+            }
+        },
+        "sections": {
+            "header": [
+                "Logo Quetzal Habitats",
+                "Título del documento",
+                "Fecha de generación",
+                "ID del avalúo"
+            ],
+            "hero": [
+                "Tipo de propiedad (emoji + nombre)",
+                "Área m²",
+                "Habitaciones y baños (solo propiedades, no lotes)",
+                "Uso del lote (solo para lotes: Comercial, Residencial, etc.)",
+                "Precio final prominente",
+                "Rango sugerido (min-max)",
+                "Precio m² de referencia",
+                "Muestra de inmuebles"
+            ],
+            "ficha_tecnica": [
+                "Información detallada en tabla de 2 columnas",
+                "Campos: Tipo de Inmueble, Ubicación (barrio + municipio/ciudad), Área Construida, Precio por m²",
+                "Para propiedades: Habitaciones, Baños, Estrato, Estado",
+                "Para lotes: Uso del Lote",
+                "Comparables (cantidad de inmuebles)",
+                "Yield Mensual (solo para propiedades con rentabilidad)",
+                "Capitalizar correctamente usando toTitleCase (Lote, Filandia, Comercial)"
+            ],
+            "metodologias": [
+                "Cards de Venta Directa y Rentabilidad",
+                "Background: #F8F6EF, Border: #e6e0c7",
+                "Texto centrado",
+                "Precios alineados horizontalmente"
+            ],
+            "comparables": [
+                "Tabla con todos los comparables",
+                "Sin filas en blanco",
+                "Line-height compacto",
+                "Columnas: Título, Precio, Área, Precio/m², Ubicación"
+            ],
+            "analisis_detallado": [
+                "Layout de dos columnas estilo periódico",
+                "Flujo continuo de lectura",
+                "Renderizar markdown correctamente"
+            ],
+            "nivel_confianza": [
+                "Nivel, porcentaje, factores",
+                "Explicación clara y concisa"
+            ],
+            "footer": [
+                "Información de contacto",
+                "Disclaimer legal",
+                "Número de página"
+            ]
+        },
+        "styling": {
+            "colors": {
+                "primary": "#2C5F2D",
+                "secondary": "#97BC62",
+                "background_card": "#F8F6EF",
+                "border_card": "#e6e0c7",
+                "text_primary": "#333333",
+                "text_secondary": "#666666"
+            },
+            "fonts": {
+                "headings": "Inter, sans-serif (600-700)",
+                "body": "Inter, sans-serif (400)",
+                "numbers": "Roboto Mono, monospace (500)"
+            }
+        }
+    },
+    "email_specific_rules": {
+        "templates": {
+            "email-resultado": {
+                "subject": "Tu avalúo de {tipo_propiedad} en {ciudad} está listo",
+                "sections": [
+                    "Saludo personalizado",
+                    "Resumen del avalúo",
+                    "Precio final destacado",
+                    "Top 3 comparables",
+                    "Botón para ver detalle completo",
+                    "Botón para descargar PDF",
+                    "Información de contacto",
+                    "Footer con disclaimer"
+                ]
+            },
+            "email-historial": {
+                "subject": "Avalúo solicitado: {direccion}",
+                "note": "Similar a email-resultado pero indica que es histórico"
+            }
+        },
+        "responsive_design": {
+            "mobile_breakpoint": "600px",
+            "requirements": [
+                "Layout de una columna en móvil",
+                "Botones touch-friendly (min 44x44px)",
+                "Texto legible sin zoom (min 16px)",
+                "Imágenes responsive"
+            ]
+        },
+        "compatibility": {
+            "clients": [
+                "Gmail (web y app)",
+                "Outlook (web y app)",
+                "Apple Mail",
+                "Thunderbird"
+            ],
+            "constraints": [
+                "No usar CSS avanzado (flexbox limitado)",
+                "Usar tablas para layout principal",
+                "Inline styles cuando sea posible",
+                "Evitar JavaScript"
+            ]
+        }
+    },
+    "data_mapping": {
+        "from_avaluo_response_to_pdf": {
+            "precio_final_cop": "Hero section, prominente",
+            "tipo_propiedad": "Hero y header",
+            "ficha_tecnica.*": "Tabla de información detallada",
+            "metodos_valoracion": "Cards de metodologías",
+            "comparables": "Tabla de comparables",
+            "analisis_detallado": "Sección de análisis (markdown → HTML)",
+            "nivel_confianza": "Sección de confianza",
+            "metadata.total_comparables": "Subtítulo de tabla"
+        },
+        "from_avaluo_response_to_email": {
+            "precio_final_cop": "Destacado en email body",
+            "tipo_propiedad": "Subject y body",
+            "direccion": "Subject y body",
+            "ciudad": "Subject",
+            "comparables[0:3]": "Top 3 comparables en email",
+            "nivel_confianza.nivel": "Badge en email"
+        }
+    },
+    "dependencies": {
+        "before_changes": [
+            "Verificar con Backend_Workers si hay cambios en avaluo_response",
+            "Revisar con Frontend_Pages qué datos se muestran en Step3Results",
+            "Coordinar con Frontend_Tables si cambian los comparables"
+        ],
+        "after_changes": [
+            "Generar PDF de prueba y comparar con Step3Results",
+            "Enviar email de prueba a diferentes clientes",
+            "Validar que todos los datos se mapean correctamente",
+            "Verificar que fonts están embebidos en PDF",
+            "Confirmar que no hay saltos de página incorrectos"
+        ]
+    },
+    "testing_requirements": [
+        "Generar PDF para cada tipo de propiedad (Lote, Casa, Apartamento, Finca)",
+        "Verificar PDF en diferentes navegadores (Chrome, Firefox, Safari)",
+        "Probar con diferentes cantidades de comparables (5, 20, 50)",
+        "Validar que tablas no se rompen en múltiples páginas",
+        "Enviar emails de prueba a Gmail, Outlook, Apple Mail",
+        "Verificar responsive design de emails en móvil",
+        "Confirmar que links en email funcionan correctamente",
+        "Validar que PDF descargado es legible y completo"
+    ],
+    "performance_constraints": [
+        "Generación de PDF < 3 segundos para avalúo típico",
+        "Tamaño de PDF < 2MB para facilitar envío por email",
+        "Email HTML < 100KB para evitar clipping en Gmail",
+        "Optimizar imágenes embebidas en PDF/email"
+    ],
+    "quality_checklist": [
+        "[ ] PDF refleja exactamente los datos de Step3Results",
+        "[ ] Tablas en PDF no tienen filas en blanco",
+        "[ ] Precios formateados correctamente ($1.234.567)",
+        "[ ] Cards de metodologías tienen colores correctos",
+        "[ ] Análisis detallado fluye en dos columnas",
+        "[ ] Fonts embebidos correctamente",
+        "[ ] Email responsive en móvil",
+        "[ ] Links en email funcionan",
+        "[ ] Subject del email es descriptivo",
+        "[ ] Disclaimer legal presente en PDF y email"
+    ]
+}

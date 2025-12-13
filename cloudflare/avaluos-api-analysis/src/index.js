@@ -45,8 +45,8 @@ function cleanLatexCommands(text) {
 
     let cleanedText = text
         // LaTeX spacing commands
-        .replace(/\\quad/g, '<br>')        // \quad → line break for clarity
-        .replace(/\\qquad/g, '<br>')       // \qquad → line break
+        .replace(/\\quad/g, '   ')        // \quad → spaces
+        .replace(/\\qquad/g, '    ')       // \qquad → more spaces
         .replace(/\\,/g, ' ')              // thin space
         .replace(/\\:/g, ' ')              // medium space
         .replace(/\\;/g, ' ')              // thick space
@@ -54,26 +54,12 @@ function cleanLatexCommands(text) {
         .replace(/\\enspace/g, ' ')
         .replace(/\\hspace\{[^}]*\}/g, ' ')
 
-        // Other common LaTeX artifacts
+        // LaTeX math symbols
         .replace(/\\times/g, ' × ')
         .replace(/\\cdot/g, ' · ')
         .replace(/\\approx/g, ' ≈ ')
         .replace(/\\text\{([^}]+)\}/g, '$1')
-
-        // Limpiar LaTeX mal formateado (incluyendo los que ya estaban y nuevos)
-        .replace(/\\quad/gi, '<br>')
-        .replace(/\\qquad/gi, '<br>')
-        .replace(/\\text\{([^}]+)\}/g, '$1')
-        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
-        .replace(/(\d+)\s*mil(?:\s+millones)?/gi, (match, num) => {
-            return (parseFloat(num) * 1000000).toLocaleString('es-CO');
-        })
-        .replace(/(\d+(?:\.\d+)?)\s*M(?!\w)/gi, (match, num) => {
-            return (parseFloat(num) * 1000000).toLocaleString('es-CO');
-        })
-        .replace(/(\d+(?:\.\d+)?)\s*K(?!\w)/gi, (match, num) => {
-            return (parseFloat(num) * 1000).toLocaleString('es-CO');
-        });
+        .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
 
     // Limpiar notación científica: 3.18 × 10^6 → 3.180.000
     cleanedText = cleanedText.replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
@@ -83,10 +69,7 @@ function cleanLatexCommands(text) {
         return Math.round(result).toLocaleString('es-CO');
     });
 
-    return cleanedText
-        // Clean up multiple spaces (but keep <br> tags)
-        .replace(/\s{2,}/g, ' ')
-        .trim();
+    return cleanedText.trim();
 }
 
 // --- HELPER: Construcción Dinámica de Prompt Perplexity ---
@@ -156,13 +139,17 @@ INSTRUCCIONES GENERALES
    Para cada comparable, asigna UNA de estas etiquetas:
    
    - **portal_verificado**: Listado real de portal inmobiliario.
+     → Agrega NOTA: "Anuncio de listado en la misma zona."
    
    - **zona_similar**: Listado verificado de municipio/barrio cercano.
-     → OBLIGATORIO: Agrega NOTA explicando municipio, distancia aproximada, y razón de similitud.
+     → OBLIGATORIO IMPORTANTE!: Agrega NOTA exponiendo distancia aproximada y razón de similitud.
    
    - **estimacion_zona**: Promedio estadístico (solo si necesario para muestra mínima).
+     → Agrega NOTA: "Basado en datos de propiedades similares en la zona."
    
    - **promedio_municipal**: Dato agregado municipal (último recurso).
+     → Agrega NOTA: "Basado en datos de propiedades similares en ciudad/municipio."
+
 
 **4. FORMATO DE LISTADO (ESTRICTO):**
 
@@ -172,7 +159,7 @@ $[Precio con puntos] | [Área] m² | [Hab] hab | [Baños] baños
 [Barrio] | [Ciudad]
 **[Fuente: Nombre portal]** fuente_validacion: [etiqueta]
 
-**IMPORTANTE:** NO incluyas la línea "NOTA:" en el análisis detallado. Las notas solo van en el PDF.
+
 
 Ejemplo:
 
@@ -181,15 +168,20 @@ Lote | Venta
 $850.000.000 | 4200 m² | - hab | - baños
 Centro | Circasia
 **Fincaraíz** fuente_validacion: zona_similar
+**NOTA:** A 15 km de distancia, con características socioeconómicas y uso mixto similares.
 
 **5. CIFRAS (CRÍTICO - SIN ABREVIATURAS):**
    - SIEMPRE en pesos colombianos completos
    - CON puntos para miles: $4.200.000 (NO 4.2M ni $4200000)
-   - PROHIBIDO usar abreviaturas: NO "19.4 mil", NO "1.2M", NO "500K"
+   - **PROHIBIDO ABSOLUTO** usar abreviaturas en TODO el texto:
+     * NO "$195M" → SÍ "$195.000.000"
+     * NO "19.4 mil" → SÍ "$19.400"
+     * NO "1.2M" → SÍ "$1.200.000"
+     * NO "500K" → SÍ "$500.000"
    - En TODOS los cálculos usa números completos (sin decimales):
-     * CORRECTO: "19.400 pesos/m²" o "19.400"
-     * INCORRECTO: "19.4 mil pesos/m²"
-   - Esto aplica para PRECIOS, CÁNONES, PROMEDIOS y CÁLCULOS
+     * CORRECTO: "19.400 pesos/m²" o "$19.400"
+     * INCORRECTO: "19.4 mil pesos/m²" o "19.4K"
+   - Esto aplica para PRECIOS, CÁNONES, PROMEDIOS, RANGOS y TODO VALOR MONETARIO
 
 **6. FORMATO FINAL:**
    - Cada línea de información en un renglón separado (saltos de línea simples)
@@ -197,7 +189,30 @@ Centro | Circasia
    - NO incluyas URLs ni hipervínculos
    - Responde en español
    - NO devuelvas JSON
-    `.trim();
+   - NO uses etiquetas HTML como br, span, div, etc.
+
+**7. AJUSTES UNIFICADOS (CRÍTICO):**
+   - Consolida TODOS los ajustes (antigüedad, estado, reformas, ubicación, info complementaria) en UN ÚNICO factor.
+   - Si aplicas +5% por antigüedad, +10% por reformas, +2% por info complementaria:
+     → **Factor total: 1.17 (equivalente a +17%)**
+   - Presenta SIEMPRE con formato exacto: "**Factor total: X.XX (equivalente a ±Y%)**"
+   - Presenta SIEMPRE: "**Precio/m² ajustado: $XXX.XXX**"
+   - Si no hay ajustes, indica: "**Factor total: 1.00 (sin ajustes)**"
+   - Muestra la fórmula: "Valor total: $X.XXX.XXX × Y m² = $Z.ZZZ.ZZZ"
+   - Al final del método de rentabilidad, indica: "**Valor por método rentabilidad (ajustado): $XXX.XXX.XXX**" (aplicando el mismo factor de ajuste)
+   - Justifica CADA ajuste con este formato (saltos de línea, NO HTML):
+     **Nombre del Ajuste**
+     Justificación breve
+     Porcentaje aplicado
+
+**8. INSTRUCCIÓN CRÍTICA - NO PREGUNTAR:**
+   - NO preguntes nada al usuario.
+   - NO ofrezcas servicios adicionales (avalúos formales, versiones alternativas, etc.).
+   - NO digas "Si desea..." ni hagas sugerencias de seguimiento.
+   - SOLO entrega resultados, metodología completa y análisis detallado.
+   - NO confirmes ni consultes nada más allá de los pasos descritos.
+   - Responde ÚNICAMENTE en español colombiano con el análisis completo solicitado.
+     `.trim();
 
     // --- SECCIÓN ESPECÍFICA: LOTES ---
     const seccionLotes = `
@@ -266,8 +281,8 @@ Presenta un listado de **entre 15 a 20 comparables** SOLO en VENTA usando el for
 ## 3. RESULTADOS FINALES
 - **Valor Recomendado de Venta: $XXX.XXX.XXX**
 - **Rango sugerido: $XXX.XXX.XXX - $XXX.XXX.XXX**
-- Precio por m² final usado
-- Posición en el mercado (liquidez)
+- **Precio por m² final usado**
+- **Posición en el mercado (liquidez)**
 
 ## 4. AJUSTES APLICADOS
 Explica ajustes por características específicas del lote.
@@ -458,10 +473,16 @@ export default {
             }
 
             const data = await response.json();
-            perplexityContent = data.choices?.[0]?.message?.content || '';
+            const rawContent = data.choices?.[0]?.message?.content || '';
+            console.log('🔍 RAW PERPLEXITY START\n' + rawContent + '\n🔍 RAW PERPLEXITY END');
 
             // Clean LaTeX commands from Perplexity response
-            perplexityContent = cleanLatexCommands(perplexityContent);
+            perplexityContent = cleanLatexCommands(rawContent);
+
+            // Remove numeric citations [1][2][3] before DeepSeek extraction
+            perplexityContent = perplexityContent.replace(/\[\d+\]/g, '');
+
+            console.log('🧹 CLEANED TEXT START\n' + perplexityContent + '\n🧹 CLEANED TEXT END');
 
             citations = data.citations || [];
             console.log(`Perplexity completado. Fuentes: ${citations.length}`);
@@ -530,6 +551,31 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - "porcentaje_estimaciones": Si menciona porcentaje de estimaciones, extrae el número
    - "zonas_alternativas_usadas": Array de strings con nombres de barrios/zonas alternativas mencionadas
 
+9. "valor_mercado_calculado": Busca la PRIMERA aparición de cualquiera de estas frases:
+   - "Valor estimado venta"
+   - "Valor recomendado"  
+   - "Valor sugerido"
+   - "Valor de mercado"
+   - O el valor inmediatamente después de "Precio/m² ajustado"
+   Extrae el número ENTERO (elimina puntos, comas, $). Si no encuentra, devuelve null.
+
+10. "precio_m2_ajustado": Busca "Precio/m² ajustado: $XXX.XXX" o "Precio ajustado por m²".
+    Extrae SOLO el número (entero, sin puntos). Si no encuentra, devuelve null.
+
+11. "factor_ajuste_total": Busca "Factor total: X.XX" o "Factor: X.XX".
+    - Si dice "+17%" → devuelve 1.17
+    - Si dice "-5%" → devuelve 0.95
+    - Extrae el número decimal directamente si está en formato X.XX
+    - Si no encuentra, devuelve 1.0 (sin ajustes)
+
+12. "ajustes_detallados": Array de objetos con cada ajuste aplicado.
+    Formato: [{"concepto": "Antigüedad", "porcentaje": 5}, {"concepto": "Reformas", "porcentaje": 10}]
+    Busca frases como "+5% por antigüedad", "-3% por estado", etc.
+    Si no hay desglose explícito, devuelve array vacío [].
+
+13. "valor_rentabilidad_ajustado": Busca "Valor por método rentabilidad (ajustado): $XXX.XXX.XXX".
+    Extrae el número ENTERO (elimina puntos, comas, $). Si no encuentra, devuelve null.
+
 Devuelve SOLO JSON válido.
         `.trim();
 
@@ -572,6 +618,8 @@ Devuelve SOLO JSON válido.
             extractedData = JSON.parse(content);
             if (!extractedData || typeof extractedData !== 'object') extractedData = {};
 
+            console.log('📊 DEEPSEEK EXTRACTED JSON:', JSON.stringify(extractedData, null, 2));
+
             // Procesar nivel_confianza y estadísticas (ahora asignamos a variables ya declaradas)
             nivelConfianza = extractedData.nivel_confianza || 'Medio';
             estadisticasComparables = extractedData.estadisticas_comparables || {};
@@ -595,7 +643,9 @@ Devuelve SOLO JSON válido.
             const sanitizePrice = (n) => {
                 if (typeof n === 'number') return Number.isFinite(n) ? n : null;
                 if (typeof n === 'string') {
-                    const clean = n.replace(/\D/g, '');
+                    // Formato colombiano: 4.000.000 (puntos = miles)
+                    // Eliminar TODOS los puntos y comas, quedarnos solo con dígitos
+                    const clean = n.replace(/[.,]/g, '').replace(/\D/g, '');
                     const val = parseInt(clean, 10);
                     return (Number.isFinite(val) && val > 0) ? val : null;
                 }
@@ -605,7 +655,32 @@ Devuelve SOLO JSON válido.
             const sanitizeFloat = (n) => {
                 if (typeof n === 'number') return Number.isFinite(n) ? n : null;
                 if (typeof n === 'string') {
-                    const clean = n.replace(',', '.').replace(/[^\d.]/g, '');
+                    // Formato colombiano: 4.000 (punto = miles) o 4.5 (punto = decimal)
+                    // Si tiene MÁS de un punto, es formato de miles (4.000.000)
+                    // Si tiene un solo punto, puede ser decimal (4.5) o miles (4.000)
+                    const puntos = (n.match(/\./g) || []).length;
+                    let clean;
+                    if (puntos > 1) {
+                        // Múltiples puntos → formato colombiano de miles (4.000.000)
+                        clean = n.replace(/[.,]/g, '');
+                    } else if (puntos === 1) {
+                        // Un punto: depende del contexto
+                        // Si hay 3 dígitos después del punto, es probablemente miles (4.000)
+                        // Si hay 1-2 dígitos, probablemente decimal (4.5)
+                        const parts = n.split('.');
+                        if (parts[1] && parts[1].length === 3) {
+                            // 4.000 → miles
+                            clean = n.replace(/\./g, '');
+                        } else {
+                            // 4.5 → decimal
+                            clean = n.replace(',', '.');
+                        }
+                    } else {
+                        // Sin puntos, solo limpiar
+                        clean = n.replace(/[^\d]/g, '');
+                    }
+
+                    clean = clean.replace(/[^\d.]/g, ''); // Limpiar cualquier residuo
                     const val = parseFloat(clean);
                     return Number.isFinite(val) ? val : null;
                 }
@@ -704,44 +779,88 @@ Devuelve SOLO JSON válido.
             const compsVenta = comparables.filter((c) => c.tipo_origen === 'venta');
             const compsArriendo = comparables.filter((c) => c.tipo_origen === 'arriendo');
 
-            // 1. Venta Directa (CON PODA DE OUTLIERS)
-            let valorVentaDirecta = null;
-            let precioM2Promedio = 0;
+            // ═══════════════════════════════════════════════════════════
+            // PASO A: Calcular valor SIMPLE del Worker (promedio de comparables)
+            // ═══════════════════════════════════════════════════════════
+            let precioM2PromedioSimple = 0;
+            let valorVentaDirectaSimple = null;
 
             if (compsVenta.length > 0) {
                 const sortedByM2 = [...compsVenta].sort((a, b) => a.precio_m2 - b.precio_m2);
-                // Poda del 10%
                 let filteredComps = sortedByM2;
                 if (sortedByM2.length >= 5) {
                     const cut = Math.floor(sortedByM2.length * 0.1);
                     filteredComps = sortedByM2.slice(cut, sortedByM2.length - cut);
                 }
-
                 const sumM2 = filteredComps.reduce((acc, c) => acc + c.precio_m2, 0);
-                precioM2Promedio = Math.round(sumM2 / filteredComps.length);
-                valorVentaDirecta = Math.round(precioM2Promedio * area);
+                precioM2PromedioSimple = Math.round(sumM2 / filteredComps.length);
+                valorVentaDirectaSimple = Math.round(precioM2PromedioSimple * area);
             }
 
-            // 2. Rentabilidad
+            // ═══════════════════════════════════════════════════════════
+            // PASO B: Extraer valor de Perplexity y factor de ajuste
+            // ═══════════════════════════════════════════════════════════
+            const valorMercadoPerplexity = sanitizePrice(extractedData.valor_mercado_calculado)
+                || sanitizePrice(extractedData.valor_recomendado_venta);
+            const factorAjusteTotal = sanitizeFloat(extractedData.factor_ajuste_total) || 1.0;
+            const precioM2Ajustado = sanitizeFloat(extractedData.precio_m2_ajustado) || precioM2PromedioSimple;
+            const ajustesDetallados = Array.isArray(extractedData.ajustes_detallados)
+                ? extractedData.ajustes_detallados : [];
+
+            // ═══════════════════════════════════════════════════════════
+            // PASO C: Validar Perplexity vs Simple
+            // ═══════════════════════════════════════════════════════════
+            const desviacion = valorVentaDirectaSimple > 0
+                ? Math.abs(valorMercadoPerplexity - valorVentaDirectaSimple) / valorVentaDirectaSimple
+                : 0;
+            const factorValido = factorAjusteTotal >= 0.7 && factorAjusteTotal <= 1.4;
+
+            // PASO D: Asignar a variables EXISTENTES
+            let valorVentaDirecta;
+            let valorMercadoFuente;
+            let precioM2Promedio;
+
+            if (valorMercadoPerplexity && desviacion < 0.25 && factorValido) {
+                valorVentaDirecta = valorMercadoPerplexity;
+                valorMercadoFuente = 'perplexity';
+                precioM2Promedio = precioM2Ajustado || Math.round(valorMercadoPerplexity / area);
+                console.log(`✓ Perplexity: $${valorMercadoPerplexity.toLocaleString()} (desv: ${(desviacion * 100).toFixed(1)}%)`);
+            } else {
+                valorVentaDirecta = valorVentaDirectaSimple;
+                valorMercadoFuente = 'calculado_fallback';
+                precioM2Promedio = precioM2PromedioSimple;
+                console.log(`⚠️ Fallback: $${valorVentaDirectaSimple?.toLocaleString()} (desv: ${(desviacion * 100).toFixed(1)}%, factor: ${factorAjusteTotal})`);
+            }
+
+            // ═══════════════════════════════════════════════════════════
+            // PASO E: Rentabilidad (PRIORIZA PERPLEXITY)
+            // ═══════════════════════════════════════════════════════════
             let valorRentabilidad = null;
             let canonPromedio = 0;
 
+            // Primero intenta usar el valor que Perplexity calcula (ajustado)
+            const valorRentabilidadPerplexity = sanitizePrice(extractedData.valor_rentabilidad_ajustado);
+
             if (!esLote) {
-                if (compsArriendo.length > 0) {
+                if (valorRentabilidadPerplexity) {
+                    // Usar valor de Perplexity (ajustado con factor)
+                    valorRentabilidad = valorRentabilidadPerplexity;
+                    console.log(`✓ Rentabilidad (Perplexity): $${valorRentabilidad.toLocaleString()}`);
+                } else if (compsArriendo.length > 0) {
+                    // Fallback: calcular si Perplexity no lo proporciona
                     const sumCanon = compsArriendo.reduce((acc, c) => acc + c.precio_publicado, 0);
                     canonPromedio = Math.round(sumCanon / compsArriendo.length);
                     valorRentabilidad = Math.round(canonPromedio / yieldFinal);
-                } else {
-                    if (valorVentaDirecta) {
-                        valorRentabilidad = valorVentaDirecta;
-                        canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
-                    }
+                    console.log(`⚠️ Rentabilidad (Fallback calculado): $${valorRentabilidad.toLocaleString()}`);
+                } else if (valorVentaDirecta) {
+                    valorRentabilidad = valorVentaDirecta;
+                    canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
                 }
             }
 
-            // 3. Valor Recomendado Perplexity
-            const valorRecomendado = sanitizePrice(extractedData.valor_recomendado_venta);
-
+            // ═══════════════════════════════════════════════════════════
+            // PASO F: Valor Final
+            // ═══════════════════════════════════════════════════════════
             let valorPonderado = null;
             if (esLote) {
                 valorPonderado = valorVentaDirecta;
@@ -751,14 +870,12 @@ Devuelve SOLO JSON válido.
                     : null;
             }
 
-            const valorFinal = valorRecomendado || valorVentaDirecta || valorRentabilidad || 0;
-            const valorFuente = valorRecomendado ? 'perplexity' : 'calculado';
-
-            // Corrección Lotes
-            if (esLote && valorRecomendado) {
-                valorVentaDirecta = valorRecomendado;
-                precioM2Promedio = Math.round(valorRecomendado / area);
-            }
+            const valorFinal = sanitizePrice(extractedData.valor_recomendado_venta)
+                || valorPonderado
+                || valorVentaDirecta
+                || valorRentabilidad
+                || 0;
+            const valorFuente = extractedData.valor_recomendado_venta ? 'perplexity' : valorMercadoFuente;
 
             console.log(`Valor final: $${valorFinal.toLocaleString()} (fuente: ${valorFuente})`);
 
@@ -1093,12 +1210,16 @@ Devuelve SOLO JSON válido.
                 valor_estimado_venta_directa: valorVentaDirecta,
                 valor_estimado_rentabilidad: valorRentabilidad,
 
-                // ERROR 2
+                // ═══ CAMPOS NUEVOS (V13) ═══
+                valor_mercado: valorVentaDirecta,
+                valor_mercado_fuente: valorMercadoFuente,
+                factor_ajuste_total: factorAjusteTotal,
+                ajustes_detallados: ajustesDetallados,
+
                 precio_m2_final: precioM2Usado,
 
-                // ERROR 3
                 metodo_mercado_label: 'Enfoque de Mercado (promedio real)',
-                metodo_ajuste_label: valorRecomendado ? 'Ajuste de Perplexity (criterio técnico)' : 'Promedio de Mercado',
+                metodo_ajuste_label: valorMercadoFuente === 'perplexity' ? 'Ajuste de Perplexity (criterio técnico)' : 'Promedio de Mercado',
 
                 comparables: comparablesParaTabla,
                 total_comparables: comparablesParaTabla.length,
@@ -1128,7 +1249,7 @@ Devuelve SOLO JSON válido.
 
                 yield_mensual_mercado: esLote ? null : yieldFinal,
                 area_construida: area,
-                uso_lote: usoLote,  // ✅ AGREGADO - Campo principal
+                uso_lote: usoLote,
                 perplexity_full_text: finalPerplexityText
             };
 

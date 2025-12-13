@@ -1,0 +1,380 @@
+{
+    "ejemplo_uso": "Cómo usar el sistema multiagente - Ejemplos prácticos",
+    "version": "1.0.0",
+    "escenario_1_simple": {
+        "descripcion": "Cambio cosmético solo en frontend",
+        "request_usuario": "Cambia el color del header de las tablas a #2C5F2D",
+        "implementacion": {
+            "metodo": "Uso directo de agente",
+            "comando": "Como Frontend_Tables, cambia el color del header de las tablas a #2C5F2D",
+            "proceso": [
+                "1. AI carga el perfil frontend_tables.json",
+                "2. Verifica que puede modificar src/styles/tables.css",
+                "3. Actualiza la variable CSS table_header_bg",
+                "4. Verifica que no rompió design system tokens",
+                "5. Confirma que no tocó archivos prohibidos"
+            ],
+            "archivos_modificados": [
+                "src/styles/tables.css"
+            ],
+            "validaciones": [
+                "Color es válido hexadecimal",
+                "Está en design_system_tokens",
+                "No afecta a otros componentes"
+            ],
+            "tiempo_estimado": "5 minutos"
+        }
+    },
+    "escenario_2_medio": {
+        "descripcion": "Cambio que afecta backend y frontend",
+        "request_usuario": "Añade campo 'año_construccion' a los comparables",
+        "implementacion": {
+            "metodo": "Orquestación con Planner",
+            "comando": "Como Planner, ayúdame a añadir 'año_construccion' a los comparables",
+            "plan_generado": {
+                "tareas": [
+                    {
+                        "id": "T-001",
+                        "agente": "Backend_Workers",
+                        "descripcion": "Añadir ano_construccion al schema comparable_item",
+                        "archivos": [
+                            "workers/avaluos-api-analysis/src/index.js"
+                        ],
+                        "dependencias": [],
+                        "validacion": "Verificar que avaluo_response incluye el campo",
+                        "tiempo": "15 min"
+                    },
+                    {
+                        "id": "T-002",
+                        "agente": "Backend_Prompts",
+                        "descripcion": "Actualizar prompt de DeepSeek para extraer año de construcción",
+                        "archivos": [
+                            "workers/avaluos-api-analysis/src/prompts/deepseek.js"
+                        ],
+                        "dependencias": [
+                            "T-001"
+                        ],
+                        "validacion": "Probar extracción con datos reales",
+                        "tiempo": "10 min"
+                    },
+                    {
+                        "id": "T-003",
+                        "agente": "Frontend_Tables",
+                        "descripcion": "Añadir columna 'Año' en ComparablesTable",
+                        "archivos": [
+                            "src/components/avaluo/ComparablesTable.jsx"
+                        ],
+                        "dependencias": [
+                            "T-001"
+                        ],
+                        "validacion": "Verificar que la columna se renderiza correctamente",
+                        "tiempo": "10 min"
+                    },
+                    {
+                        "id": "T-004",
+                        "agente": "Frontend_PDF_Email",
+                        "descripcion": "Añadir columna 'Año' en tabla de PDF",
+                        "archivos": [
+                            "src/components/pdf/PDFTable.jsx"
+                        ],
+                        "dependencias": [
+                            "T-003"
+                        ],
+                        "validacion": "Generar PDF de prueba y verificar columna",
+                        "tiempo": "10 min"
+                    }
+                ],
+                "orden_ejecucion": [
+                    "T-001 (Backend_Workers) - primero",
+                    "T-002 (Backend_Prompts) y T-003 (Frontend_Tables) - en paralelo",
+                    "T-004 (Frontend_PDF_Email) - último"
+                ],
+                "contrato_validado": {
+                    "comparable_item": {
+                        "antes": {
+                            "titulo": "string",
+                            "precio_publicado": "number",
+                            "area_m2": "number"
+                        },
+                        "despues": {
+                            "titulo": "string",
+                            "precio_publicado": "number",
+                            "area_m2": "number",
+                            "ano_construccion": "number | null"
+                        }
+                    }
+                }
+            },
+            "flujo_aprobacion": [
+                "1. Planner genera plan en implementation_plan.md",
+                "2. Usuario revisa y aprueba",
+                "3. Planner ejecuta T-001",
+                "4. Valida contrato JSON actualizado",
+                "5. Ejecuta T-002 y T-003 en paralelo",
+                "6. Ejecuta T-004",
+                "7. Validación final de integración"
+            ],
+            "tiempo_estimado": "45 minutos"
+        }
+    },
+    "escenario_3_complejo": {
+        "descripcion": "Refactor que afecta múltiples agentes",
+        "request_usuario": "Implementa filtros avanzados en la tabla de comparables (por rango de precio, área, y ubicación)",
+        "implementacion": {
+            "metodo": "Orquestación completa con Planner",
+            "comando": "Como Planner, diseña la implementación de filtros avanzados en comparables",
+            "plan_generado": {
+                "analisis_inicial": {
+                    "agentes_afectados": [
+                        "Backend_Workers",
+                        "Frontend_Pages",
+                        "Frontend_Tables",
+                        "Frontend_PDF_Email"
+                    ],
+                    "riesgos": [
+                        "Cambio en estructura de respuesta del backend",
+                        "Impacto en UX del wizard de avalúo",
+                        "Necesidad de mantener compatibilidad con PDFs históricos"
+                    ]
+                },
+                "tareas": [
+                    {
+                        "id": "T-001",
+                        "agente": "Backend_Workers",
+                        "descripcion": "Añadir parámetros de filtro al worker de análisis",
+                        "cambios": [
+                            "Añadir query params: min_precio, max_precio, min_area, max_area, ubicaciones[]",
+                            "Actualizar lógica de filtrado de comparables",
+                            "Mantener compatibilidad con requests sin filtros"
+                        ],
+                        "contrato_actualizado": {
+                            "avaluo_request": {
+                                "filtros": {
+                                    "precio_rango": {
+                                        "min": "number | null",
+                                        "max": "number | null"
+                                    },
+                                    "area_rango": {
+                                        "min": "number | null",
+                                        "max": "number | null"
+                                    },
+                                    "ubicaciones": "string[] | null"
+                                }
+                            }
+                        },
+                        "dependencias": [],
+                        "tiempo": "30 min"
+                    },
+                    {
+                        "id": "T-002",
+                        "agente": "Frontend_Pages",
+                        "descripcion": "Añadir UI de filtros en Step3Results",
+                        "cambios": [
+                            "Crear componente FilterPanel",
+                            "Añadir estado para filtros actuales",
+                            "Implementar lógica para re-ejecutar búsqueda con filtros"
+                        ],
+                        "archivos_nuevos": [
+                            "src/components/avaluo/FilterPanel.jsx"
+                        ],
+                        "dependencias": [
+                            "T-001"
+                        ],
+                        "tiempo": "45 min"
+                    },
+                    {
+                        "id": "T-003",
+                        "agente": "Frontend_Tables",
+                        "descripcion": "Actualizar ComparablesTable para mostrar filtros aplicados",
+                        "cambios": [
+                            "Añadir badge que muestre filtros activos",
+                            "Actualizar contador de comparables (Ej: '45 de 120 comparables')"
+                        ],
+                        "dependencias": [
+                            "T-002"
+                        ],
+                        "tiempo": "20 min"
+                    },
+                    {
+                        "id": "T-004",
+                        "agente": "Frontend_PDF_Email",
+                        "descripcion": "Actualizar PDF para indicar si hay filtros aplicados",
+                        "cambios": [
+                            "Añadir sección 'Filtros Aplicados' en PDF si los hay",
+                            "Mantener compatibilidad con PDFs sin filtros"
+                        ],
+                        "dependencias": [
+                            "T-001"
+                        ],
+                        "tiempo": "25 min"
+                    }
+                ],
+                "orden_ejecucion_con_validaciones": [
+                    {
+                        "paso": 1,
+                        "tarea": "T-001",
+                        "agente": "Backend_Workers",
+                        "validacion_post": [
+                            "Probar endpoint con y sin filtros",
+                            "Verificar que respuesta mantiene estructura avaluo_response"
+                        ]
+                    },
+                    {
+                        "paso": 2,
+                        "tareas_paralelas": [
+                            "T-002",
+                            "T-004"
+                        ],
+                        "validacion_post": [
+                            "T-002: Verificar que filtros se envían correctamente al backend",
+                            "T-004: Generar PDF con y sin filtros"
+                        ]
+                    },
+                    {
+                        "paso": 3,
+                        "tarea": "T-003",
+                        "agente": "Frontend_Tables",
+                        "validacion_post": [
+                            "Verificar que badges de filtros se muestran",
+                            "Confirmar que contador es preciso"
+                        ]
+                    },
+                    {
+                        "paso": 4,
+                        "validacion_integracion": [
+                            "Flujo completo: Formulario → Resultados → Aplicar filtros → Ver tabla actualizada → Generar PDF",
+                            "Verificar que historial guarda filtros aplicados",
+                            "Confirmar que emails reflejan filtros si están presentes"
+                        ]
+                    }
+                ]
+            },
+            "tiempo_estimado": "2-3 horas"
+        }
+    },
+    "escenario_4_emergencia": {
+        "descripcion": "Fix urgente de bug en producción",
+        "request_usuario": "BUG URGENTE: Los precios en el PDF se muestran sin formato (números crudos sin separadores)",
+        "implementacion": {
+            "metodo": "Diagnóstico con Planner + Fix directo",
+            "comando": "Como Planner, diagnostica: precios sin formato en PDF",
+            "diagnostico": {
+                "agente_responsable": "Frontend_PDF_Email",
+                "archivo_problema": "src/components/pdf/PDFDocument.jsx",
+                "causa_raiz": "No se está usando formatPriceCOP() en renderizado de PDF",
+                "afecta_a": [
+                    "PDFs generados desde Step3Results",
+                    "PDFs históricos (si se regeneran)"
+                ],
+                "no_afecta_a": [
+                    "Página de resultados (usa formatters correctamente)",
+                    "Emails (diferentes templates)"
+                ]
+            },
+            "plan_fix": {
+                "tarea_unica": {
+                    "id": "HOTFIX-001",
+                    "agente": "Frontend_PDF_Email",
+                    "descripcion": "Aplicar formatPriceCOP a todos los precios en PDF",
+                    "archivos": [
+                        "src/components/pdf/PDFDocument.jsx"
+                    ],
+                    "cambios": [
+                        "Importar formatPriceCOP desde utils/formatters.js",
+                        "Aplicar a precio_final_cop en hero",
+                        "Aplicar a precios en tabla de comparables",
+                        "Aplicar a precios en cards de metodologías"
+                    ],
+                    "validacion": [
+                        "Generar PDF de prueba",
+                        "Verificar todos los precios tienen formato $1.234.567",
+                        "Confirmar que no se rompió nada más"
+                    ],
+                    "tiempo": "10 minutos"
+                },
+                "validacion_contrato": {
+                    "no_rompe_contratos": true,
+                    "razon": "Solo cambia presentación, no estructura de datos"
+                }
+            },
+            "comando_ejecucion": "Como Frontend_PDF_Email, aplica formatPriceCOP a todos los precios en PDFDocument.jsx",
+            "tiempo_estimado": "15 minutos (incluye testing)"
+        }
+    },
+    "escenario_5_optimizacion": {
+        "descripcion": "Mejora de prompts sin cambiar código",
+        "request_usuario": "El análisis de Perplexity para lotes es muy técnico, simplifícalo",
+        "implementacion": {
+            "metodo": "Uso directo de Backend_Prompts",
+            "comando": "Como Backend_Prompts, simplifica el prompt de Perplexity para tipo Lote",
+            "proceso": [
+                "1. AI carga backend_prompts.json",
+                "2. Identifica la sección 'metodo_residual_explicacion' para Lote",
+                "3. Reescribe prompt con instrucciones más claras:",
+                "   - 'Explica como si hablaras con alguien sin formación en avalúos'",
+                "   - 'Usa metáforas simples'",
+                "   - 'Evita términos como VPN, TIR, flujo de caja'",
+                "4. Actualiza prompt_version con cambios",
+                "5. Prueba con 3 lotes diferentes"
+            ],
+            "archivos_modificados": [
+                "workers/avaluos-api-analysis/src/prompts/perplexity.js"
+            ],
+            "sin_coordinacion_necesaria": true,
+            "razon": "No cambia estructura de respuesta, solo mejora calidad del texto",
+            "validacion": {
+                "antes": "El método residual aplica un flujo de caja descontado con TIR del mercado...",
+                "despues": "Imagina que el lote es como un terreno vacío que puedes transformar en un edificio rentable. El precio se calcula pensando: ¿cuánto dinero generaría ese edificio? Y de ahí restamos los costos de construcción..."
+            },
+            "tiempo_estimado": "20 minutos"
+        }
+    },
+    "guia_decision_rapida": {
+        "cuando_usar_cada_agente": {
+            "Planner": [
+                "Request afecta múltiples áreas",
+                "No estás seguro qué agente usar",
+                "Cambio tiene riesgos o dependencias complejas",
+                "Quieres un plan antes de ejecutar"
+            ],
+            "Backend_Workers": [
+                "Cambios en lógica de cálculo",
+                "Modificar estructura de respuestas API",
+                "Añadir/quitar campos de datos",
+                "Optimización de workers"
+            ],
+            "Backend_Prompts": [
+                "Mejorar calidad de respuestas AI",
+                "Ajustar tono o estilo de explicaciones",
+                "Añadir/quitar secciones dinámicas",
+                "Fix de extracción de datos incorrecta"
+            ],
+            "Frontend_Tables": [
+                "Cambios visuales en tablas",
+                "Añadir/quitar columnas",
+                "Mejorar responsive de tablas",
+                "Fix de formato de números en tablas"
+            ],
+            "Frontend_Pages": [
+                "Cambios en flujo del wizard",
+                "Modificar formularios",
+                "Actualizar navegación",
+                "Cambios en state management"
+            ],
+            "Frontend_PDF_Email": [
+                "Cambios en diseño de PDF",
+                "Modificar templates de email",
+                "Fix de formato en PDFs",
+                "Añadir/quitar secciones de reportes"
+            ]
+        },
+        "regla_oro": "Si dudas, pregunta al Planner: '¿Qué agente debería usar para [tu request]?'"
+    },
+    "comandos_utiles": {
+        "diagnostico": "Como Planner, diagnostica: [describe el problema]",
+        "planificacion": "Como Planner, ayúdame a implementar: [feature o cambio]",
+        "ejecucion_directa": "Como [Agente], [tarea específica]",
+        "validacion": "Valida que los contratos JSON estén consistentes",
+        "revision": "Revisa qué archivos puede modificar [Agente]"
+    }
+}

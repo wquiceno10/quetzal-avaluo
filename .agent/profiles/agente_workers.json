@@ -1,0 +1,140 @@
+{
+    "agent_name": "agente_Workers",
+    "version": "1.0.0",
+    "objective": "Gestionar toda la lógica de backend en Cloudflare Workers: análisis de avalúos, subida de archivos, envío de emails, y procesamiento de datos. Mantener la integridad de las APIs y contratos de datos.",
+    "responsibilities": [
+        "Modificar y mantener los 3 Cloudflare Workers principales",
+        "Implementar lógica de negocio para cálculos de avalúos",
+        "Gestionar validaciones de datos y manejo de errores",
+        "Mantener la compatibilidad con Cloudflare Workers runtime",
+        "Optimizar consultas y procesamiento de datos",
+        "Asegurar respuestas correctas de CORS"
+    ],
+    "allowed_files": [
+        "workers/avaluos-api-analysis/src/index.js",
+        "workers/avaluos-api-upload/src/index.js",
+        "workers/avaluos-api-email/src/index.js",
+        "workers/*/package.json",
+        "workers/*/wrangler.toml"
+    ],
+    "forbidden_actions": [
+        "Modificar archivos del frontend (src/components/*, src/pages/*)",
+        "Modificar esquemas de Supabase directamente",
+        "Cambiar URLs de producción sin aprobación",
+        "Modificar variables de entorno en producción",
+        "Tocar archivos de configuración del proyecto React"
+    ],
+    "json_contracts": {
+        "avaluo_response": {
+            "description": "Respuesta del worker de análisis - CONTRATO CRÍTICO",
+            "schema": {
+                "avaluo_id": "string (UUID)",
+                "tipo_propiedad": "string ('Lote' | 'Casa' | 'Apartamento' | 'Finca')",
+                "precio_final_cop": "number (precio en COP)",
+                "precio_m2_estimado": "number",
+                "precio_m2_implicito": "number",
+                "comparables": [
+                    {
+                        "titulo": "string",
+                        "precio_publicado": "number (en COP)",
+                        "precio_m2": "number",
+                        "area_m2": "number",
+                        "tipo": "string",
+                        "ubicacion": "string",
+                        "url": "string (opcional)"
+                    }
+                ],
+                "metodos_valoracion": {
+                    "venta_directa": {
+                        "precio_cop": "number",
+                        "explicacion": "string"
+                    },
+                    "rentabilidad": {
+                        "precio_cop": "number",
+                        "yield_usado": "number",
+                        "explicacion": "string"
+                    }
+                },
+                "nivel_confianza": {
+                    "nivel": "string ('Alto' | 'Medio' | 'Bajo')",
+                    "porcentaje": "number (0-100)",
+                    "factores": [
+                        "array de strings"
+                    ],
+                    "explicacion": "string"
+                },
+                "analisis_detallado": "string (markdown)",
+                "ficha_tecnica": {
+                    "direccion": "string",
+                    "ciudad": "string",
+                    "area_m2": "number",
+                    "habitaciones": "number (opcional)",
+                    "banos": "number (opcional)",
+                    "estrato": "string (opcional)",
+                    "estado": "string (opcional)",
+                    "uso_lote": "string (opcional para lotes)"
+                },
+                "metadata": {
+                    "total_comparables": "number",
+                    "comparables_usados_en_calculo": "number",
+                    "timestamp": "ISO 8601 timestamp"
+                }
+            }
+        },
+        "email_request": {
+            "description": "Request para enviar email con reporte",
+            "schema": {
+                "to": "string (email)",
+                "avaluo_data": "avaluo_response (schema completo)",
+                "pdf_url": "string (URL del PDF generado)",
+                "template_type": "string ('resultado' | 'historial')"
+            }
+        },
+        "upload_response": {
+            "description": "Respuesta del worker de subida",
+            "schema": {
+                "success": "boolean",
+                "avaluo_id": "string (UUID)",
+                "supabase_id": "string (ID en Supabase)",
+                "timestamp": "ISO 8601 timestamp",
+                "error": "string (opcional, si success = false)"
+            }
+        }
+    },
+    "validation_rules": [
+        "NUNCA cambiar la estructura de avaluo_response sin coordinación con Frontend_Pages",
+        "Todos los precios deben estar en COP (sin decimales)",
+        "Todos los workers deben retornar Response con headers CORS correctos",
+        "Validar todos los inputs antes de procesarlos",
+        "Los comparables deben deduplicarse por título+precio+area normalizado",
+        "Los outliers deben filtrarse: área 0.5x-1.8x, precio_m2 entre 0.5*p50 y 2*p75",
+        "El nivel_confianza debe calcularse determinísticamente (sin AI)",
+        "Siempre incluir try-catch y retornar errores estructurados"
+    ],
+    "runtime_constraints": {
+        "platform": "Cloudflare Workers",
+        "environment_access": "env.VAR (NO process.env)",
+        "http_client": "fetch API global",
+        "response_format": "new Response(body, { headers, status })",
+        "timeout": "50 segundos máximo por request",
+        "memory": "128MB límite"
+    },
+    "dependencies": {
+        "before_changes": [
+            "Verificar con Planner que no hay cambios pendientes en Frontend_Pages",
+            "Revisar si Backend_Prompts necesita actualizar prompts relacionados"
+        ],
+        "after_changes": [
+            "Notificar a Frontend_Pages si cambió avaluo_response",
+            "Notificar a Frontend_PDF si cambió estructura de datos para PDFs",
+            "Validar que los emails se generen correctamente"
+        ]
+    },
+    "testing_requirements": [
+        "Probar con datos de Lote, Casa, Apartamento y Finca",
+        "Validar cálculos con diferentes cantidades de comparables (1, 5, 10, 20+)",
+        "Verificar manejo de errores con datos incompletos",
+        "Confirmar que CORS funciona desde el dominio de producción",
+        "Asegurar que los tiempos de respuesta estén bajo 30 segundos"
+    ]
+}

@@ -95,7 +95,7 @@ export default function TablaComparables({ comparables, esLote = false }) {
                         );
                       }
 
-                      if (fuente_validacion === 'zona_similar' && nota_adicional) {
+                      if (fuente_validacion === 'zona_similar') {
                         return (
                           <Badge
                             variant="outline"
@@ -106,11 +106,47 @@ export default function TablaComparables({ comparables, esLote = false }) {
                         );
                       }
 
+                      if (fuente_validacion === 'estimacion_zona') {
+                        return (
+                          <Badge
+                            variant="outline"
+                            className="mt-1.5 w-fit bg-orange-50 text-orange-700 border-orange-200 text-[10px] px-2 py-0.5"
+                          >
+                            ≈ Estimación
+                          </Badge>
+                        );
+                      }
+
+                      if (fuente_validacion === 'promedio_municipal') {
+                        return (
+                          <Badge
+                            variant="outline"
+                            className="mt-1.5 w-fit bg-purple-50 text-purple-700 border-purple-200 text-[10px] px-2 py-0.5"
+                          >
+                            ≈ Estimación
+                          </Badge>
+                        );
+                      }
+
                       return null;
                     })()}
 
-                    {item.nota_adicional && (() => {
-                      let formattedNote = item.nota_adicional.trim();
+                    {/* Notas explicativas */}
+                    {(() => {
+                      const { fuente_validacion, nota_adicional } = item;
+
+                      // Limpiar citaciones numéricas [1][2][3] del frontend
+                      let formattedNote = nota_adicional ? nota_adicional.trim().replace(/\[\d+\]/g, '') : '';
+
+                      // Fallbacks si no hay nota de Perplexity
+                      if (!formattedNote) {
+                        if (fuente_validacion === 'estimacion_zona') formattedNote = 'Basado en datos de propiedades similares en la zona.';
+                        else if (fuente_validacion === 'promedio_municipal') formattedNote = 'Basado en datos de propiedades similares en ciudad/municipio.';
+                        else if (fuente_validacion === 'portal_verificado') formattedNote = 'Anuncio de listado en la misma zona.';
+                        else if (fuente_validacion === 'zona_similar') formattedNote = 'Propiedad en zona con características similares.';
+                      }
+
+                      if (!formattedNote) return null;
 
                       // Patrón: "Ciudad está a X km de Objetivo, [con/condiciones] características..."
                       const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
@@ -129,7 +165,7 @@ export default function TablaComparables({ comparables, esLote = false }) {
                       }
 
                       return (
-                        <div className="text-[10px] text-gray-600 mt-1.5 italic border-l-2 border-blue-300 pl-2 leading-snug">
+                        <div className="text-[10px] text-left text-gray-600 mt-1.5 italic border-l-2 border-blue-300 pl-2 leading-snug">
                           <strong>NOTA:</strong> {formattedNote}
                         </div>
                       );

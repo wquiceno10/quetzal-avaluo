@@ -109,7 +109,7 @@ export default function AvaluoInmobiliario() {
       // DEV MODE FALLBACK: If we are in dev mode and have no user, create a mock one to allow saving
       if (!activeUser && isDevMode) {
         console.warn("[AUTO-SAVE] Dev Mode: using mock user for auto-save");
-        activeUser = { email: 'dev_test@quetzal.com', id: 'dev-id' };
+        activeUser = { email: 'artesanointeractivo@gmail.com', id: 'dev-id' };
       }
 
       console.log("[DEBUG] Auto-save condition check. ActiveUser:", activeUser ? 'YES' : 'NO');
@@ -203,10 +203,13 @@ export default function AvaluoInmobiliario() {
   };
 
   const handleBack = () => {
-    // If we are in Step 3 (Results) or Step 4 (Contact), we want to go back to Step 1 (Form) directly
-    // to allow editing, skipping the analysis step (Step 2) which would re-trigger the calculation.
-    if (currentStep >= 3) {
-      setCurrentStep(1);
+    // Step 4 (Contact) → Step 3 (Results)
+    // Step 3 (Results) → Step 1 (Form) to allow editing
+    // Step 2 (Analysis) → Step 1 (Form)
+    if (currentStep === 4) {
+      setCurrentStep(3); // From Contact back to Results
+    } else if (currentStep === 3) {
+      setCurrentStep(1); // From Results back to Form (preserves data via avaluoData state)
     } else {
       setCurrentStep(prev => Math.max(prev - 1, 1));
     }

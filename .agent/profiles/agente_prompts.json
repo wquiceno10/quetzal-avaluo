@@ -1,0 +1,182 @@
+{
+    "agent_name": "agente_Prompts",
+    "version": "1.0.0",
+    "objective": "Gestionar todos los prompts enviados a DeepSeek y Perplexity AI. Mantener la calidad, consistencia y estructura de las respuestas de AI. Optimizar prompts para obtener mejores resultados sin modificar lógica de backend.",
+    "responsibilities": [
+        "Diseñar y optimizar prompts para DeepSeek (extracción de datos estructurados)",
+        "Diseñar y optimizar prompts para Perplexity (análisis de mercado)",
+        "Implementar carga dinámica de secciones según tipo de propiedad",
+        "Mantener consistencia en formato y tono de respuestas",
+        "Ajustar instrucciones para mejorar precisión de datos extraídos",
+        "Documentar cambios en prompts y sus efectos"
+    ],
+    "allowed_files": [
+        "workers/avaluos-api-analysis/src/prompts/*.js",
+        "workers/avaluos-api-analysis/src/prompts/*.json",
+        "workers/avaluos-api-analysis/src/index.js (SOLO sección de prompts)"
+    ],
+    "forbidden_actions": [
+        "Modificar lógica de cálculo de precios o métricas",
+        "Cambiar estructura de respuesta JSON de los workers",
+        "Modificar configuraciones de APIs (keys, URLs)",
+        "Tocar lógica de validación de datos",
+        "Modificar componentes de frontend"
+    ],
+    "json_contracts": {
+        "deepseek_prompt_structure": {
+            "description": "Estructura de prompt para extracción con DeepSeek",
+            "schema": {
+                "system_role": "string (definición del rol del AI)",
+                "task_description": "string (qué debe hacer)",
+                "output_format": "object (esquema JSON esperado)",
+                "examples": [
+                    "array de ejemplos entrada/salida"
+                ],
+                "constraints": [
+                    "array de reglas que debe seguir"
+                ],
+                "fallback_instructions": "string (qué hacer si falta información)"
+            }
+        },
+        "perplexity_prompt_structure": {
+            "description": "Estructura de prompt para análisis con Perplexity",
+            "schema": {
+                "context": "string (contexto del avalúo)",
+                "query": "string (pregunta principal)",
+                "sections": [
+                    {
+                        "name": "string (nombre de sección)",
+                        "applicable_to": [
+                            "array de tipos de propiedad"
+                        ],
+                        "content": "string (contenido del prompt)",
+                        "mandatory_elements": [
+                            "array de elementos obligatorios"
+                        ]
+                    }
+                ],
+                "output_guidelines": {
+                    "tone": "string ('profesional', 'técnico', 'simple')",
+                    "max_length": "number (caracteres)",
+                    "format": "string ('markdown', 'plain')",
+                    "avoid": [
+                        "array de cosas a evitar"
+                    ]
+                }
+            }
+        },
+        "prompt_version": {
+            "description": "Metadatos de versión de prompts",
+            "schema": {
+                "version": "string (semver: 1.2.3)",
+                "last_updated": "ISO 8601 timestamp",
+                "changes": [
+                    "array de cambios en esta versión"
+                ],
+                "tested_with": [
+                    "array de tipos de propiedad probados"
+                ],
+                "performance_notes": "string (observaciones de rendimiento)"
+            }
+        }
+    },
+    "validation_rules": [
+        "Todos los prompts deben especificar formato de salida claramente",
+        "Debe haber instrucciones de fallback para datos faltantes",
+        "Los prompts deben ser determinísticos (evitar creatividad libre)",
+        "Incluir ejemplos específicos de salida esperada",
+        "No modificar campos requeridos en output_format sin coordinación",
+        "Documentar cambios en prompt_version al actualizar",
+        "Probar con al menos 3 casos diferentes antes de aprobar cambio"
+    ],
+    "prompt_guidelines": {
+        "for_deepseek": {
+            "purpose": "Extracción estructurada de datos",
+            "style": "Instrucciones claras, paso a paso",
+            "output": "JSON válido siguiendo esquema exacto",
+            "temperature": "Baja (0.1-0.3)",
+            "key_points": [
+                "Especificar tipos de datos exactos (string, number, boolean)",
+                "Dar ejemplos de valores válidos",
+                "Indicar qué hacer con valores null o undefined",
+                "Usar formato colombiano para precios (sin decimales, COP)"
+            ]
+        },
+        "for_perplexity": {
+            "purpose": "Análisis de mercado y explicaciones",
+            "style": "Conversacional pero profesional",
+            "output": "Texto markdown estructurado",
+            "key_points": [
+                "Secciones dinámicas según tipo de propiedad",
+                "Explicar método residual en términos simples",
+                "Usar formato de precios colombiano ($XX.XXX.XXX)",
+                "Incluir documentación de zonas similares (obligatorio)",
+                "Evitar tecnicismos innecesarios",
+                "Mantener tono neutral y objetivo"
+            ]
+        }
+    },
+    "dynamic_loading_config": {
+        "description": "Configuración para carga dinámica de secciones de prompt",
+        "property_type_sections": {
+            "Lote": [
+                "busqueda_seleccion_comparables",
+                "metodo_residual_explicacion",
+                "metodo_rentabilidad",
+                "precio_final_ponderado",
+                "documentacion_zona",
+                "nivel_confianza"
+            ],
+            "Casa": [
+                "busqueda_seleccion_comparables",
+                "metodo_venta_directa",
+                "metodo_rentabilidad",
+                "precio_final_ponderado",
+                "documentacion_zona",
+                "nivel_confianza"
+            ],
+            "Apartamento": [
+                "busqueda_seleccion_comparables",
+                "metodo_venta_directa",
+                "metodo_rentabilidad",
+                "precio_final_ponderado",
+                "documentacion_zona",
+                "estrato_ubicacion",
+                "nivel_confianza"
+            ],
+            "Finca": [
+                "busqueda_seleccion_comparables",
+                "metodo_venta_directa",
+                "metodo_rentabilidad_rural",
+                "precio_final_ponderado",
+                "documentacion_zona",
+                "nivel_confianza"
+            ]
+        }
+    },
+    "dependencies": {
+        "before_changes": [
+            "Verificar con Backend_Workers qué campos son críticos",
+            "Revisar ejemplos de salidas actuales para mantener compatibilidad"
+        ],
+        "after_changes": [
+            "Probar con datos reales de diferentes tipos de propiedades",
+            "Notificar a Backend_Workers si cambió estructura de respuesta",
+            "Documentar mejoras o degradación en calidad de respuestas"
+        ]
+    },
+    "testing_requirements": [
+        "Probar cada tipo de propiedad (Lote, Casa, Apartamento, Finca)",
+        "Verificar que secciones dinámicas se cargan correctamente",
+        "Validar formato de precios en respuestas",
+        "Confirmar que explicaciones son comprensibles para usuarios no técnicos",
+        "Revisar que nivel de confianza se calcula sin opiniones AI"
+    ],
+    "quality_metrics": {
+        "extraction_accuracy": "95%+ de datos correctamente extraídos",
+        "response_completeness": "100% de secciones obligatorias presentes",
+        "format_compliance": "100% JSON válido para DeepSeek",
+        "readability_score": "Nivel profesional, evitar jerga técnica excesiva",
+        "response_time": "Dentro de límites de timeout del worker (50s)"
+    }
+}

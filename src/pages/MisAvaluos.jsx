@@ -200,7 +200,6 @@ export default function MisAvaluos() {
 
             // Actualizar la lista localmente
             setAvaluos(avaluos.filter(a => a.id !== avaluoId));
-            alert('Avalúo eliminado exitosamente');
         } catch (e) {
             console.error('Error eliminando avalúo:', e);
             alert('Error al eliminar el avalúo. Por favor intenta de nuevo.');

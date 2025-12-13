@@ -183,6 +183,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                   <SelectContent>
                     <SelectItem value="residencial">Residencial</SelectItem>
                     <SelectItem value="comercial">Comercial</SelectItem>
+                    <SelectItem value="mixto">Mixto</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -288,6 +289,53 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                     className="border-[#B0BDB4] focus:border-[#2C3D37]"
                   />
                 </div>
+
+                {/* Número de Piso - Solo Apartamentos */}
+                {localData.tipo_inmueble === 'apartamento' && (
+                  <div className="space-y-2">
+                    <Label className="text-[#2C3D37] font-medium">Número de Piso</Label>
+                    <Input
+                      type="number"
+                      value={localData.piso || ''}
+                      onChange={(e) => handleChange('piso', parseInt(e.target.value))}
+                      placeholder="Ej: 5"
+                      className="border-[#B0BDB4] focus:border-[#2C3D37]"
+                    />
+                  </div>
+                )}
+
+                {/* Ascensor - Solo Apartamentos */}
+                {localData.tipo_inmueble === 'apartamento' && (
+                  <div className="space-y-2">
+                    <Label className="text-[#2C3D37] font-medium">¿Tiene Ascensor?</Label>
+                    <Select value={localData.ascensor || ''} onValueChange={(value) => handleChange('ascensor', value)}>
+                      <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                        <SelectValue placeholder="Selecciona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="si">Sí</SelectItem>
+                        <SelectItem value="no">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Niveles de la Casa - Solo Casas */}
+                {localData.tipo_inmueble === 'casa' && (
+                  <div className="space-y-2">
+                    <Label className="text-[#2C3D37] font-medium">Niveles de la Casa</Label>
+                    <Select value={localData.numeropisos || ''} onValueChange={(value) => handleChange('numeropisos', value)}>
+                      <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                        <SelectValue placeholder="Selecciona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 nivel</SelectItem>
+                        <SelectItem value="2">2 niveles</SelectItem>
+                        <SelectItem value="3">3 o más niveles</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label className="text-[#2C3D37] font-medium">Parqueadero</Label>
