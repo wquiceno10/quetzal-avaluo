@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Download, Loader2 } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { construirTextoConfianza } from '@/lib/confidenceHelper';
+import { mapearEstadoSinPrecio } from '@/lib/utils';
 
-const BotonPDF = forwardRef(({ formData }, ref) => {
+const BotonPDF = forwardRef(({ formData, confianzaInfo }, ref) => {
   const generatePDFMutation = useMutation({
     mutationFn: async (data) => {
       const comparablesData = data.comparables_data || {};
@@ -57,24 +58,30 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         val ? Math.round(val).toLocaleString('es-CO') : '—';
 
       // Helpers para badges de fuente_validacion
+      // Helpers para badges de fuente_validacion
       const getBadgeClass = (validation) => {
-        switch (validation) {
-          case 'portal_verificado': return 'success';
-          case 'estimacion_zona': return 'info';
-          case 'zona_similar': return 'warning';
-          case 'promedio_municipal': return 'secondary';
-          default: return 'default';
-        }
+        const val = (validation || '').toLowerCase();
+        // coincidencia -> success (Verde)
+        // verificado -> success (Verde/Emerald)
+        // zona_similar -> info (Azul)
+        // zona_extendida -> warning (Naranja/Amarillo)
+
+        if (val === 'coincidencia') return 'success';
+        if (val === 'verificado') return 'success';
+        if (val === 'zona_similar') return 'info';
+        if (val === 'zona_extendida') return 'warning';
+
+        return 'secondary';
       };
 
       const getFuenteLabel = (validation) => {
-        switch (validation) {
-          case 'portal_verificado': return '✓ Verificado';
-          case 'estimacion_zona': return '~ Est. Zona';
-          case 'zona_similar': return '→ Zona Similar';
-          case 'promedio_municipal': return '≈ Prom. Mun.';
-          default: return 'Dato';
-        }
+        const val = (validation || '').toLowerCase();
+        if (val === 'coincidencia') return '✓ Coincidencia';
+        if (val === 'verificado') return '✓ Verificado';
+        if (val === 'zona_similar') return '→ Zona Similar';
+        if (val === 'zona_extendida') return '≈ Zona Extendida';
+
+        return 'Dato';
       };
 
       // Helper: Convertir texto a Title Case (Primera Letra Mayúscula)
@@ -138,13 +145,12 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           // INJECT DEFAULT NOTES IF MISSING (Fallback) - Sincronizado con Step3Results
           // Detecta si falta nota (considerando variantes como *Nota:, Nota:, **NOTA:**, *TextoItalico*)
           // CRÍTICO: Soporta CRLF (Windows) y LF (Unix) line endings
-          .replace(/(fuente_validacion:\s*(?:estimacion_zona|promedio_municipal|portal_verificado|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
+          .replace(/(fuente_validacion:\s*(?:coincidencia|zona_extendida|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
             let note = "";
             let p = prefix.toLowerCase();
-            if (p.includes("estimacion_zona")) note = "Basado en datos de propiedades similares en la zona.";
-            else if (p.includes("promedio_municipal")) note = "Basado en datos de propiedades similares en ciudad/municipio.";
-            else if (p.includes("portal_verificado")) note = "Anuncio de listado en la misma zona.";
-            else if (p.includes("zona_similar")) note = "Propiedad en zona con características similares.";
+            if (p.includes("zona_extendida")) note = "Similitud socioeconómica en otra zona.";
+            else if (p.includes("coincidencia")) note = "Anuncio de listado en la misma zona.";
+            else if (p.includes("zona_similar")) note = "Ubicación cercana con mercado comparable.";
             return `${prefix}\n**NOTA:** ${note}`;
           })
           // LaTeX spacing commands (NEW)
@@ -182,8 +188,8 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           'Promedio precio por m² ≈ $1 COP/m²'
         );
 
-        // Limpiar títulos numerados (1. Título → Título)
-        cleanText = cleanText.replace(/^[\d\.]+\s+(?=[A-Z])/gm, '');
+        // NO eliminar números de títulos - necesarios para detectar secciones principales
+        // cleanText = cleanText.replace(/^[\d\.]+\s+(?=[A-Z])/gm, '');
 
         // 2. Detectar y Formatear Tablas Markdown
         const lines = cleanText.split('\n');
@@ -226,7 +232,10 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
           // Limpiar HTML entities escapados (IGUAL QUE WEB - antes del procesamiento)
           .replace(/&lt;strong&gt;/g, '<strong>').replace(/&lt;\/strong&gt;/g, '</strong>')
           // Negritas (asegurar que cierra) - REFUERZO
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          // CRÍTICO: Normalizar títulos markdown eliminando TODOS los # al inicio
+          // Convertir "## 5. LIMITACIONES" o "### 3.1. Valor Base" → sin #
+          .replace(/^#+\s+/gm, '');
 
         // --- POST-PROCESAMIENTO: DESTACAR PALABRAS CLAVE (IGUAL QUE WEB) ---
         const keyPhrasePatterns = [
@@ -268,62 +277,91 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
         return cleanText
           // Limpiar ## inline que no están al inicio de línea
           .replace(/\s+##\s+/g, ' - ')
-          // Encabezados MD "# Título" o "#### Título" - Aplicar Title Case
-          .replace(/^#+\s*(.*?)$/gm, (match, title) => {
-            const formattedTitle = toTitleCase(title);
+          // 1. URLs Markdown: **[Portal](URL)** o [Portal](URL) -> <a href...> (VERDE CORPORATIVO)
+          .replace(/(?:\*\*)?\[([^\]]+)\]\(([^)]+)\)(?:\*\*)?/g, (match, text, url) => {
+            return `<strong><a href="${url}" target="_blank" style="color:#2C3D37; text-decoration:none;">${text}</a></strong>`;
+          })
+          // Limpiar símbolos extraños y SEPARADORES antes de etiquetas (═══, --)
+          .replace(/[═]+/g, '')
+          .replace(/\s+--\s+/g, ' ')
+          // 2. Bold Markdown normal
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          // Títulos principales numerados (solo 1 dígito: "5. LIMITACIONES", "6. RESUMEN EJECUTIVO")
+          // SOLO títulos de sección principal (ej: 1-9, NO 3.1, 3.2, etc.)
+          // DEBE procesarse ANTES de otros replacements para evitar conflictos
+          .replace(/^(\d{1}\.?\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z a-zÁÉÍÓÚáéíóúñÑ]{3,})$/gm, (_match, title) => {
+            const formattedTitle = toTitleCase(title.trim());
             return `<h4 style="font-size:14px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
           })
-          // FUENTE_VALIDACION inline con portal (ACTUALIZADO para coincidir con la página)
-          .replace(/(<strong>[^<]+<\/strong>)[\s\r\n]*fuente_validacion:\s*([^\r\n]+)/gi, (match, portal, validation) => {
-            const val = validation.trim().toLowerCase();
-            let badgeStyle = '';
-            let badgeText = validation.trim();
-            let note = '';
-
-            if (val === 'portal_verificado') {
-              badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
-              badgeText = '✓ Coincidencia';
-              note = '<span style="display:block; font-size:10px; color:#6B7280; font-style:italic; margin-top:4px; margin-bottom:12px; line-height:1.3;"><strong>NOTA:</strong> Anuncio de listado en la misma zona.</span>';
-            } else if (val === 'estimacion_zona') {
-              badgeStyle = 'background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;';
-              badgeText = '~ Est. Zona';
-            } else if (val === 'zona_similar') {
-              badgeStyle = 'background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;';
-              badgeText = '→ Zona Similar';
-            } else if (val === 'promedio_municipal') {
-              badgeStyle = 'background:#ffedd5; color:#c2410c; border:1px solid #fdba74;';
-              badgeText = '≈ Prom. Mun.';
-            } else {
-              badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
-            }
-
-            const badge = `<span style="display:inline-block; padding:3px 7px; border-radius:6px; font-size:10px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
-            // Asegurarnos de que el 'portal' (que viene con <strong>) se mantenga limpio
-            return `${portal} ${badge}${note}`;
+          // Subsecciones numeradas (ej: "3.1. Método", "3.4. VALOR TOTAL") → <h5> sin borde
+          .replace(/^(\d+\.\d+\.?\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z a-zÁÉÍÓÚáéíóúñÑ]{3,})$/gm, (_match, title) => {
+            const formattedTitle = toTitleCase(title.trim());
+            return `<h5 style="font-size:12px; margin:12px 0 6px 0; color:#2C3D37; font-weight:700;">${formattedTitle}</h5>`;
           })
-          // FUENTE_VALIDACION legacy (sin portal antes)
-          .replace(/^fuente_validacion:\s*(.+)$/gim, (match, validation) => {
+          // PROCESAR BADGES - MÚLTIPLES FORMATOS
+          // 1. Formato con fuente_validacion: prefijo
+          .replace(/(<\/strong>|<\/a>)\s*fuente_validacion:\s*([^\r\n<]+)/gi, (match, tagEnd, validation) => {
             const val = validation.trim().toLowerCase();
             let badgeStyle = '';
             let badgeText = validation.trim();
 
-            if (val === 'portal_verificado') {
+            if (val === 'coincidencia') {
               badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
               badgeText = '✓ Coincidencia';
-            } else if (val === 'estimacion_zona') {
-              badgeStyle = 'background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;';
-              badgeText = '~ Est. Zona';
+            } else if (val === 'verificado') {
+              badgeStyle = 'background:#ecfdf5; color:#047857; border:1px solid #6ee7b7;';
+              badgeText = '✓ Verificado';
             } else if (val === 'zona_similar') {
               badgeStyle = 'background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;';
               badgeText = '→ Zona Similar';
-            } else if (val === 'promedio_municipal') {
-              badgeStyle = 'background:#ffedd5; color:#c2410c; border:1px solid #fdba74;';
-              badgeText = '≈ Prom. Mun.';
+            } else if (val === 'zona_extendida') {
+              badgeStyle = 'background:#fef3c7; color:#92400e; border:1px solid #fcd34d;';
+              badgeText = '≈ Zona Extendida';
             } else {
               badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
             }
 
-            return `<span style="display:inline-block; padding:3px 7px; border-radius:6px; font-size:10px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
+            return `${tagEnd} <span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:500; margin-left:4px; vertical-align:middle; ${badgeStyle}">${badgeText}</span>`;
+          })
+          // 2. Formato legacy: fuente_validacion: al inicio
+          .replace(/^fuente_validacion:\s*([^\r\n<]+)/gim, (match, validation) => {
+            const val = validation.trim().toLowerCase();
+            let badgeStyle = '';
+            let badgeText = validation.trim();
+
+            if (val === 'verificado') {
+              badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
+              badgeText = '✓ Coincidencia';
+            } else {
+              badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
+            }
+            return `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
+          })
+          // 3. CRÍTICO: Etiquetas sueltas (sin fuente_validacion:) 
+          // FIX: EVITAR DUPLICADOS SI ESTÁ ENTRE PARÉNTESIS (ej. "(zona_similar, ...)")
+          .replace(/(\()?\b(coincidencia|verificado|zona_similar|zona_extendida)\b/gi, (match, parenthesis, tag) => {
+            if (parenthesis) return match; // Si hay paréntesis antes, ignorar
+
+            const val = tag.trim().toLowerCase();
+            let badgeStyle = '';
+            let badgeText = tag.trim();
+
+            if (val === 'coincidencia') {
+              badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
+              badgeText = '✓ Coincidencia';
+            } else if (val === 'verificado') {
+              badgeStyle = 'background:#ecfdf5; color:#047857; border:1px solid #6ee7b7;';
+              badgeText = '✓ Verificado';
+            } else if (val === 'zona_similar') {
+              badgeStyle = 'background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;';
+              badgeText = '→ Zona Similar';
+            } else if (val === 'zona_extendida') {
+              badgeStyle = 'background:#fef3c7; color:#92400e; border:1px solid #fcd34d;';
+              badgeText = '≈ Zona Extendida';
+            } else {
+              badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
+            }
+            return `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
           })
           // NOTA con formato mejorado (tamaño 10px y NOTA: en negrita)
           // Regex flexible Sincronizado con Step3Results
@@ -883,14 +921,14 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
 
             <div class="grid-2">
               <div class="box">
-                <h3>${esLote ? 'Metodología Ajustada (Lotes)' : 'Enfoque de Mercado'}</h3>
+                <h3>${esLote ? 'Valor Estimado por Mercado' : 'Enfoque de Mercado'}</h3>
                 <p style="font-size: 22px; font-weight: 700;">
                   ${formatCurrency(valorVentaDirecta)}
                 </p>
                 <p style="font-size: 11px; margin-top: 8px;">
                   ${esLote
-          ? 'Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.'
-          : 'Basado en precio promedio por m² × área construida.'}
+          ? 'Calculado a partir de la mediana de precio por m² de lotes comparables y ajuste residual.'
+          : 'Basado en mediana de precio por m² × área construida.'}
                 </p>
               </div>
 
@@ -951,7 +989,7 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
             const estado = formData.estado_inmueble || formData.estado ||
               comparablesData.estado_inmueble || comparablesData.estado ||
               defaults.estado_inmueble || defaults.estado;
-            return estado ? estado.replace(/_/g, ' ') : '—';
+            return mapearEstadoSinPrecio(estado);
           })()}
                   </span>
                 </div>
@@ -974,24 +1012,40 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
               </div>
             </div>
             
-<!-- NIVEL DE CONFIANZA DEL ANÁLISIS -->
-            ${comparablesData.nivel_confianza ? `
-            <div style="background: ${comparablesData.nivel_confianza === 'Alto' ? '#f0fdf4' : comparablesData.nivel_confianza === 'Medio' ? '#eff6ff' : '#fffbeb'}; 
-                        border: 1px solid ${comparablesData.nivel_confianza === 'Alto' ? '#86efac' : comparablesData.nivel_confianza === 'Medio' ? '#93c5fd' : '#fcd34d'}; 
+<!-- SOLIDEZ DEL ANÁLISIS (Caja Visual) -->
+            ${confianzaInfo ? `
+            <div style="background: ${confianzaInfo.nivel === 'ALTO' ? '#f0fdf4' : confianzaInfo.nivel === 'MEDIO' ? '#eff6ff' : '#fff7ed'}; 
+                        border: 1px solid ${confianzaInfo.nivel === 'ALTO' ? '#bbf7d0' : confianzaInfo.nivel === 'MEDIO' ? '#bfdbfe' : '#fed7aa'};
                         border-radius: 8px; 
                         padding: 16px; 
                         margin: 20px 0;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                <span style="font-size: 18px;">ℹ️</span>
-                <h4 style="margin: 0; color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e40af' : '#92400e'}; 
-                           font-size: 13px; font-weight: 700;">
-                  Nivel de Confianza del Análisis
-                </h4>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 18px;">ℹ️</span>
+                  <h4 style="margin: 0; color: ${confianzaInfo.nivel === 'ALTO' ? '#166534' : confianzaInfo.nivel === 'MEDIO' ? '#1e40af' : '#92400e'}; 
+                             font-size: 13px; font-weight: 700; font-family: 'Outfit', sans-serif;">
+                    Solidez del Análisis: ${confianzaInfo.label}
+                  </h4>
+                </div>
+                <span style="font-size: 10px; font-weight: 500; color: #6b7280; font-family: 'Outfit', sans-serif;">
+                  ${confianzaInfo.nivel === 'ALTO' ? '90%' : confianzaInfo.nivel === 'MEDIO' ? '60%' : '30%'}
+                </span>
               </div>
-              <p style="font-size: 11px; line-height: 1.5; margin: 0; 
-                        color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e3a8a' : '#78350f'};">
-                ${construirTextoConfianza(comparablesData.nivel_confianza, comparablesData.nivel_confianza_detalle)}
-              </p>
+              
+              <!-- Progress Bar -->
+              <div style="height: 6px; width: 100%; background: #e5e7eb; border-radius: 999px; overflow: hidden; margin-bottom: 12px;">
+                <div style="height: 100%; width: ${confianzaInfo?.nivel === 'ALTO' ? '90%' : confianzaInfo?.nivel === 'MEDIO' ? '60%' : '30%'}; background: ${confianzaInfo?.nivel === 'ALTO' ? '#10b981' : confianzaInfo?.nivel === 'MEDIO' ? '#3b82f6' : '#f97316'}; border-radius: 999px;"></div>
+              </div>
+              
+              <!-- Razones -->
+              <div style="font-size: 10px; line-height: 1.6; font-family: 'Raleway', sans-serif;">
+                ${confianzaInfo?.razones.map((razon, idx) => `
+                  <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                    <div style="width: 4px; height: 4px; border-radius: 50%; background: ${confianzaInfo?.nivel === 'ALTO' ? '#10b981' : confianzaInfo?.nivel === 'MEDIO' ? '#3b82f6' : '#f97316'}; margin-top: 6px; flex-shrink: 0;"></div>
+                    <p style="margin: 0; line-height: 1.6; font-family: 'Raleway', sans-serif;">${razon}</p>
+                  </div>
+                `).join('')}
+              </div>
             </div>
             ` : ''}
 
@@ -1036,9 +1090,17 @@ const BotonPDF = forwardRef(({ formData }, ref) => {
                         <strong style="display:block; margin-bottom:2px;">${item.titulo || 'Inmueble'}</strong>
                         <span class="sub-text">${item.barrio || ''}, ${item.municipio || ''}</span>
                         <br>
-                        <span class="badge badge-${getBadgeClass(item.fuente_validacion || 'portal_verificado')}">
-                          ${getFuenteLabel(item.fuente_validacion || 'portal_verificado')}
-                        </span>
+                        ${(() => {
+                const badges = Array.isArray(item.fuente_validacion)
+                  ? item.fuente_validacion
+                  : [item.fuente_validacion || 'zona_extendida'];
+
+                return badges.map(badge => {
+                  const badgeClass = getBadgeClass(badge);
+                  const badgeLabel = getFuenteLabel(badge);
+                  return `<span class="badge badge-${badgeClass}" style="margin-right:4px;">${badgeLabel}</span>`;
+                }).join('');
+              })()}
                         ${item.nota_adicional ? `<br><span class="note">${item.nota_adicional.replace(/\[\d+\]/g, '')}</span>` : ''}
                       </td>
                       <td style="text-align:center; vertical-align:middle;"><span class="badge ${badgeClass}">${tipoLabel}</span></td>

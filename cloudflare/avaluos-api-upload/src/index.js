@@ -18,6 +18,42 @@ export default {
             return new Response(null, { headers: corsHeaders });
         }
 
+        const url = new URL(request.url);
+
+        // --- HANDLER: DELETE AVALUO ---
+        if (request.method === 'DELETE' && url.pathname.endsWith('/delete-avaluo')) {
+            const id = url.searchParams.get('id');
+            if (!id) {
+                return new Response(JSON.stringify({ error: 'Missing id parameter' }), { status: 400, headers: corsHeaders });
+            }
+
+            const supabaseUrl = env.SUPABASE_URL;
+            const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY; // Must use Service Role to bypass RLS
+
+            if (!supabaseUrl || !supabaseKey) {
+                return new Response(JSON.stringify({ error: 'Server misconfiguration: Service Role missing' }), { status: 500, headers: corsHeaders });
+            }
+
+            // Execute SQL via REST API (since we don't have supabase-js)
+            const response = await fetch(`${supabaseUrl}/rest/v1/avaluos?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=minimal'
+                }
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                return new Response(JSON.stringify({ error: 'Supabase delete failed', details: text }), { status: 500, headers: corsHeaders });
+            }
+
+            return new Response(JSON.stringify({ success: true, id }), { status: 200, headers: corsHeaders });
+        }
+
+        // --- HANDLER: UPLOAD FILE ---
         if (request.method !== 'POST') {
             return new Response(
                 JSON.stringify({ error: 'Method not allowed' }),

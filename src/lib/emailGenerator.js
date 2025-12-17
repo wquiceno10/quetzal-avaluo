@@ -3,8 +3,11 @@
  * DISEÑO CORRECTO - Matching user screenshots
  */
 import { construirTextoConfianza } from './confidenceHelper';
+import { NOTA_DISCLAIMER } from './constants';
+import { renderConfianzaBlockHtml } from './renderers/confianzaBlock';
+import { mapearEstadoSinPrecio } from './utils';
 
-export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal, rangoMin, rangoMax }) => {
+export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal, rangoMin, rangoMax, confianzaInfo }) => {
   const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
   const formatNumber = (val) => val ? Math.round(val).toLocaleString('es-CO') : '—';
 
@@ -33,6 +36,9 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
     comparablesData.uso_lote ||
     (comparablesData.ficha_tecnica_defaults && comparablesData.ficha_tecnica_defaults.uso_lote) ||
     '-';
+
+  const totalComparables = comparablesData.comparables_usados_en_calculo || comparablesData.total_comparables || (comparablesData.comparables ? comparablesData.comparables.length : 0);
+  const totalEncontrados = comparablesData.comparables_totales_encontrados || 0;
 
   return `
     <!DOCTYPE html>
@@ -114,33 +120,21 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
             <tr><td class="data-label">Habitaciones</td><td class="data-val">${data.habitaciones || comparablesData.habitaciones || '-'}</td></tr>
             <tr><td class="data-label">Baños</td><td class="data-val">${data.banos || comparablesData.banos || '-'}</td></tr>
             <tr><td class="data-label">Estrato</td><td class="data-val">${data.estrato || comparablesData.estrato || 'No especificado'}</td></tr>
-            <tr><td class="data-label">Estado</td><td class="data-val" style="text-transform: capitalize;">${(data.estado_inmueble || data.estado || comparablesData.estado_inmueble || comparablesData.estado || '—').replace(/_/g, ' ')}</td></tr>
+            <tr><td class="data-label">Estado</td><td class="data-val">${mapearEstadoSinPrecio(data.estado_inmueble || data.estado || comparablesData.estado_inmueble || comparablesData.estado)}</td></tr>
             ` : `
             <tr><td class="data-label">Uso del Lote</td><td class="data-val">${toTitleCase(usoLote)}</td></tr>
             `}
           </table>
 
-          <!-- NIVEL DE CONFIANZA -->
-          ${comparablesData.nivel_confianza ? `
-          <div style="background: ${comparablesData.nivel_confianza === 'Alto' ? '#f0fdf4' : comparablesData.nivel_confianza === 'Medio' ? '#eff6ff' : '#fffbeb'}; 
-                      border: 1px solid ${comparablesData.nivel_confianza === 'Alto' ? '#86efac' : comparablesData.nivel_confianza === 'Medio' ? '#93c5fd' : '#fcd34d'}; 
-                      border-radius: 8px; 
-                      padding: 15px; 
-                      margin: 20px 0;">
-            <div style="font-weight: 600; 
-                        color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e40af' : '#92400e'}; 
-                        font-size: 13px; 
-                        margin-bottom: 8px;">
-              ℹ️ Nivel de Confianza del Análisis
-            </div>
-            <p style="font-size: 12px; 
-                      line-height: 1.5; 
-                      margin: 0; 
-                      color: ${comparablesData.nivel_confianza === 'Alto' ? '#166534' : comparablesData.nivel_confianza === 'Medio' ? '#1e3a8a' : '#78350f'};">
-              ${construirTextoConfianza(comparablesData.nivel_confianza, comparablesData.nivel_confianza_detalle)}
+          <!-- NOTA DISCLAIMER -->
+          <div style="background: #FFF8E1; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px 16px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 12px; color: #92400e;">
+              <strong>Nota importante:</strong> ${NOTA_DISCLAIMER}
             </p>
           </div>
-          ` : ''}
+
+          <!-- NIVEL DE CONFIANZA -->
+          ${renderConfianzaBlockHtml(confianzaInfo)}
 
 
           <!-- RESUMEN MERCADO -->

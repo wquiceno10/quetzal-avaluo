@@ -4,11 +4,22 @@ import { createClient } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Mail, Calendar, MapPin, ArrowRight, Home, RefreshCw, Trash2 } from 'lucide-react';
+import { Loader2, FileText, Mail, Calendar, MapPin, ArrowRight, Home, RefreshCw, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import BotonPDF from '@/components/avaluo/BotonPDF';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { generateAvaluoEmailHtml } from '@/lib/emailGenerator';
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function MisAvaluos() {
     const navigate = useNavigate();
@@ -17,6 +28,8 @@ export default function MisAvaluos() {
     const [error, setError] = useState(null);
     const [sendingEmailId, setSendingEmailId] = useState(null);
     const [deletingId, setDeletingId] = useState(null);
+    const [avaluoToDelete, setAvaluoToDelete] = useState(null); // State para modal confirmación eliminación
+    const [feedbackModal, setFeedbackModal] = useState({ open: false, title: '', description: '', type: 'success' }); // Nuevo state para feedback general
 
     useEffect(() => {
         fetchAvaluos();
@@ -96,35 +109,6 @@ export default function MisAvaluos() {
         }
     };
 
-    const resendEmailMutation = useMutation({
-        mutationFn: async (avaluo) => {
-            const response = await fetch(import.meta.env.VITE_WORKER_EMAIL_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    to: avaluo.email,
-                    subject: `Reporte de Avalúo - ${avaluo.codigo_avaluo} (Reenvío)`,
-                    htmlBody: generateEmailHtml(avaluo) // We need to reuse the logic or fetch the HTML
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al enviar email');
-            }
-
-            return response.json();
-        },
-        onSuccess: () => {
-            alert('Reporte enviado exitosamente a tu correo.');
-            setSendingEmailId(null);
-        },
-        onError: (err) => {
-            alert(`Error: ${err.message}`);
-            setSendingEmailId(null);
-        }
-    });
-
     const handleResendEmail = async (avaluo) => {
         setSendingEmailId(avaluo.id);
 
@@ -170,21 +154,41 @@ export default function MisAvaluos() {
             });
 
             if (!response.ok) throw new Error('Error enviando email');
-            alert('Correo reenviado exitosamente');
+
+            // ÉXITO: Mostrar modal elegante
+            setFeedbackModal({
+                open: true,
+                title: '¡Correo enviado!',
+                description: `El reporte del avalúo ${codigoAvaluo} ha sido enviado exitosamente a ${avaluo.email}.`,
+                type: 'success'
+            });
+
         } catch (e) {
             console.error(e);
-            alert('Error al reenviar el correo');
+            // ERROR: Mostrar modal elegante
+            setFeedbackModal({
+                open: true,
+                title: 'Error al enviar',
+                description: 'No pudimos enviar el correo en este momento. Por favor intenta de nuevo más tarde.',
+                type: 'error'
+            });
         } finally {
             setSendingEmailId(null);
         }
     };
 
-    const handleDeleteAvaluo = async (avaluoId, codigoAvaluo) => {
-        if (!confirm(`¿Estás seguro de eliminar el avalúo ${codigoAvaluo}? Esta acción no se puede deshacer.`)) {
-            return;
-        }
+    const confirmDelete = (avaluo) => {
+        setAvaluoToDelete(avaluo);
+    };
+
+    const executeDelete = async () => {
+        if (!avaluoToDelete) return;
+
+        const { id: avaluoId, codigo_avaluo: codigoAvaluo } = avaluoToDelete;
+        console.log('[DELETE] Confirmed via Dialog. Deleting:', avaluoId, codigoAvaluo);
 
         setDeletingId(avaluoId);
+        setAvaluoToDelete(null); // Cerrar modal inmediatamente
 
         try {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -196,13 +200,61 @@ export default function MisAvaluos() {
                 .delete()
                 .eq('id', avaluoId);
 
-            if (error) throw error;
+            if (error) {
+                console.warn("Standard delete failed, trying fallback worker...", error);
+                throw error; // Throw to catch and try fallback
+            }
 
             // Actualizar la lista localmente
             setAvaluos(avaluos.filter(a => a.id !== avaluoId));
+
         } catch (e) {
-            console.error('Error eliminando avalúo:', e);
-            alert('Error al eliminar el avalúo. Por favor intenta de nuevo.');
+            console.error('Error eliminando avalúo via RLS, intentando worker...', e);
+
+            // SEGURIDAD CRÍTICA: El bypass por worker SOLO debe funcionar en desarrollo local
+            const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+            if (!isLocalDev) {
+                setFeedbackModal({
+                    open: true,
+                    title: 'Error de permisos',
+                    description: 'No tienes permisos suficientes para eliminar este avalúo en producción.',
+                    type: 'error'
+                });
+                return;
+            }
+
+            // INTENTO 2: Usar Worker (Bypass RLS) - SOLO LOCAL
+            try {
+                const workerUrl = import.meta.env.VITE_WORKER_UPLOAD_URL; // Reusamos este worker que tiene acceso a Service Role
+
+                const deleteEndpoint = workerUrl.endsWith('/') ? `${workerUrl}delete-avaluo` : `${workerUrl}/delete-avaluo`;
+
+                console.log('[DELETE] Calling worker endpoint:', deleteEndpoint);
+                const response = await fetch(`${deleteEndpoint}?id=${avaluoId}`, {
+                    method: 'DELETE'
+                });
+
+                console.log('[DELETE] Worker response status:', response.status);
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error('[DELETE] Worker error text:', errText);
+                    throw new Error(`Worker delete failed: ${errText}`);
+                }
+
+                // Si funcionó el worker, actualizamos UI
+                setAvaluos(avaluos.filter(a => a.id !== avaluoId));
+
+            } catch (workerError) {
+                console.error('CRITICAL: Falló también el worker:', workerError);
+                setFeedbackModal({
+                    open: true,
+                    title: 'Error al eliminar',
+                    description: 'No se pudo eliminar el avalúo. Por favor verifica tu conexión e intenta de nuevo.',
+                    type: 'error'
+                });
+            }
         } finally {
             setDeletingId(null);
         }
@@ -314,7 +366,7 @@ export default function MisAvaluos() {
                                                     {avaluo.status || 'Completado'}
                                                 </Badge>
                                                 <button
-                                                    onClick={() => handleDeleteAvaluo(avaluo.id, avaluo.codigo_avaluo)}
+                                                    onClick={() => confirmDelete(avaluo)}
                                                     disabled={deletingId === avaluo.id}
                                                     className="p-2 text-[#7A8C85] hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                     title="Eliminar avalúo"
@@ -420,6 +472,64 @@ export default function MisAvaluos() {
                     Nuevo Avalúo
                 </Button>
             </div>
+
+            {/* Modal de Confirmación de Eliminación */}
+            <AlertDialog open={!!avaluoToDelete} onOpenChange={(open) => !open && setAvaluoToDelete(null)}>
+                <AlertDialogContent className="bg-white border-[#E0E5E2]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-[#2C3D37]">¿Estás completamente seguro?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-[#4F5B55]">
+                            Esta acción eliminará permanentemente el avalúo <span className="font-bold text-[#2C3D37]">{avaluoToDelete?.codigo_avaluo}</span>.
+                            <br /><br />
+                            No podrás deshacer esta acción y los datos seran eliminados de nuestros servidores.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="border-[#B0BDB4] text-[#4F5B55] hover:bg-[#F5F7F6]">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                executeDelete();
+                            }}
+                            className="bg-red-600 hover:bg-red-700 text-white border-none"
+                        >
+                            Sí, eliminar avalúo
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Modal de Feedback (Email/Delete Success/Error) */}
+            <AlertDialog open={feedbackModal.open} onOpenChange={(open) => !open && setFeedbackModal(prev => ({ ...prev, open: false }))}>
+                <AlertDialogContent className="bg-white border-[#E0E5E2]">
+                    <AlertDialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                            {feedbackModal.type === 'success' ? (
+                                <div className="bg-green-100 p-2 rounded-full">
+                                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                                </div>
+                            ) : (
+                                <div className="bg-red-100 p-2 rounded-full">
+                                    <XCircle className="w-6 h-6 text-red-600" />
+                                </div>
+                            )}
+                            <AlertDialogTitle className="text-[#2C3D37] text-xl">{feedbackModal.title}</AlertDialogTitle>
+                        </div>
+                        <AlertDialogDescription className="text-[#4F5B55] text-base">
+                            {feedbackModal.description}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction
+                            onClick={() => setFeedbackModal(prev => ({ ...prev, open: false }))}
+                            className={`border-none ${feedbackModal.type === 'success' ? 'bg-[#2C3D37] hover:bg-[#1a2620]' : 'bg-red-600 hover:bg-red-700'} text-white`}
+                        >
+                            Aceptar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
+

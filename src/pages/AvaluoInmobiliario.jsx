@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import StepIndicator from '../components/avaluo/StepIndicator';
 import Step1Form from '../components/avaluo/Step1Form';
 import Step2Analysis from '../components/avaluo/Step2Analysis';
@@ -6,6 +7,7 @@ import Step3Results from '../components/avaluo/Step3Results';
 import Step4Contact from '../components/avaluo/Step4Contact';
 import { createClient } from '@supabase/supabase-js';
 import { guardarAvaluoEnSupabase } from '@/lib/avaluos';
+import { DEV_USER_EMAIL } from '../utils/devAuth';
 
 const initialState = {
   tipo_inmueble: '',
@@ -39,7 +41,19 @@ export default function AvaluoInmobiliario() {
       workAreaRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [currentStep]);
+
+  const location = useLocation();
   const [avaluoData, setAvaluoData] = useState(initialState);
+
+  // Hydrate from location state if available (Editing mode)
+  useEffect(() => {
+    if (location.state && location.state.avaluoData) {
+      // Ensure we deep copy to avoid reference issues
+      setAvaluoData({ ...initialState, ...location.state.avaluoData });
+      // Clean up state to prevent persistent reload on refresh? (Optional, but good practice)
+      // window.history.replaceState({}, document.title)
+    }
+  }, [location.state]);
   const [hasAvaluos, setHasAvaluos] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -109,7 +123,7 @@ export default function AvaluoInmobiliario() {
       // DEV MODE FALLBACK: If we are in dev mode and have no user, create a mock one to allow saving
       if (!activeUser && isDevMode) {
         console.warn("[AUTO-SAVE] Dev Mode: using mock user for auto-save");
-        activeUser = { email: 'artesanointeractivo@gmail.com', id: 'dev-id' };
+        activeUser = { email: DEV_USER_EMAIL || 'wquiceno10@gmail.com', id: 'dev-id' };
       }
 
       console.log("[DEBUG] Auto-save condition check. ActiveUser:", activeUser ? 'YES' : 'NO');
@@ -270,7 +284,7 @@ export default function AvaluoInmobiliario() {
       )}
 
       {/* Main Content */}
-      <div ref={contentRef} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div ref={contentRef} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-4">
         {currentStep === 1 && (
           <Step1Form
             formData={avaluoData}

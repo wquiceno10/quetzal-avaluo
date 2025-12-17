@@ -4,18 +4,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Send, CheckCircle, Phone, Mail, RefreshCw, MessageCircle } from 'lucide-react';
+import { Loader2, Send, CheckCircle, Phone, Mail, RefreshCw, MessageCircle, FileText, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { guardarAvaluoEnSupabase } from '@/lib/avaluos';
 import { generateAvaluoEmailHtml } from '@/lib/emailGenerator';
 
-export default function Step4Contact({ formData, onBack, onReset }) {
+export default function Step4Contact({ formData, onBack, onReset, initialEnviado = false, emailToShow }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [enviado, setEnviado] = useState(false);
+  const [enviado, setEnviado] = useState(initialEnviado);
 
 
   const sendEmailMutation = useMutation({
@@ -165,86 +165,118 @@ export default function Step4Contact({ formData, onBack, onReset }) {
 
   if (enviado) {
     return (
-      <Card className="border-[#2C3D37] border-2">
-        <CardContent className="py-12">
-          <div className="text-center space-y-6">
-            <div className="flex justify-center">
-              <div className="bg-green-100 rounded-full p-6">
-                <CheckCircle className="w-16 h-16 text-green-600" />
-              </div>
-            </div>
+      <div className="max-w-[48rem] mx-auto">
+        <div className="flex justify-between items-center mb-6 px-1">
+          <Button
+            variant="ghost"
+            className="text-[#4F5B55] hover:text-[#2C3D37] p-0 hover:bg-transparent"
+            onClick={() => onBack ? onBack() : navigate(`/resultados/${sendEmailMutation.data?.id}`)}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver a resultados
+          </Button>
 
-            <div>
-              <h2 className="text-3xl font-bold text-[#2C3D37] mb-3">
-                ¡Reporte Enviado con Éxito!
-              </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Hemos enviado el reporte completo del avalúo a <strong>{email}</strong>.
-                Revisa tu bandeja de entrada (y la carpeta de spam por si acaso).
-              </p>
-            </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate('/mis-avaluos')}
+            className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] rounded-full h-9 px-4 text-sm"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Mis Avalúos
+          </Button>
+        </div>
 
-            <Alert className="max-w-2xl mx-auto border-[#C9C19D] bg-[#F5F4F0]">
-              <AlertDescription className="text-[#2C3D37]">
-                <strong>¿Interesado en vender o comprar?</strong><br />
-                En Quetzal Hábitats te ayudamos a encontrar el comprador ideal o la propiedad perfecta para ti.
-                Contáctanos para una asesoría personalizada sin compromiso.
-              </AlertDescription>
-            </Alert>
-
-            <div className="bg-[#DEE8E9] rounded-lg p-6 max-w-2xl mx-auto flex flex-col items-center">
-              <h3 className="font-semibold text-[#2C3D37] mb-4 text-center">¿Necesitas más información?</h3>
-              <div className="flex flex-row justify-center gap-4 w-full">
-                <div className="flex flex-col items-center w-auto mx-2">
-                  <a href="https://wa.me/573186383809" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 hover:underline">
-                    <Phone className="w-5 h-5 text-[#2C3D37]" />
-                    <p className="font-semibold text-[#2C3D37]" style={{ fontFamily: 'Outfit, sans-serif' }}>+57 318 638 3809</p>
-                  </a>
-                </div>
-                <div className="flex flex-col items-center w-auto mx-2">
-                  <a href="mailto:contacto@quetzalhabitats.com" className="flex items-center justify-center gap-2 hover:underline">
-                    <Mail className="w-5 h-5 text-[#2C3D37]" />
-                    <p className="font-semibold text-[#2C3D37]" style={{ fontFamily: 'Outfit, sans-serif' }}>contacto@quetzalhabitats.com</p>
-                  </a>
+        <Card className="border-[#2C3D37] border-0">
+          <CardContent className="py-12">
+            <div className="text-center space-y-6">
+              <div className="flex justify-center">
+                <div className="bg-green-100 rounded-full p-6">
+                  <CheckCircle className="w-16 h-16 text-green-600" />
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
-              <Button
-                onClick={() => navigate(`/resultados/${sendEmailMutation.data?.id}`)}
-                variant="outline"
-                className="w-full sm:w-auto border-[#B0BDB4] text-[#2C3D37] rounded-full px-8 py-6 text-lg font-medium"
-              >
-                Volver a Resultados
-              </Button>
-              <Button
-                onClick={onReset}
-                className="w-full sm:w-auto bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-8 py-6 text-lg font-medium"
-              >
-                <RefreshCw className="w-5 h-5 mr-2" />
-                Crear Nuevo Avalúo
-              </Button>
-              <Button
-                onClick={() => window.open('https://wa.me/573186383809', '_blank')}
-                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white rounded-full px-8 py-6 text-lg font-medium"
-              >
-                <MessageCircle className="w-5 h-5 mr-2" />
-                Contactar
-              </Button>
+              <div>
+                <h2 className="text-3xl font-bold text-[#2C3D37] mb-3">
+                  ¡Reporte Enviado con Éxito!
+                </h2>
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                  Hemos enviado el reporte completo del avalúo a <strong>{emailToShow || email}</strong>.
+                  Revisa tu bandeja de entrada (o la carpeta de spam si no lo encuentras).
+                </p>
+              </div>
+
+              <Alert className="max-w-2xl mx-auto border-[#C9C19D] bg-[#F5F4F0]">
+                <AlertDescription className="text-[#2C3D37]">
+                  <strong>¿Interesado en vender o comprar?</strong><br />
+                  En Quetzal Hábitats te ayudamos a encontrar el comprador ideal o la propiedad perfecta para ti.
+                  Contáctanos para una asesoría personalizada sin compromiso.
+                </AlertDescription>
+              </Alert>
+
+              <div className="bg-[#DEE8E9] rounded-lg p-6 max-w-2xl mx-auto flex flex-col items-center">
+                <h3 className="font-semibold text-[#2C3D37] mb-4 text-center">¿Necesitas más información?</h3>
+                <div className="flex flex-row justify-center gap-4 w-full">
+                  <div className="flex flex-col items-center w-auto mx-2">
+                    <a href="https://wa.me/573186383809" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 hover:underline">
+                      <Phone className="w-5 h-5 text-[#2C3D37]" />
+                      <p className="font-semibold text-[#2C3D37]" style={{ fontFamily: 'Outfit, sans-serif' }}>+57 318 638 3809</p>
+                    </a>
+                  </div>
+                  <div className="flex flex-col items-center w-auto mx-2">
+                    <a href="mailto:contacto@quetzalhabitats.com" className="flex items-center justify-center gap-2 hover:underline">
+                      <Mail className="w-5 h-5 text-[#2C3D37]" />
+                      <p className="font-semibold text-[#2C3D37]" style={{ fontFamily: 'Outfit, sans-serif' }}>contacto@quetzalhabitats.com</p>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center w-full">
+                <Button
+                  onClick={() => onBack ? onBack() : navigate(`/resultados/${sendEmailMutation.data?.id}`)}
+                  variant="outline"
+                  className="w-full sm:w-auto border-[#B0BDB4] text-[#2C3D37] rounded-full px-8 py-6 text-lg font-medium"
+                >
+                  Volver
+                </Button>
+                <Button
+                  onClick={onReset}
+                  className="w-full sm:w-auto bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-8 py-6 text-lg font-medium"
+                >
+                  <RefreshCw className="w-5 h-5 mr-2" />
+                  Nuevo Avalúo
+                </Button>
+                <Button
+                  onClick={() => window.open('https://wa.me/573186383809', '_blank')}
+                  className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white rounded-full px-8 py-6 text-lg font-medium"
+                >
+                  <MessageCircle className="w-5 h-5 mr-2" />
+                  Contacto
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <Card className="border-[#B0BDB4]">
+    <Card className="border-[#B0BDB4] max-w-[35rem] mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl text-[#2C3D37]">
-          Recibe tu Reporte Completo
-        </CardTitle>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <CardTitle className="text-2xl text-[#2C3D37]">
+            Recibe tu Reporte Completo
+          </CardTitle>
+          <Button
+            onClick={() => navigate('/mis-avaluos')}
+            variant="outline"
+            className="border-[#2C3D37] text-[#2C3D37] hover:bg-[#F0F2F1] rounded-full"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Mis Avalúos
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <p className="text-gray-600">
@@ -302,18 +334,21 @@ export default function Step4Contact({ formData, onBack, onReset }) {
           </AlertDescription>
         </Alert>
 
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-2 pt-4">
+          {/* Izquierda: Volver */}
           <Button
             onClick={onBack}
             variant="outline"
-            className="w-full sm:w-auto border-[#B0BDB4] text-[#2C3D37] rounded-full py-6 text-lg font-medium"
+            className="w-full sm:w-auto border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] rounded-full px-4 py-6 text-base order-2 sm:order-1"
           >
             Volver
           </Button>
+
+          {/* Centro: Enviar Reporte */}
           <Button
             onClick={handleSubmit}
             disabled={!isValid || sendEmailMutation.isPending}
-            className="w-full sm:flex-1 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium"
+            className="w-full sm:flex-1 bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-4 py-6 text-lg font-medium order-1 sm:order-2 shadow-lg hover:shadow-xl transition-all"
           >
             {sendEmailMutation.isPending ? (
               <>
@@ -323,10 +358,21 @@ export default function Step4Contact({ formData, onBack, onReset }) {
             ) : (
               <>
                 <Mail className="w-5 h-5 mr-2" />
-                Enviar Reporte por Email
+                Enviar Reporte
               </>
             )}
           </Button>
+
+          {/* Derecha: Nuevo Avalúo */}
+          {onReset && (
+            <Button
+              onClick={onReset}
+              className="w-full sm:w-auto bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] rounded-full px-4 py-6 text-lg font-medium order-3 sm:order-3 shadow-lg hover:shadow-xl transition-all"
+            >
+              <RefreshCw className="mr-2 w-5 h-5" />
+              Nuevo Avalúo
+            </Button>
+          )}
         </div>
 
         {sendEmailMutation.isError && (

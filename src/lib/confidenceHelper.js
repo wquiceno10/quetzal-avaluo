@@ -1,103 +1,95 @@
 /**
- * Genera explicación clara del nivel de confianza para usuarios no técnicos.
- * Versión 2.0: Narrativa positiva para zonas similares, lenguaje simple.
+ * Genera información de confianza para UI.
+ * Versión 4.0: NO recalcula el nivel. Usa el nivel del Worker como fuente de verdad.
  */
-export function construirTextoConfianza(nivel, detalle) {
-    const total = detalle?.total_comparables ?? 0;
-    const porcentajeReales = detalle?.porcentaje_reales ?? 0;
-    const dispersionAlta = !!detalle?.dispersion_alta;
-    const esLote = !!detalle?.es_lote;
+export function construirTextoConfianza(data, totalEncontrados, totalComparables) {
+    // ═══ PASO 1: Leer nivel del Worker (fuente de verdad) ═══
+    const nivelWorker = data?.nivel_confianza || 'Bajo'; // 'Alto' | 'Medio' | 'Bajo'
 
-    // Desglose de fuentes
-    const totalVerificados = detalle?.total_portal_verificado ?? 0;
-    const totalZonasSimilares = detalle?.total_zona_similar ?? 0;
-    const totalEstimaciones = (detalle?.total_estimacion_zona ?? 0) +
-        (detalle?.total_promedio_municipal ?? 0);
+    // Normalizar a mayúsculas para consistencia interna
+    const nivel = nivelWorker.toUpperCase(); // 'ALTO' | 'MEDIO' | 'BAJO'
 
-    // ==========================================
-    // PARTE 1: INTRODUCCIÓN (Base de datos)
-    // ==========================================
-    let parteBase = '';
+    // ═══ PASO 2: Leer metadatos del Worker ═══
+    const detalle = data?.nivel_confianza_detalle || {};
+    const stats = data?.estadisticas_fuentes || {};
 
+    const total = totalComparables || data?.total_comparables || 0;
+    const totalVerificados = detalle.total_coincidencia ?? stats.total_coincidencia ?? 0;
+    const totalZonasSimilares = (detalle.total_zona_similar ?? stats.total_zona_similar ?? 0) + (detalle.total_verificado ?? stats.total_verificado ?? 0);
+    const dispersionAlta = detalle.dispersion_alta ?? false;
+    const esLote = detalle.es_lote ?? (data?.tipo_inmueble || '').toLowerCase().includes('lote');
+
+    // ═══ PASO 3: Construir razones descriptivas (NO decisivas) ═══
+    const razones = [];
+
+    // Razón 1: Base de datos y distribución geográfica
     if (total === 0) {
-        parteBase = 'El sistema realizó un análisis de mercado con información disponible.';
+        razones.push('El sistema realizó un análisis de mercado con información disponible.');
     } else if (totalVerificados > 0 && totalZonasSimilares > 0) {
-        parteBase = `El sistema analizó ${total} inmuebles comparables, combinando ${totalVerificados} listados verificados de portales inmobiliarios y ${totalZonasSimilares} propiedades de zonas cercanas con características similares.`;
+        // Caso mixto: algunos en zona exacta, otros en zonas cercanas
+        const porcentajeZonaExacta = Math.round((totalVerificados / total) * 100);
+
+        razones.push(`Se analizaron ${total} inmuebles comparables en ${esLote ? 'Filandia y zonas cercanas' : 'la zona y barrios vecinos'}.`);
+
+        if (porcentajeZonaExacta < 50) {
+            razones.push(`Solo ${totalVerificados} comparables coinciden exactamente con la ubicación; los demás provienen de ${esLote ? 'municipios similares' : 'zonas similares'}, lo que amplía la muestra.`);
+        } else {
+            razones.push(`La mayoría (${porcentajeZonaExacta}%) coinciden exactamente con la ubicación objetivo, complementados con datos de zonas similares.`);
+        }
     } else if (totalVerificados > 0) {
-        parteBase = `El sistema analizó ${total} inmuebles comparables verificados en portales inmobiliarios de la zona.`;
+        razones.push(`Se analizaron ${total} comparables que COINCIDEN exactamente con la ubicación objetivo.`);
+        razones.push('Todos los datos provienen del mismo barrio/sector, garantizando máxima precisión local.');
     } else if (totalZonasSimilares > 0) {
-        parteBase = `El sistema analizó ${total} inmuebles comparables de zonas cercanas con características similares.`;
+        razones.push(`Se analizaron ${total} comparables de zonas similares verificadas.`);
+        razones.push(esLote
+            ? 'Debido a la escasez en la ubicación exacta, se incluyeron lotes de municipios cercanos con características homólogas.'
+            : 'La muestra se basa en barrios vecinos con dinámica de precios similar.');
     } else {
-        parteBase = `El sistema analizó ${total} inmuebles comparables basándose en promedios estadísticos del mercado.`;
+        razones.push(`Se analizaron ${total} comparables de zonas extendidas con perfil socioeconómico similar.`);
     }
 
-    // ==========================================
-    // PARTE 2: CONTEXTO GEOGRÁFICO
-    // ==========================================
-    let parteGeografia = '';
-
-    if (esLote && totalZonasSimilares > 0) {
-        // Para lotes, ampliar geográficamente es POSITIVO
-        parteGeografia = ` Dado que los lotes tienen características de mercado regional, el análisis incluyó municipios cercanos para obtener una perspectiva más completa del valor del suelo en la zona.`;
-    } else if (!esLote && totalZonasSimilares > 0 && totalVerificados > 0) {
-        // Para propiedades, zonas similares COMPLEMENTAN
-        parteGeografia = ` Se complementó la muestra con datos de barrios cercanos para enriquecer el análisis de mercado.`;
-    } else if (totalZonasSimilares > 0 && totalVerificados === 0) {
-        // Solo zonas similares (neutral)
-        parteGeografia = ` Los datos provienen de zonas con características socioeconómicas y urbanas similares.`;
-    } else if (totalVerificados > 0 && totalZonasSimilares === 0) {
-        // Solo zona objetivo (muy positivo)
-        parteGeografia = ` Todos los datos provienen directamente de la zona objetivo, lo que aumenta la precisión del análisis.`;
-    }
-
-    // ==========================================
-    // PARTE 3: DISPERSIÓN DE PRECIOS
-    // ==========================================
-    let parteDispersion = '';
-
+    // Razón 2: Dispersión de precios (más específica)
     if (dispersionAlta) {
-        parteDispersion = ` Los precios muestran variación amplia entre comparables, por lo que el valor debe entenderse como un rango de referencia más que un punto exacto.`;
+        const cvDispersion = detalle.cv_dispersion ?? 0;
+        const porcentajeDispersion = Math.round(cvDispersion * 100);
+
+        if (porcentajeDispersion > 100) {
+            razones.push(`Los precios muestran variación muy alta (${porcentajeDispersion}%), indicando un mercado heterogéneo. El valor debe entenderse como rango amplio de referencia.`);
+        } else {
+            razones.push('Los precios muestran variación amplia, por lo que el valor debe entenderse como un rango de referencia.');
+        }
     } else {
-        parteDispersion = ` Los precios son relativamente consistentes entre sí, lo que respalda la estabilidad del valor estimado.`;
+        razones.push('Los precios son relativamente consistentes entre sí, lo que respalda la estabilidad del valor estimado.');
     }
 
-    // ==========================================
-    // TEXTOS FINALES POR NIVEL
-    // ==========================================
-
-    if (nivel === 'Alto') {
-        return (
-            `**Nivel de confianza ALTO.** ${parteBase}${parteGeografia}${!dispersionAlta ? ' ' + parteDispersion : ''} ` +
-            `Este análisis cuenta con una muestra robusta y datos verificables que respaldan con solidez el valor estimado. ` +
-            `El reporte puede usarse con confianza como referencia de mercado para decisiones de compra, venta o financiamiento.`
-        );
-    }
-
-    if (nivel === 'Medio') {
-        return (
-            `**Nivel de confianza MEDIO.** ${parteBase}${parteGeografia} ${parteDispersion} ` +
-            `El análisis es confiable como referencia de mercado y refleja las condiciones actuales del sector. ` +
-            `Para decisiones de alto impacto económico (compra definitiva, solicitud de crédito), se recomienda complementar con inspección física y avalúo profesional presencial.`
-        );
-    }
-
-    // Nivel Bajo
-    let razonBajo = '';
-    if (totalEstimaciones > total * 0.7) {
-        razonBajo = ' La mayoría de datos provienen de promedios estadísticos en lugar de listados específicos verificados.';
-    } else if (total < 5) {
-        razonBajo = ' La cantidad de inmuebles comparables encontrados es limitada.';
-    } else if (dispersionAlta) {
-        razonBajo = ' Los precios de los comparables muestran variación significativa.';
+    // Razón 3: Recomendación según nivel (más específica)
+    if (nivel === 'ALTO') {
+        razones.push('Este análisis cuenta con una muestra robusta y puede usarse con confianza como referencia de mercado.');
+    } else if (nivel === 'MEDIO') {
+        razones.push('El análisis es confiable como referencia. Para decisiones de alto impacto, se recomienda complementar con avalúo profesional presencial.');
     } else {
-        razonBajo = ' La disponibilidad de datos verificados en la zona es limitada.';
+        // Nivel BAJO: ser más específico sobre las limitaciones
+        if (esLote && totalZonasSimilares > totalVerificados) {
+            razones.push('Debido a la escasez de lotes grandes en la zona y la alta dispersión de precios, este resultado es una aproximación inicial. Se recomienda fuertemente avalúo profesional presencial para confirmar valor de construcciones y características del terreno.');
+        } else if (dispersionAlta) {
+            razones.push('Debido a la alta variación de precios en el mercado, este resultado debe tomarse como referencia aproximada. Se recomienda avalúo profesional presencial para mayor precisión.');
+        } else {
+            razones.push('Este resultado debe tomarse como referencia aproximada. Se recomienda fuertemente complementar con avalúo profesional presencial.');
+        }
     }
 
-    return (
-        `**Nivel de confianza BAJO.** ${parteBase}${parteGeografia}${razonBajo} ${parteDispersion} ` +
-        `Este resultado debe tomarse como una **referencia aproximada** del rango de precios en el mercado. ` +
-        `**Se recomienda fuertemente complementar con un avalúo profesional presencial** para decisiones importantes como compra, venta o solicitud de crédito hipotecario.`
-    );
+    // ═══ PASO 4: Mapeo de etiquetas ═══
+    const labels = {
+        'ALTO': 'Alta solidez de datos',
+        'MEDIO': 'Solidez intermedia de datos',
+        'BAJO': 'Solidez limitada de datos'
+    };
+
+    return {
+        nivel,
+        label: labels[nivel] || labels['BAJO'],
+        razones
+    };
 }
 
 
@@ -106,11 +98,11 @@ export function construirTextoConfianza(nivel, detalle) {
 // ==========================================
 export function getNivelConfianzaLabel(nivel) {
     const labels = {
-        'Alto': { text: 'Alta Confiabilidad', color: 'green', icon: '✓' },
-        'Medio': { text: 'Confiabilidad Media', color: 'blue', icon: 'ℹ️' },
-        'Bajo': { text: 'Referencia Aproximada', color: 'yellow', icon: '⚠️' }
+        'ALTO': { text: 'Alta Confiabilidad', color: 'green', icon: '✓' },
+        'MEDIO': { text: 'Confiabilidad Media', color: 'blue', icon: 'ℹ️' },
+        'BAJO': { text: 'Referencia Aproximada', color: 'yellow', icon: '⚠️' }
     };
-    return labels[nivel] || labels['Medio'];
+    return labels[nivel] || labels['MEDIO'];
 }
 
 
@@ -119,14 +111,14 @@ export function getNivelConfianzaLabel(nivel) {
 // ==========================================
 export function getRecomendacionesPorNivel(nivel, esLote, valorEstimado) {
     const recomendaciones = {
-        'Alto': [
+        'ALTO': [
             'Este valor puede usarse con confianza para negociaciones.',
             esLote
                 ? 'El mercado de lotes en la región muestra comportamiento consistente.'
                 : 'Los datos del barrio son sólidos y actualizados.',
             'Recomendamos publicar en el rango sugerido para liquidez óptima.'
         ],
-        'Medio': [
+        'MEDIO': [
             'Este valor es una buena referencia de mercado.',
             'Considere inspección física para ajustar por características específicas.',
             esLote
@@ -134,7 +126,7 @@ export function getRecomendacionesPorNivel(nivel, esLote, valorEstimado) {
                 : 'Factores como remodelaciones o vista pueden justificar precio superior.',
             'Para crédito bancario, el banco realizará su propio avalúo.'
         ],
-        'Bajo': [
+        'BAJO': [
             'Use este valor solo como punto de partida para investigación.',
             '**Recomendamos fuertemente avalúo profesional presencial.**',
             esLote
@@ -144,5 +136,5 @@ export function getRecomendacionesPorNivel(nivel, esLote, valorEstimado) {
         ]
     };
 
-    return recomendaciones[nivel] || recomendaciones['Medio'];
+    return recomendaciones[nivel] || recomendaciones['MEDIO'];
 }

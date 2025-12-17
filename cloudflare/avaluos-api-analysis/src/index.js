@@ -1,12 +1,12 @@
 /**
- * avaluos-api-analysis V12 (Dynamic Prompt + Confidence V2)
+ * avaluos-api-analysis V13 (Dynamic Area Filters + Full Corrections)
  * - Prompts V12: Dynamic prompt loading (lotes OR propiedades), improved explanations
  * - Confidence V2: Weighted points system, CV dispersion, special cases
  * - Extracción estricta (V7 logic)
  * - Resumen conciso (V8 logic)
  * - Filtro IQR y Normalización (V10 logic)
+ * - Filtro de área dinámico (V13): Propiedades usan rangos adaptivos, lotes mantienen ±50%
  */
-
 
 // --- HELPER: Similitud de Texto (Levenshtein simplificado -> Ratio) ---
 function getSimilarity(s1, s2) {
@@ -45,12 +45,12 @@ function cleanLatexCommands(text) {
 
     let cleanedText = text
         // LaTeX spacing commands
-        .replace(/\\quad/g, '   ')        // \quad → spaces
-        .replace(/\\qquad/g, '    ')       // \qquad → more spaces
-        .replace(/\\,/g, ' ')              // thin space
-        .replace(/\\:/g, ' ')              // medium space
-        .replace(/\\;/g, ' ')              // thick space
-        .replace(/\\!/g, '')               // negative thin space
+        .replace(/\\quad/g, '   ')
+        .replace(/\\qquad/g, '    ')
+        .replace(/\\,/g, ' ')
+        .replace(/\\:/g, ' ')
+        .replace(/\\;/g, ' ')
+        .replace(/\\!/g, '')
         .replace(/\\enspace/g, ' ')
         .replace(/\\hspace\{[^}]*\}/g, ' ')
 
@@ -72,177 +72,213 @@ function cleanLatexCommands(text) {
     return cleanedText.trim();
 }
 
+// --- HELPER: Mapear estado_inmueble con rangos de precio ---
+function mapearEstadoConPrecio(estado) {
+    const mapa = {
+        'nuevo': 'Nuevo',
+        'remodelado': 'Remodelado',
+        'buen_estado': 'Buen Estado',
+        'requiere_reformas_ligeras': 'Requiere Reformas Ligeras (≤ $5.000.000)',
+        'requiere_reformas_moderadas': 'Requiere Reformas Moderadas ($5.000.000 - $15.000.000)',
+        'requiere_reformas_amplias': 'Requiere Reformas Amplias ($15.000.000 - $25.000.000)',
+        'requiere_reformas_superiores': 'Requiere Reformas Superiores (>$25.000.000)',
+        'obra_gris': 'Obra Gris'
+    };
+    return mapa[estado] || (estado ? estado.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No especificado');
+}
+
 // --- HELPER: Construcción Dinámica de Prompt Perplexity ---
-/**
- * Construye el prompt para Perplexity según tipo de inmueble
- * Solo carga la sección relevante (lotes O propiedades) para ahorrar tokens
- * @param {Object} formData - Datos del formulario
- * @param {number} area - Área del inmueble
- * @param {boolean} esLote - Si es lote o no
- * @param {string} usoLote - Uso del lote (comercial/residencial)
- * @param {string} ubicacion - Ubicación completa (barrio, municipio)
- * @returns {string} Prompt completo optimizado
- */
 function construirPromptPerplexity(formData, area, esLote, usoLote, ubicacion) {
     // --- SECCIÓN BASE (COMÚN PARA TODOS) ---
     const infoInmueble = `
 - Tipo: ${formData.tipo_inmueble || 'inmueble'}
 ${esLote ? `- Uso del Lote: ${usoLote}` : ''}
 - Ubicación: ${ubicacion}
+${formData.departamento ? `- Departamento: ${formData.departamento}` : ''}
+${!esLote && formData.contexto_zona ? `- Tipo de zona: ${formData.contexto_zona === 'conjunto_cerrado' ? 'Conjunto Cerrado' : 'Barrio Abierto'}` : ''}
 ${formData.nombre_conjunto ? `- Conjunto/Edificio: ${formData.nombre_conjunto}` : ''}
 ${!esLote ? `- Habitaciones: ${formData.habitaciones || '?'}` : ''}
 ${!esLote ? `- Baños: ${formData.banos || '?'}` : ''}
+${formData.tipo_inmueble === 'apartamento' && formData.piso ? `- Piso: ${formData.piso}` : ''}
+${formData.tipo_inmueble === 'apartamento' && formData.ascensor ? `- Ascensor: ${formData.ascensor === 'si' ? 'Sí' : 'No'}` : ''}
+${formData.tipo_inmueble === 'casa' && formData.numeropisos ? `- Niveles de la casa: ${formData.numeropisos}` : ''}
 ${!esLote ? `- Parqueadero: ${formData.tipo_parqueadero || 'No indicado'}` : ''}
 ${!esLote ? `- Antigüedad: ${formData.antiguedad || 'No indicada'}` : ''}
-${!esLote ? `- Estado: ${formData.estado_inmueble || 'No especificado'}` : ''}
-${!esLote && formData.tipo_remodelacion ? `- Remodelación: ${formData.tipo_remodelacion} (${formData.valor_remodelacion || 'Valor no indicado'})` : ''}
+${!esLote && formData.estrato ? `- Estrato: ${formData.estrato}` : ''}
+${!esLote ? `- Estado: ${mapearEstadoConPrecio(formData.estado_inmueble)}` : ''}
+${!esLote && formData.tipo_remodelacion ? `- Remodelación: ${formData.tipo_remodelacion.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} (${formData.valor_remodelacion || 'Valor no indicado'})` : ''}
 ${!esLote && formData.descripcion_mejoras ? `- Mejoras: ${formData.descripcion_mejoras}` : ''}
 ${formData.informacion_complementaria ? `- NOTAS ADICIONALES: ${formData.informacion_complementaria}` : ''}
+- ${esLote ? 'ÁREA DEL TERRENO' : 'ÁREA CONSTRUIDA'}: ${area || '?'} m²
     `.trim();
 
-    const areaInstruction = area
-        ? `
-- ÁREA CONSTRUIDA: ${area} m²
-- Rango de áreas VENTA (Estricto): ${Math.round(area * 0.5)} a ${Math.round(area * 1.5)} m² (±50%)
-- SOLO incluye comparables de venta cuyas áreas estén dentro de este rango. Para arriendos, intenta mantener el área similar, pero prioriza encontrar datos.`
-        : '';
+    // Rango de área para filtros de búsqueda (calculado aquí, usado en instrucciones)
+    const rangoAreaMin = esLote ? Math.round(area * 0.5) : Math.round(area * 0.65);
+    const rangoAreaMax = esLote ? Math.round(area * 1.8) : Math.round(area * 1.35);
+    const rangoAreaTexto = esLote
+        ? `${rangoAreaMin} a ${rangoAreaMax} m² (-50% a +80%)`
+        : `${rangoAreaMin} a ${rangoAreaMax} m² (±35%)`;
 
     const seccionBase = `
 Eres un analista inmobiliario especializado en avalúos técnicos del mercado colombiano.
 Tu objetivo es elaborar un **análisis completo, claro y profesional**, usando lenguaje 
-simple que un usuario sin conocimientos técnicos pueda entender.
+simple que un usuario sin conocimientos técnicos pueda comprender.
 
 ═══════════════════════════════════════════════════════════
 DATOS DEL INMUEBLE
 ═══════════════════════════════════════════════════════════
 ${infoInmueble}
-${areaInstruction}
 
 ═══════════════════════════════════════════════════════════
 INSTRUCCIONES GENERALES
 ═══════════════════════════════════════════════════════════
 
-**1. PRINCIPIO: NO INVENTES DATOS ESPECÍFICOS**
-   - Si encuentras listados reales en portales (Fincaraíz, Metrocuadrado, Ciencuadras, etc.), úsalos.
-   - Si NO hay suficientes datos reales, PUEDES usar:
-     * Promedios estadísticos del municipio/región (déjalo claro)
-     * Datos de zonas similares cercanas (especifica cuál y por qué)
-     * Valoraciones proporcionales (explica el método en lenguaje simple)
-   - NUNCA inventes precios específicos de propiedades que no existan.
+**0. SIEMPRE RESPETA EL FORMATO DE ENTREGA OBLIGATORIO MENCIONADO CON SUS SUBSECCIONES**
+     
+     ### 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES
+     ### 2. ANÁLISIS DEL VALOR
+     ### 3. AJUSTES APLICADOS
+     ### 4. RESULTADOS FINALES
+     ### 5. LIMITACIONES
+     ### 6. RESUMEN EJECUTIVO
+     ### 7. TRANSPARENCIA DE DATOS
 
-**2. META DE COMPARABLES:**
-   - Ideal: 15-20 comparables totales
-   - Mínimo: 8-10 comparables
+**1. PRINCIPIO: INTEGRIDAD DE DATOS (CRÍTICO)**
 
-**3. ETIQUETAS DE VALIDACIÓN (OBLIGATORIAS):**
+    Tu prioridad absoluta es encontrar LISTADOS REALES en portales inmobiliarios confiables y verificables (Fincaraíz, Metrocuadrado, Ciencuadras, mercadolibre, etc.).
+
+**2. ANÁLISIS DE MERCADO Y ZONA (OBLIGATORIO ANTES DE AJUSTES):**
+
+   **CRÍTICO:** Antes de calcular cualquier ajuste porcentual, debes realizar un análisis riguroso del mercado:
    
-   Para cada comparable, asigna UNA de estas etiquetas:
+   a) **Contexto de la Zona:**
+      - Investiga características socioeconómicas del barrio/municipio
+      - Identifica factores que afectan el valor: turismo, desarrollo, infraestructura, servicios
+      - Compara con zonas vecinas (¿es zona premium, media o económica?)
    
-   - **portal_verificado**: Listado real de portal inmobiliario.
-     → Agrega NOTA: "Anuncio de listado en la misma zona."
+   b) **Tendencias del Mercado:**
+      - ¿Los precios están subiendo, estables o bajando en esta zona?
+      - ¿Hay proyectos de desarrollo que aumenten el valor?
+      - ¿Qué tan líquido es el mercado? (tiempo promedio de venta)
    
-   - **zona_similar**: Listado verificado de municipio/barrio cercano.
-     → OBLIGATORIO IMPORTANTE!: Agrega NOTA exponiendo distancia aproximada y razón de similitud.
+   c) **Valor Agregado Específico:**
+      - Para el inmueble objeto: ¿Qué características únicas tiene?
+      - ¿Cómo se compara con los comparables en términos de ubicación exacta?
+      - ¿Hay elementos que justifiquen un precio superior o inferior?
    
-   - **estimacion_zona**: Promedio estadístico (solo si necesario para muestra mínima).
-     → Agrega NOTA: "Basado en datos de propiedades similares en la zona."
+
+**3. FILTROS DE CALIDAD:**
+
+   a) **FILTRO DE ÁREA - OBLIGATORIO Y ESTRICTO:**
+
+      RANGO DE AREA: ${rangoAreaTexto}
    
-   - **promedio_municipal**: Dato agregado municipal (último recurso).
-     → Agrega NOTA: "Basado en datos de propiedades similares en ciudad/municipio."
+   b) **FILTRO DE ANTIGÜEDAD:**
+
+      BUSCA portales vigentes a la fecha. 100% datos reales.
+
+**4. ETIQUETAS DE VALIDACIÓN (OBLIGATORIAS):**
+
+   ⚠️ **REGLA CRÍTICA:** 
+   Cada comparable DEBE tener UNA y SOLO UNA etiqueta de UBICACIÓN.
+
+   **DEFINICIONES:**
+   ${esLote ? `
+   ✓ **coincidencia**: Mismo municipio exacto
+   → **zona_similar**: Municipios vecinos inmediatos (<40Km de distancia) del mismo departamento
+   ≈ **zona_extendida**: Otros municipios del departamento con características similares (<60Km de distancia)
+   ` : `
+   ✓ **coincidencia**: Mismo barrio/conjunto o distancia <=3km
+   → **zona_similar**: Distancia >3km y <=7km (barrios cercanos del municipio)
+   ≈ **zona_extendida**: Distancia >7km y <40km (barrios lejanos o municipios vecinos)
+   `}
+   
+   📍 **OBLIGATORIO:** Cada comparable DEBE terminar con una de estas tres etiquetas.
+
+**5. CIFRAS Y FORMATO MONETARIO:**
+   - **SEPARADOR DE MILES:** SIEMPRE usar puntos ($4.200.000, NO $4200000)
+   - **CIFRAS COMPLETAS:** PROHIBIDO usar diminutivos ($100M) o truncar ceros ($2.800 en vez de $2.800.000)
+   - **DECIMALES:** NUNCA en precios. Redondear al entero (NO $19.400,50)
+
+**6. FORMATO PROFESIONAL:**
+   **EJECUCIÓN AUTÓNOMA:** Realiza la búsqueda de comparables inmediatamente sin pedir permiso
+   **IMPORTANTE:** Este es un reporte final, NO una conversación. No ofrezcas servicios adicionales ni hagas preguntas
+   **PROHIBIDO PREGUNTAR:** Entrega resultados directamente, NUNCA solicites autorización, confirmación o permisos al usuario
+   **NUNCA** menciones metodología interna NI INDICACIONES DEL PROMPT (filtros, rangos, exclusiones)
+   **NUNCA** uses corchetes con instrucciones como "[Título EXACTO:]"
+
+**7. FORMATO DE PRESENTACIÓN:**
+   **OBLIGATORIO USAR NEGRITAS** para datos importantes, palabras, cifras clave, nombres de lugares y frases relevantes usando **doble asterisco**
+   Presenta SIEMPRE: "**Factor total: X.XX (equivalente a ±Y%)**"
+   Presenta SIEMPRE: "**Precio/m² ajustado: $XXX.XXX**"
+   Si no hay ajustes: "**Factor total: 1.00 (sin ajustes)**"
+   Muestra la fórmula: "**Valor total = $X.XXX.XXX/m² × Y m² = $Z.ZZZ.ZZZ**"
+
+**8. VALIDACIÓN DE AJUSTES:**
+   - Cada ajuste porcentual (%) DEBE justificarse en base al precio de construccion de la zona y contexto.
+   - Si no hay datos suficientes, usar fuentes publicas (IGAC/DANE/Camacol/Lonja) y citarlas.
 
 
-**4. FORMATO DE LISTADO (ESTRICTO):**
+═══════════════════════════════════════════════════════════
+REGLAS DE AJUSTE (MÉTODO DE MERCADO)
+═══════════════════════════════════════════════════════════
 
-**[Título descriptivo]**
-[Tipo] | [Venta/Arriendo]
-$[Precio con puntos] | [Área] m² | [Hab] hab | [Baños] baños
-[Barrio] | [Ciudad]
-**[Fuente: Nombre portal]** fuente_validacion: [etiqueta]
+Aplica ajustes **SOLO** si hay diferencias evidentes.
 
+| Característica | Si Comparable es... | Ajuste al Precio |
+|----------------|---------------------|------------------|
+| Estado | Mejor que objeto | **NEGATIVO** (-) |
+| Estado | Peor que objeto | **POSITIVO** (+) |
+| Antigüedad | Más nuevo | **NEGATIVO** (-) |
+| Antigüedad | Más viejo | **POSITIVO** (+) |
+| Ubicación | Mejor zona | **NEGATIVO** (-) |
+| Ubicación | Peor zona | **POSITIVO** (+) |
 
+**Nota:** Si no tienes información suficiente para comparar, NO inventes el ajuste (déjalo en 0%).
 
-Ejemplo:
-
-**Lote urbano comercial en Circasia**
-Lote | Venta
-$850.000.000 | 4200 m² | - hab | - baños
-Centro | Circasia
-**Fincaraíz** fuente_validacion: zona_similar
-**NOTA:** A 15 km de distancia, con características socioeconómicas y uso mixto similares.
-
-**5. CIFRAS (CRÍTICO - SIN ABREVIATURAS):**
-   - SIEMPRE en pesos colombianos completos
-   - CON puntos para miles: $4.200.000 (NO 4.2M ni $4200000)
-   - **PROHIBIDO ABSOLUTO** usar abreviaturas en TODO el texto:
-     * NO "$195M" → SÍ "$195.000.000"
-     * NO "19.4 mil" → SÍ "$19.400"
-     * NO "1.2M" → SÍ "$1.200.000"
-     * NO "500K" → SÍ "$500.000"
-   - En TODOS los cálculos usa números completos (sin decimales):
-     * CORRECTO: "19.400 pesos/m²" o "$19.400"
-     * INCORRECTO: "19.4 mil pesos/m²" o "19.4K"
-   - Esto aplica para PRECIOS, CÁNONES, PROMEDIOS, RANGOS y TODO VALOR MONETARIO
-
-**6. FORMATO FINAL:**
-   - Cada línea de información en un renglón separado (saltos de línea simples)
-   - Separa cada comparable completo con DOS saltos de línea
-   - NO incluyas URLs ni hipervínculos
-   - Responde en español
-   - NO devuelvas JSON
-   - NO uses etiquetas HTML como br, span, div, etc.
-
-**7. AJUSTES UNIFICADOS (CRÍTICO):**
-   - Consolida TODOS los ajustes (antigüedad, estado, reformas, ubicación, info complementaria) en UN ÚNICO factor.
-   - Si aplicas +5% por antigüedad, +10% por reformas, +2% por info complementaria:
-     → **Factor total: 1.17 (equivalente a +17%)**
-   - Presenta SIEMPRE con formato exacto: "**Factor total: X.XX (equivalente a ±Y%)**"
-   - Presenta SIEMPRE: "**Precio/m² ajustado: $XXX.XXX**"
-   - Si no hay ajustes, indica: "**Factor total: 1.00 (sin ajustes)**"
-   - Muestra la fórmula: "Valor total: $X.XXX.XXX × Y m² = $Z.ZZZ.ZZZ"
-   - Al final del método de rentabilidad, indica: "**Valor por método rentabilidad (ajustado): $XXX.XXX.XXX**" (aplicando el mismo factor de ajuste)
-   - Justifica CADA ajuste con este formato (saltos de línea, NO HTML):
-     **Nombre del Ajuste**
-     Justificación breve
-     Porcentaje aplicado
-
-**8. INSTRUCCIÓN CRÍTICA - NO PREGUNTAR:**
-   - NO preguntes nada al usuario.
-   - NO ofrezcas servicios adicionales (avalúos formales, versiones alternativas, etc.).
-   - NO digas "Si desea..." ni hagas sugerencias de seguimiento.
-   - SOLO entrega resultados, metodología completa y análisis detallado.
-   - NO confirmes ni consultes nada más allá de los pasos descritos.
-   - Responde ÚNICAMENTE en español colombiano con el análisis completo solicitado.
      `.trim();
 
     // --- SECCIÓN ESPECÍFICA: LOTES ---
     const seccionLotes = `
+
 ═══════════════════════════════════════════════════════════
 INSTRUCCIONES ESPECIALES PARA LOTES
 ═══════════════════════════════════════════════════════════
 
-**1. BÚSQUEDA GEOGRÁFICA AMPLIADA (OBLIGATORIO):**
-   
-   a) **ZONA PRIMARIA:** ${formData.municipio || 'el municipio objetivo'}
-      - Busca PRIMERO lotes en venta en este municipio.
-   
-   b) **ZONA SECUNDARIA** (si zona primaria tiene <5 lotes):
-      - Amplía a municipios del MISMO DEPARTAMENTO (${formData.departamento || 'departamento cercano'}).
-      - Prioriza municipios cercanos (radio ~30km).
-      - Ejemplos según región:
-        * Filandia → Circasia, Salento, Armenia, Calarcá, Quimbaya
-        * Pereira → Dosquebradas, La Virginia, Santa Rosa de Cabal, Marsella
-        * Armenia → Circasia, Calarcá, La Tebaida, Montenegro
-   
-   c) **ZONA TERCIARIA** (si aún faltan datos):
-      - Lotes de la región con características similares.
+**1. ESTRATEGIA DE BÚSQUEDA (META FLEXIBLE):**
+
+Busca **20+ lotes comparables** SOLO en VENTA 
+
+   **REGLA DE TIPO:** Busca SOLO Lotes y expande la busqueda segun PRIORIDA1, ZONA SECUNDARIA, EXPANSIÓN CONDICIONAL y ACTIVACIÓN RESIDUAL.
+   **REGLA DE ÁREA OBLIGATORIO:** Respeta el RANGO DE ÁREA TOTAL CONSTRUIDA ${rangoAreaTexto} especificado en los filtros de calidad. 
+   **FILTRO DE PRECIO OBLIGATORIO:** Excluir si precio/m² desvía >40% de la mediana de ventas
+
+   a) **PRIORIDAD 1:** Buscar **lotes comparables reales**.
+      - Zona Primaria: ${formData.municipio || 'Municipio objetivo'}
+      - Si encuentras menos de 5 comparables reales, activa la busqueda en Zona Secundaria: Municipios cercanos (Máximo 60km de distancia) del mismo departamento.
+
+   b) **ZONA SECUNDARIA** (si aun tienes menos de 10 comparables reales):
+      - Activa la búsqueda en Lotes de la región con características similares.
       - Mismo uso (${usoLote}), estrato socioeconómico similar.
+
+   c) **EXPANSIÓN CONDICIONAL:**
+      - **SOLO si encuentras menos de 10 comparables** en el rango base:
+      - Ampliar el rango máximo en: ±80%.
+      - NUNCA excedas estos límites de expansión.
+
+   d) **ACTIVACIÓN RESIDUAL (ULTIMO RECURSO):**
+      - Si aun no alcanzas la meta, tras buscar en todas las zonas:
+      - **DETÉN** la búsqueda obsesiva de lotes.
+      - **ACTIVA** la búsqueda de **Fincas** en la misma zona
+      - Usa estas propiedades para aplicar el Método Residual (valoración proporcional).
+      
 
 **2. VALORACIÓN PROPORCIONAL - LENGUAJE SIMPLE (si aplica):**
    
    ❌ NUNCA digas solo: "se aplicó método residual"
    
    ✅ SIEMPRE explica así:
-   
+   - EJEMPLO:
    "Como los lotes en venta en ${formData.municipio || '[municipio]'} son escasos, complementamos 
    el análisis con propiedades construidas en la misma zona. Esto nos permite estimar 
    el valor del terreno, ya que típicamente un lote representa entre 25% y 40% del 
@@ -253,46 +289,173 @@ INSTRUCCIONES ESPECIALES PARA LOTES
    - ¿Qué porcentaje aplicaste y por qué? (25%-40% según caso)
    - ¿Cómo ajustaste por características específicas?
 
-**3. OMITIR ARRIENDOS COMPLETAMENTE:**
-   - PROHIBIDO buscar o mencionar arriendos para lotes.
-   - PROHIBIDO calcular rentabilidad o yield.
-   - Solo análisis de VENTA directa.
+**3. OMITIR ARRIENDOS:**
 
-**4. FRASE FINAL OBLIGATORIA (en Resumen Ejecutivo):**
-   
-   "Valor determinado mediante análisis comparativo del mercado regional de lotes, 
-   complementado cuando fue necesario con valoración proporcional de propiedades 
-   construidas (método que estima el valor del terreno como porcentaje del valor 
-   total de construcciones similares en la zona)."
+   - PROHIBIDO buscar arriendos para lotes.
+   - PROHIBIDO calcular rentabilidad.
 
-**5. TAREAS:**
+**4. FRASE FINAL OBLIGATORIA (Resumen):**
+
+   "Valor determinado mediante análisis comparativo de mercado, complementado con valoración proporcional donde fue necesario debido a la disponibilidad de lotes."
+
+═══════════════════════════════════════════════════════════
+FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES** 
+═══════════════════════════════════════════════════════════
 
 ## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES
 
-Presenta un listado de **entre 15 a 20 comparables** SOLO en VENTA usando el formato especificado arriba.
+    Describe brevemente el lote del calculo y haz una introduccion general de las propiedades listadas. 
+    
+    🚫 **PROHIBIDO:**
+    - NO uses numeración (1), 2), 3)...)
+    - NO uses listados agregados (múltiples lotes en un enlace)
+    - NO uses rangos de área "1500-2000 m²" - usa valor EXACTO
+    - NO uses precios indefinidos "$?" - si no hay precio, NO incluyas el comparable
+    - NO uses etiquetas mixtas "zona_similar / zona_extendida" - usa SOLO UNA
+    - CADA comparable debe tener URL REAL y COMPLETA
+
+    **FORMATO DE LISTADO (COPIAR EXACTAMENTE):**
+    
+    **Título exacto del anuncio del portal**
+    Lote | Venta | $Precio
+    Área: XX m² | Uso: [tipo de uso]
+    Ciudad | Departamento
+    **[Portal](https://url-completa-del-anuncio.com)** etiqueta
+    **Nota:** Distancia: X km. [Justificación breve]
+
+    **EJEMPLO CORRECTO de coincidencia:**
+    **Lote Urbano Esquinero perfecto para negocio**
+    Lote | Venta | $180.000.000
+    Área: 2000 m² | Uso: Comercial
+    Filandia | Quindío
+    **[Metrocuadrado](https://www.metrocuadrado.com/lote-en-venta/filandia-123456)** coincidencia
+    **Nota:** Distancia: 1.2 km. Mismo municipio del lote objeto.
+
+    **EJEMPLO CORRECTO de zona_similar:**
+    **Lote campestre con vista al valle**
+    Lote | Venta | $150.000.000
+    Área: 1800 m² | Uso: Residencial
+    Salento | Quindío
+    **[Fincaraíz](https://www.fincaraiz.com.co/lote-en-venta/salento-789012)** zona_similar
+    **Nota:** Distancia: 18 km. Municipio vecino con vocación turística similar.
+
+    **EJEMPLO CORRECTO de zona_extendida:**
+    **Lote comercial zona industrial Armenia**
+    Lote | Venta | $200.000.000
+    Área: 2200 m² | Uso: Comercial
+    Armenia | Quindío
+    **[Ciencuadras](https://www.ciencuadras.com/lote-en-venta/armenia-456789)** zona_extendida
+    **Nota:** Distancia: 35 km. Capital del departamento con dinámica comercial comparable.
 
 ## 2. ANÁLISIS DEL VALOR
 
+**SELECCIÓN DE COMPARABLES PARA CÁLCULO:**
+De los comparables listados arriba, selecciona los **mejores matches** para realizar los cálculos. 
+Descarta explícitamente los comparables con características muy diferentes al lote objetivo.
+Escribe un párrafo indicando:
+- Cuántos comparables usas para el cálculo
+- Por qué descartaste los demás
+
 ### 2.1. Método de Venta Directa (Precio por m²)
-- Calcula el valor promedio por m² basándote en los comparables de venta.
-- Indica el valor por m² FINAL (ajustado por ubicación, características, etc.).
-- Calcula: Precio por m² final × ${area || 'área'} m².
 
-## 3. RESULTADOS FINALES
-- **Valor Recomendado de Venta: $XXX.XXX.XXX**
-- **Rango sugerido: $XXX.XXX.XXX - $XXX.XXX.XXX**
-- **Precio por m² final usado**
-- **Posición en el mercado (liquidez)**
+   **A) Valor Estimado por Mercado (Solo Terreno):**
 
-## 4. AJUSTES APLICADOS
-Explica ajustes por características específicas del lote.
+   - Calcula la **MEDIANA** del precio por m² de los comparables seleccionados (post-filtro de outliers)
+   - Multiplica: Promedio $/m² × ${area || 'área'} m² = **Valor Estimado por Mercado**
+   - **IMPORTANTE:** Este valor representa lo que valdría el lote SIN construcciones según el mercado
+   - Presenta este valor claramente: "**Valor Estimado por Mercado: $XXX.XXX.XXX**"
+
+   **B) Valor Base del Lote Ajustado:**
+
+   - Ajusta el valor de mercado por características específicas (ubicación, topografía, servicios)
+   - Precio por m² ajustado × ${area || 'área'} m² = **Valor Base del Lote**
+
+   **C) Valor de Construcciones (Si existen):**
+
+   - Si el lote tiene construcciones, valóralas por separado (ver sección 3. AJUSTES APLICADOS)
+   - Suma el valor de cada construcción al valor base del lote
+
+## 3. AJUSTES APLICADOS
+
+   **IMPORTANTE:** Solo si el lote tiene construcciones (mencionadas en NOTAS ADICIONALES), debes valorarlas por separado:
+
+### 3.1. Valor Base del Lote (Sin Construcciones)
+
+   - Calcula el valor del terreno usando comparables de **lotes vacíos** similares
+   - Precio/m² base × área total del lote = Valor Base
+
+### 3.2. Ajustes Generales
+
+   Explica brevemente ajustes por ubicación,servicios, topografía.
+
+### 3.3. Valor de Construcciones Existentes (Si Aplica)
+
+   **IMPORTANTE:** Asegúrate de incluir **TODAS** las construcciones mencionadas en las NOTAS ADICIONALES. No omitas ninguna.
+
+Para CADA construcción mencionada:
+
+1. Identifica tipo, área y estado
+2. Busca precio/m² de construcciones similares en la zona
+3. Aplica depreciación (Excelente 1.0, Bueno 0.8, Regular 0.6, Requiere reformas 0.4)
+4. Calcula: Precio/m² × Área × Factor
+
+**IMPORTANTE - VALORACIÓN DE PARQUEADEROS (patio abierto o superficie)**
+
+   Área = número de carros × 15-20 m²/carro (15 rural, 20 urbano)
+   
+   **MÉTODO ÚNICO - Porcentaje del valor base del lote:**
+   | Zona | % del lote |
+   |------|------------|
+   | Turística alta demanda | 15-25% |
+   | Comercial urbana | 10-20% |
+   | Rural/Residencial | 5-15% |
+   
+   🚨 **TOPE:** Parqueadero NUNCA supera 25% del valor del lote.
+   
+   **Formato:** "Parqueadero (XX m², ~XX carros): Valor lote × XX% = $XXX"
+
+   **AJUSTE TOTAL CONSTRUCCIONES: +$XXX.XXX**
+
+### 3.4. VALOR ESTIMADO TOTAL
+
+   Valor Base Lote: $XXX.XXX.XXX
+   + Construcciones: $XXX.XXX.XXX  
+   + Otros: $XXX.XXX.XXX
+   = **TOTAL: $XXX.XXX.XXX**
+
+## 4. RESULTADOS FINALES
+
+   **Valor Recomendado de Venta:** $XXX.XXX.XXX
+   
+   **Rango sugerido:** $XXX.XXX.XXX - $XXX.XXX.XXX
+   
+   **Precio por m² final usado:** $XXX.XXX.XXX
+   
+   **Posición en el mercado (liquidez):**
 
 ## 5. LIMITACIONES
+
 Menciona escasez de datos, dependencias de promedios o zonas similares.
 
 ## 6. RESUMEN EJECUTIVO
-2-3 párrafos con valor recomendado, rango y estrategia de venta.
-INCLUYE la frase final obligatoria (ver punto 4 arriba).
+
+   2-3 párrafos con valor recomendado, rango y estrategia de venta.
+   INCLUYE la frase final obligatoria (ver punto 4 en instrucciones).
+
+## 7. TRANSPARENCIA DE DATOS
+
+   Crea un parrafo argumentativo respondiendo esto:
+   ¿TODOS LOS RESULTADOS QUE HAS ENVIADO SON REALES?
+   ¿Por qué algunos enlaces no muestran la propiedad que mencionas?
+   ¿Por que un resultado es diferente al anterior?
+   **NO PREGUNTES NADA ADICIONAL, NI MENCIONES LAS PREGUNTAS.** Es un mensaje orientativo de la calidad de datos. 
+
+**RECORDATORIO CRÍTICO:**
+- Este es un REPORTE FINAL, no una conversación.
+- NO ofrezcas actualizaciones, ampliaciones ni solicites más datos.
+- NO uses frases como "Si desea, puedo...", "Puedo actualizar...", "Obtener medición exacta..."
+- Entrega SOLO el análisis completo basado en los datos disponibles.
+
     `.trim();
 
     // --- SECCIÓN ESPECÍFICA: PROPIEDADES ---
@@ -301,72 +464,161 @@ INCLUYE la frase final obligatoria (ver punto 4 arriba).
 INSTRUCCIONES PARA PROPIEDADES (Apartamentos/Casas)
 ═══════════════════════════════════════════════════════════
 
-**1. BÚSQUEDA GEOGRÁFICA ENFOCADA:**
-   
-   a) **ZONA PRIMARIA:** ${formData.barrio || ''}, ${formData.municipio || 'el municipio'}
-      - Prioriza comparables del MISMO BARRIO.
-      - Busca al menos 8-12 propiedades en venta.
-   
-   b) **ZONA SECUNDARIA** (complemento):
-      - Barrios adyacentes del mismo estrato socioeconómico.
-   
-   c) **ARRIENDOS (OBLIGATORIO):**
-      - Busca AL MENOS 6 propiedades en arriendo en la misma zona.
-      - Necesitamos canon mensual para cálculo de rentabilidad.
+**1. BÚSQUEDA DE COMPARABLES:**
 
-**2. MÉTODO DE RENTABILIDAD - CÁLCULO CORRECTO:**
+   Busca 30+ comparables (venta + arriendo combinados). 
+   **Aplica expansiones de zona y expansión automática ante escasez de resultados**
+   **IMPORTANTE**:La muestra debe tener 8 propiedades entre arriendos, zona similar o extendida.
    
-   **PASO 1: Canon Mensual Estimado**
-   - NO uses promedio simple de precios totales de arriendo.
-   - Calcula: Precio arriendo / Área = Canon por m²
-   - Promedia los "canon por m²" de todos los arriendos.
-   - Multiplica: Canon promedio/m² × ${area || 'área'} m² = Canon Mensual Estimado
+   **REGLA DE TIPO:** Busca SOLO **${formData.tipo_inmueble === 'casa' ? 'casas' : 'apartamentos'}**. NO mezcles tipos de inmueble.
+   **REGLA DE DATOS:** Debes asegurarte de usar al menos el 70% de los datos de la propiedad de muestra (habitaciones, baños, niveles, ciudad,etc.).
+   **REGLA DE ÁREA OBLIGATORIO:** Respeta el RANGO DE ÁREA TOTAL CONSTRUIDA ${rangoAreaTexto} especificado en los filtros de calidad. 
+   **FILTRO DE PRECIO:**- VENTAS: Excluir si precio/m² desvía >40% de la mediana de ventas
+   - ARRIENDOS: Excluir si canon/m² desvía >40% de la mediana de arriendos
    
-   **PASO 2: Yield del Mercado**
-   - Investiga el yield mensual REAL del mercado de ${formData.municipio || 'la zona'}.
-   - Busca datos de rentabilidad típica para ${formData.tipo_inmueble || 'apartamentos'}.
-   - Si encuentras datos específicos, úsalos.
-   - Si no, usa rangos conservadores (0.4% - 0.6% mensual).
+   **PRIORIDAD DE BÚSQUEDA EN VENTA Y ARRIENDO (en este orden):**
+   1. **Mismo conjunto cerrado** **ETIQUETA** → coincidencia
+   2. **Mismo barrio, diferente conjunto** **ETIQUETA** → coincidencia
+   3. **Barrios vecinos <=3km** **ETIQUETA** → coincidencia
+   4. **Otros barrios del mismo Municipio >3km y <=7km** **ETIQUETA** → zona_similar
+   5. **Barrios aislados o Municipios vecinos >7km y <40km** **ETIQUETA** → zona_extendida
    
-   **IMPORTANTE:** Presenta el yield con formato EXACTO:
-   "**Yield promedio mercado: 0.XX%**" (ejemplo: 0.52%, 0.48%)
-   
-   **PASO 3: Valoración**
-   - Valor estimado = Canon Mensual Estimado / Yield mensual promedio
+   📍 **EXPANSIÓN DE ZONA (progresiva):**
+   1. Si menos de 15 comparables → activa la busqueda a zona_similar (3-7km)
+   2. Si menos de 10 comparables → activa la busqueda a zona_extendida (7-40km)
 
-**3. TAREAS:**
+   📐 **EXPANSIÓN AUTOMÁTICA DE ÁREA (si menos de 9 comparables):**
+   - Propiedades <100m²: expande ±60% (máximo ±50m²)
+   - Propiedades ≥100m²: expande ±40% (máximo ±100m²)
+
+   ⚠️ **REGLA DE DISTANCIA (CRÍTICA):**
+   - Si la distancia es **<=3km** → SIEMPRE es **coincidencia**
+   - Si la distancia es **>3km y <=7km** → es **zona_similar**
+   - Si la distancia es **>7km pero <40km** → es **zona_extendida**
+   - **NUNCA** etiquetes como zona_extendida algo que esté a <=7km
+
+
+   
+**2. MÉTODO DE RENTABILIDAD:**
+   
+   **Canon Mensual:** Calcula precio arriendo/m² de cada arriendo, promedia, multiplica por el área del objeto.
+   
+   **Yield del Mercado:** Busca el yield real de ${formData.municipio || 'la zona'}. Si no encuentras datos específicos, usa 0.4%-0.6% mensual según el perfil de la zona.
+   
+   **IMPORTANTE:** Escribe: "**Yield promedio mercado: 0.XX%**"
+   
+   **Valoración:** Valor = Canon Mensual / Yield mensual
+
+═══════════════════════════════════════════════════════════
+FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
+═══════════════════════════════════════════════════════════
 
 ## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES
 
-Presenta **entre 15 a 20 comparables** (venta + arriendo) usando el formato especificado.
-- Mínimo 8-12 en VENTA
-- Mínimo 6 en ARRIENDO
+    Describe brevemente la propiedad del calculo y haz una introduccion general de las propiedades listadas.
+    
+    🚫 **PROHIBIDO:**
+    - NO uses numeración (1), 2), 3)...)
+    - NO uses listados agregados (múltiples propiedades en un enlace)
+    - NO uses rangos de área "65-90 m²" - usa valor EXACTO
+    - NO uses precios indefinidos "$?" - si no hay precio, NO incluyas el comparable
+    - NO uses etiquetas mixtas "zona_similar / zona_extendida" - usa SOLO UNA
+    - CADA comparable debe tener URL REAL y COMPLETA
+
+    **FORMATO DE LISTADO (COPIAR EXACTAMENTE):**
+    
+    **Título exacto del anuncio del portal**
+    Tipo | Venta o Arriendo | $Precio
+    Área: XX m² | X hab | X baños | X Niveles
+    Barrio | Ciudad
+    **[Portal](https://url-completa-del-anuncio.com)** etiqueta
+    **Nota:** Distancia: X km. [Justificación breve]
+
+    **EJEMPLO CORRECTO de coincidencia:**
+    **Casa moderna 65m2 remodelada Las Villas**
+    Casa | Venta | $320.000.000
+    Área: 65 m² | 3 hab | 2 baños | 2 Niveles
+    Las Villas | Mosquera
+    **[Fincaraíz](https://www.fincaraiz.com.co/casa-en-venta/mosquera/las-villas-123456)** coincidencia
+    **Nota:** Distancia: 0.3 km. Mismo barrio del inmueble objeto.
+
+    **EJEMPLO CORRECTO de zona_similar:**
+    **Apartamento remodelado sector centro 60m2**
+    Apartamento | Arriendo | $1.200.000
+    Área: 60 m² | 2 hab | 2 baños | Piso 3
+    Centro | Mosquera
+    **[Metrocuadrado](https://www.metrocuadrado.com/inmueble/arriendo-apartamento-mosquera-789012)** zona_similar
+    **Nota:** Distancia: 5 km. Barrio del mismo municipio entre 3km y 7km.
+
+    **EJEMPLO CORRECTO de zona_extendida:**
+    **Casa esquinera cerca parque Funza**
+    Casa | Venta | $350.000.000
+    Área: 70 m² | 3 hab | 2 baños | 2 Niveles
+    Centro | Funza
+    **[Ciencuadras](https://www.ciencuadras.com/inmueble/venta-casa-funza-456789)** zona_extendida
+    **Nota:** Distancia: 8 km. Municipio vecino con condiciones socioeconómicas similares.
 
 ## 2. ANÁLISIS DEL VALOR
 
-### 2.1. Método de Venta Directa (Precio por m²)
-- Calcula el valor promedio por m² basándote en comparables de venta.
-- Indica el valor por m² FINAL (ajustado).
-- Calcula: Precio por m² final × ${area || 'área'} m².
+   **SELECCIÓN DE COMPARABLES PARA CÁLCULO:**
+   De los comparables listados arriba, selecciona los **mejores matches** para realizar los cálculos.
+   Descarta explícitamente los comparables con características muy diferentes al inmueble objeto (PRIORIZA: precio fuera de rango).
+   Escribe un párrafo indicando:
+   - Cuántos comparables usas para el cálculo (separados por venta y arriendo)
+   - Por qué descartaste los demás
 
-### 2.2. Método de Rentabilidad (Yield Mensual)
-- Sigue los 3 pasos descritos arriba.
-- Muestra el yield encontrado con formato exacto.
+   ### 2.1. Método de Venta Directa (Precio por m²)
+   - Calcula la **MEDIANA** del precio por m² de los comparables de venta seleccionados.
+   - Indica el valor por m² FINAL (ajustado).
+   - Calcula: Precio por m² final × ${area || 'área'} m².
 
-## 3. RESULTADOS FINALES
-- **Valor Recomendado de Venta: $XXX.XXX.XXX**
-- **Rango sugerido: $XXX.XXX.XXX - $XXX.XXX.XXX**
-- Precio por m² final
-- Posición en mercado
+   ### 2.2. Método de Rentabilidad (Yield Mensual)
+   - Sigue los 3 pasos descritos arriba.
+   - Muestra el yield encontrado con formato exacto.
 
-## 4. AJUSTES APLICADOS
-Explica ajustes por antigüedad, estado, parqueadero, etc.
+## 3. AJUSTES APLICADOS
+   
+   Explica cada ajuste aplicado, cómo se usó y por qué.
+   Separa por lineas para que se lea mejor. 
+
+   **EJEMPLO:**
+    - **Ajuste por ubicación:** +x% zona de alta demanda
+    - **Ajuste por estado:** +x% Requiere inversión en mejoras entre $X.XXX.XXX y $X.XXX.XXX, se estimó un valor intermedio de $X.XXX.XXX aplicando un ajuste de +x%
+    - **Ajuste por antigüedad:** -x% (fuente: Camacol)
+    - **Factor total:** 0.85 (equivalente a -x%). 
+    - **Precio/m² ajustado venta:** $3.545.455 × 0.85 = $3.013.637. 
+    - **Valor total ajustado:** $3.013.637/m² × 60 m² = $180.818.220. 
+    - **Yield ajustado similar (-15%):** $170.003.400. 
+
+## 4. RESULTADOS FINALES
+
+   - **Valor Recomendado de Venta:** $XXX.XXX.XXX
+   - **Rango sugerido:** $XXX.XXX.XXX - $XXX.XXX.XXX
+   - **Precio por m² final:** $XXX.XXX.XXX
+   - **Posición en mercado:**
 
 ## 5. LIMITACIONES
-Menciona escasez de datos o dependencias.
+
+   Menciona escasez de datos o dependencias.
 
 ## 6. RESUMEN EJECUTIVO
-2-3 párrafos con valor recomendado (ponderando venta + rentabilidad), rango y estrategia.
+
+   2-3 párrafos con valor recomendado (ponderando venta + rentabilidad), rango y estrategia.
+
+## 7. TRANSPARENCIA DE DATOS
+
+   Crea un parrafo argumentativo respondiendo esto:
+   ¿TODOS LOS RESULTADOS QUE HAS ENVIADO SON REALES?
+   ¿Por qué algunos enlaces no muestran la propiedad que mencionas?
+   ¿Por que un resultado es diferente al anterior?
+   **NO PREGUNTES NADA ADICIONAL, NI MENCIONES LAS PREGUNTAS.** Es un mensaje orientativo de la calidad de datos. 
+
+**RECORDATORIO CRÍTICO:**
+- Este es un REPORTE FINAL, no una conversación.
+- NO ofrezcas actualizaciones, ampliaciones ni solicites más datos.
+- NO uses frases como "Si desea, puedo...", "Puedo actualizar...", "Obtener medición exacta..."
+- Entrega SOLO el análisis completo basado en los datos disponibles.
+
     `.trim();
 
     // --- ENSAMBLAR PROMPT FINAL ---
@@ -422,30 +674,30 @@ export default {
             );
         }
 
-        // --- 1. PREPARACIÓN DE DATOS (V9 LOGIC) ---
+        // --- PERFORMANCE TRACKING ---
+        const perfStart = Date.now();
+        let t1, t2, t3, t4, t5, t6;
+        console.log('⏱️ [PERF] Inicio análisis:', new Date().toISOString());
+
+        // --- 1. PREPARACIÓN DE DATOS ---
         const tipoInmueble = (formData.tipo_inmueble || 'inmueble').toLowerCase();
         const esLote = tipoInmueble === 'lote';
-        const usoLote = formData.uso_lote || 'residencial'; // Default a residencial si no viene
+        const usoLote = formData.uso_lote || 'residencial';
         const ubicacion = `${formData.barrio || ''}, ${formData.municipio || ''}`.trim();
 
-        // Fallback de área
         let areaBase = parseInt(formData.area_construida);
         if (!Number.isFinite(areaBase) || areaBase <= 0) areaBase = 60;
         const area = areaBase;
 
-        // --- CONSTRUCCIÓN DEL PROMPT (V12 - DINÁMICO) ---
-        const perplexityPrompt = construirPromptPerplexity(
-            formData,
-            area,
-            esLote,
-            usoLote,
-            ubicacion
-        );
+        // --- CONSTRUCCIÓN DEL PROMPT ---
+        const perplexityPrompt = construirPromptPerplexity(formData, area, esLote, usoLote, ubicacion);
 
-
-        // --- 2. LLAMADA A PERPLEXITY (MODELO SONAR) ---
+        // --- 2. LLAMADA A PERPLEXITY ---
         let perplexityContent = '';
         let citations = [];
+
+        t1 = Date.now();
+        console.log('⏱️ [PERF] Iniciando llamada Perplexity...');
 
         try {
             const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -461,6 +713,7 @@ export default {
                         { role: 'user', content: perplexityPrompt },
                     ],
                     temperature: 0.1,
+                    max_tokens: 8000, // Aumentado para evitar cortes en análisis de lotes con construcciones
                 }),
             });
 
@@ -474,18 +727,14 @@ export default {
 
             const data = await response.json();
             const rawContent = data.choices?.[0]?.message?.content || '';
-            console.log('🔍 RAW PERPLEXITY START\n' + rawContent + '\n🔍 RAW PERPLEXITY END');
 
-            // Clean LaTeX commands from Perplexity response
             perplexityContent = cleanLatexCommands(rawContent);
-
-            // Remove numeric citations [1][2][3] before DeepSeek extraction
             perplexityContent = perplexityContent.replace(/\[\d+\]/g, '');
-
-            console.log('🧹 CLEANED TEXT START\n' + perplexityContent + '\n🧹 CLEANED TEXT END');
-
             citations = data.citations || [];
-            console.log(`Perplexity completado. Fuentes: ${citations.length}`);
+
+            t2 = Date.now();
+            console.log(`⏱️ [PERF] Perplexity completado en ${((t2 - t1) / 1000).toFixed(2)}s | Fuentes: ${citations.length}`);
+            console.log(`📄 [PERPLEXITY] Respuesta completa:\n${perplexityContent}`);
 
         } catch (e) {
             return new Response(
@@ -496,8 +745,6 @@ export default {
 
         // --- 3. EXTRACCIÓN ESTRUCTURADA CON DEEPSEEK ---
         let extractedData = {};
-        let nivelConfianza = 'Medio'; // Default
-        let estadisticasComparables = {}; // Default
 
         const extractionPrompt = `
 Del siguiente texto (que contiene listados y análisis), extrae un JSON estructurado.
@@ -510,10 +757,27 @@ INSTRUCCIONES DE EXTRACCIÓN:
    Cada comparable sigue este patrón:
    
    **Título**
-   Tipo | Venta/Arriendo
-   Precio | Área | Habitaciones | Baños
+   Tipo | Venta/Arriendo | $Precio
+   Área: XX m² | X hab | X baños | X Niveles (o X Piso para apartamentos)
    Barrio | Ciudad
-   **Fuente**
+   **[Portal](URL)** etiqueta
+   **Nota:** Distancia: X km. [Justificación]
+   
+   EJEMPLO Apartamento/Casa:
+   **Apartamento Moderno**
+   Apartamento | Venta | $450.000.000
+   Área: 95 m² | 3 hab | 2 baños | Piso 5
+   Las Acacias | Bogotá
+   **[Fincaraíz](https://fincaraiz.com.co/ejemplo)** coincidencia
+   **Nota:** Distancia: 0.5 km. Mismo barrio del inmueble objeto.
+   
+   EJEMPLO Lote:
+   **Lote Urbano Esquinero**
+   Lote | Venta | $180.000.000
+   Área: 2000 m² | Uso: Residencial
+   Filandia | Quindío
+   **[Metrocuadrado](https://metrocuadrado.com/ejemplo)** zona_similar
+   **Nota:** Distancia: 18 km. Municipio vecino con vocación turística similar.
    
    Extrae:
    - "titulo": Texto entre ** ** de la primera línea (sin etiquetas HTML)
@@ -523,62 +787,55 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - "area": Número (puede tener decimales) antes de "m²" en la tercera línea.
    - "habitaciones": Número antes de "hab" en la tercera línea
    - "banos": Número antes de "baños" en la tercera línea
+   - "niveles_piso": Número antes de "Niveles" o "Piso" en la tercera línea (si existe). Para apartamentos es "Piso X", para casas es "X Niveles".
    - "barrio": Texto antes del | en la cuarta línea (sin etiquetas HTML)
    - "ciudad": Texto después del | en la cuarta línea (sin etiquetas HTML)
-   - "fuente": Texto entre ** ** (usualmente antepenúltima línea)
-   - "fuente_validacion": Valor después de "fuente_validacion: " (uno de: portal_verificado, estimacion_zona, zona_similar, promedio_municipal)
-   - "nota_adicional": Si existe una línea que empieza con "NOTA:", extrae el texto completo (opcional)
+   - "fuente": Texto entre **[ ]** (nombre del portal). Si está en formato Markdown [Nombre](URL), extrae solo "Nombre".
+   - "url_fuente": Si la fuente tiene formato Markdown [Nombre](URL), extrae la URL completa. Si no, busca si hay un enlace https:// cerca.
+   - "fuente_validacion": Palabra suelta después del portal (uno de: coincidencia, zona_similar, zona_extendida)
+   - "nota_adicional": Si existe una línea que empieza con "**Nota:**" o "Nota:", extrae el texto completo incluyendo la distancia en km (opcional)
+   - "distancia_km": Si la nota menciona "Distancia: X km", extrae SOLO el número como decimal (ej: 2.5)
 
    IMPORTANTE: 
    - Elimina cualquier etiqueta HTML (como <br>) de los valores extraídos.
-   - Si NO encuentras el campo "fuente_validacion", asume "portal_verificado" por defecto.
+   - Si NO encuentras "fuente_validacion", asume "zona_extendida" por defecto.
 
 2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
 
-3. "nivel_confianza": Busca en el texto la frase "Nivel de confianza:" y extrae el valor (Alto/Medio/Bajo). Si no existe, devuelve null.
+3. "yield_zona": ${esLote ? 'IGNORAR (Devolver null)' : 'Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.5%", devuelve 0.005).'}
 
-4. "yield_zona": ${esLote ? 'IGNORAR (Devolver null)' : 'Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.5%", devuelve 0.005).'}
-
-5. "valor_recomendado_venta": Busca "Valor Recomendado de Venta: $XXX.XXX.XXX".
+4. "valor_venta_directa": ${esLote
+                ? 'Busca "**Valor Estimado por Mercado: $XXX.XXX.XXX**" en la sección 2.1. Si no encuentra, busca "**Valor total = $XXX.XXX.XXX**".'
+                : 'Busca "**Valor total = $XXX.XXX.XXX**".'
+            }
    Extrae el número ENTERO (elimina puntos y $).
 
-6. "rango_sugerido_min": Busca "Rango sugerido: $XXX.XXX.XXX - $YYY.YYY.YYY". Extrae el primer número (ENTERO).
+5. "rango_sugerido_min": Busca "Rango sugerido: $XXX.XXX.XXX -" o similar. Extrae el primer número (ENTERO).
 
-7. "rango_sugerido_max": Extrae el segundo número del rango sugerido (ENTERO).
+6. "rango_sugerido_max": Extrae el segundo número del rango sugerido (ENTERO).
 
-8. "estadisticas_comparables": Busca en sección 5 (LIMITACIONES) y extrae:
-   - "porcentaje_datos_reales": Si menciona "X% de comparables son datos reales", extrae el número
-   - "porcentaje_estimaciones": Si menciona porcentaje de estimaciones, extrae el número
-   - "zonas_alternativas_usadas": Array de strings con nombres de barrios/zonas alternativas mencionadas
-
-9. "valor_mercado_calculado": Busca la PRIMERA aparición de cualquiera de estas frases:
-   - "Valor estimado venta"
-   - "Valor recomendado"  
-   - "Valor sugerido"
-   - "Valor de mercado"
-   - O el valor inmediatamente después de "Precio/m² ajustado"
-   Extrae el número ENTERO (elimina puntos, comas, $). Si no encuentra, devuelve null.
-
-10. "precio_m2_ajustado": Busca "Precio/m² ajustado: $XXX.XXX" o "Precio ajustado por m²".
+7. "precio_m2_ajustado": Busca "Precio por m² final: $XXX.XXX.XXX" o "Precio/m² ajustado: $XXX.XXX.XXX".
     Extrae SOLO el número (entero, sin puntos). Si no encuentra, devuelve null.
 
-11. "factor_ajuste_total": Busca "Factor total: X.XX" o "Factor: X.XX".
+8. "factor_ajuste_total": Busca "Factor total: X.XX" o "Factor: X.XX".
     - Si dice "+17%" → devuelve 1.17
     - Si dice "-5%" → devuelve 0.95
     - Extrae el número decimal directamente si está en formato X.XX
     - Si no encuentra, devuelve 1.0 (sin ajustes)
 
-12. "ajustes_detallados": Array de objetos con cada ajuste aplicado.
-    Formato: [{"concepto": "Antigüedad", "porcentaje": 5}, {"concepto": "Reformas", "porcentaje": 10}]
-    Busca frases como "+5% por antigüedad", "-3% por estado", etc.
-    Si no hay desglose explícito, devuelve array vacío [].
-
-13. "valor_rentabilidad_ajustado": Busca "Valor por método rentabilidad (ajustado): $XXX.XXX.XXX".
+9. "valor_rentabilidad_ajustado": Busca "Valor rentabilidad = $XXX.XXX.XXX".
     Extrae el número ENTERO (elimina puntos, comas, $). Si no encuentra, devuelve null.
+
+10. "valor_recomendado_venta": Busca "Valor Recomendado de Venta: $XXX.XXX.XXX".
+    Extrae el número ENTERO.
+
+11. "canon_mensual_estimado": Busca "Canon mensual estimado: $XXX.XXX.XXX".
 
 Devuelve SOLO JSON válido.
         `.trim();
 
+        t3 = Date.now();
+        console.log('⏱️ [PERF] Iniciando extracción DeepSeek...');
 
         try {
             const dsResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -608,7 +865,6 @@ Devuelve SOLO JSON válido.
             const dsData = await dsResponse.json();
             let content = dsData.choices?.[0]?.message?.content || '{}';
 
-            // Limpieza Markdown
             content = content.trim();
             if (content.startsWith('```')) {
                 const match = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -618,16 +874,8 @@ Devuelve SOLO JSON válido.
             extractedData = JSON.parse(content);
             if (!extractedData || typeof extractedData !== 'object') extractedData = {};
 
-            console.log('📊 DEEPSEEK EXTRACTED JSON:', JSON.stringify(extractedData, null, 2));
-
-            // Procesar nivel_confianza y estadísticas (ahora asignamos a variables ya declaradas)
-            nivelConfianza = extractedData.nivel_confianza || 'Medio';
-            estadisticasComparables = extractedData.estadisticas_comparables || {};
-
-            console.log(`Nivel de confianza: ${nivelConfianza}`);
-            if (estadisticasComparables.porcentaje_datos_reales) {
-                console.log(`Datos reales: ${estadisticasComparables.porcentaje_datos_reales}%`);
-            }
+            t4 = Date.now();
+            console.log(`⏱️ [PERF] DeepSeek completado en ${((t4 - t3) / 1000).toFixed(2)}s`);
 
         } catch (e) {
             return new Response(
@@ -637,14 +885,10 @@ Devuelve SOLO JSON válido.
         }
 
         // --- 4. PROCESAMIENTO Y LÓGICA DE NEGOCIO ---
-        // GLOBAL TRY-CATCH: Captura CUALQUIER error no manejado
         try {
-            // Helpers robustos para parseo
             const sanitizePrice = (n) => {
                 if (typeof n === 'number') return Number.isFinite(n) ? n : null;
                 if (typeof n === 'string') {
-                    // Formato colombiano: 4.000.000 (puntos = miles)
-                    // Eliminar TODOS los puntos y comas, quedarnos solo con dígitos
                     const clean = n.replace(/[.,]/g, '').replace(/\D/g, '');
                     const val = parseInt(clean, 10);
                     return (Number.isFinite(val) && val > 0) ? val : null;
@@ -655,45 +899,33 @@ Devuelve SOLO JSON válido.
             const sanitizeFloat = (n) => {
                 if (typeof n === 'number') return Number.isFinite(n) ? n : null;
                 if (typeof n === 'string') {
-                    // Formato colombiano: 4.000 (punto = miles) o 4.5 (punto = decimal)
-                    // Si tiene MÁS de un punto, es formato de miles (4.000.000)
-                    // Si tiene un solo punto, puede ser decimal (4.5) o miles (4.000)
                     const puntos = (n.match(/\./g) || []).length;
                     let clean;
                     if (puntos > 1) {
-                        // Múltiples puntos → formato colombiano de miles (4.000.000)
                         clean = n.replace(/[.,]/g, '');
                     } else if (puntos === 1) {
-                        // Un punto: depende del contexto
-                        // Si hay 3 dígitos después del punto, es probablemente miles (4.000)
-                        // Si hay 1-2 dígitos, probablemente decimal (4.5)
                         const parts = n.split('.');
                         if (parts[1] && parts[1].length === 3) {
-                            // 4.000 → miles
                             clean = n.replace(/\./g, '');
                         } else {
-                            // 4.5 → decimal
                             clean = n.replace(',', '.');
                         }
                     } else {
-                        // Sin puntos, solo limpiar
                         clean = n.replace(/[^\d]/g, '');
                     }
-
-                    clean = clean.replace(/[^\d.]/g, ''); // Limpiar cualquier residuo
+                    clean = clean.replace(/[^\d.]/g, '');
                     const val = parseFloat(clean);
                     return Number.isFinite(val) ? val : null;
                 }
                 return null;
             };
 
-            const yieldDefault = 0.005;  // 0.5% mensual (6% anual) - solo fallback
+            const yieldDefault = 0.005;
             const yieldExtracted = sanitizeFloat(extractedData.yield_zona);
             const yieldFinal = yieldExtracted || yieldDefault;
             console.log(`Yield usado: ${(yieldFinal * 100).toFixed(2)}% mensual (${yieldExtracted ? 'extraído de mercado' : 'fallback'})`);
             const yieldFuente = yieldExtracted ? 'mercado' : 'fallback';
 
-            // Portales
             const portalesUnicos = new Set(
                 citations.map((url) => {
                     try {
@@ -704,23 +936,36 @@ Devuelve SOLO JSON válido.
             const portalesList = Array.from(portalesUnicos);
             if (portalesList.length === 0) portalesList.push('fincaraiz', 'metrocuadrado');
 
-            // Procesamiento de Comparables (SIN HEURÍSTICA)
+            t5 = Date.now();
+            console.log('⏱️ [PERF] Iniciando procesamiento comparables...');
+
             const comparablesRaw = Array.isArray(extractedData.comparables) ? extractedData.comparables : [];
-            const comparables = comparablesRaw
+
+            // FILTRO DE ÁREA ELIMINADO
+            // NOTA: Se eliminó el filtro de área para mostrar TODOS los comparables que Perplexity analizó.
+            // Esto evita inconsistencias entre el texto del análisis y la tabla de comparables mostrada al usuario.
+            // Perplexity ya aplica sus propios criterios de selección según el prompt (rangos de área, antigüedad, etc.)
+            const finalComparablesRaw = comparablesRaw.filter((c) => {
+                const areaComp = sanitizeFloat(c.area);
+                // Solo validar que el área exista y sea válida (no null/undefined/0)
+                return areaComp && areaComp > 0;
+            });
+
+            console.log(`✓ Procesando ${finalComparablesRaw.length} comparables analizados por Perplexity (sin filtro de área)`);
+
+            // Procesamiento de cada comparable
+            const comparables = finalComparablesRaw
                 .map((c) => {
                     const areaComp = sanitizeFloat(c.area);
                     const precioLista = sanitizePrice(c.precio_lista);
-
                     const esArriendo = c.tipo_operacion && typeof c.tipo_operacion === 'string' && c.tipo_operacion.toLowerCase().includes('arriendo');
 
-                    // SI ES LOTE, IGNORAR ARRIENDOS
                     if (esLote && esArriendo) return null;
 
                     let precioVentaEstimado = 0;
                     let precioM2 = 0;
 
                     if (esArriendo) {
-                        // Arriendo -> Capitalización
                         if (precioLista && yieldFinal > 0) {
                             precioVentaEstimado = Math.round(precioLista / yieldFinal);
                         }
@@ -728,13 +973,56 @@ Devuelve SOLO JSON válido.
                             precioM2 = Math.round(precioVentaEstimado / areaComp);
                         }
                     } else {
-                        // Venta -> Directo
                         precioVentaEstimado = precioLista || 0;
                         if (precioVentaEstimado && areaComp) {
                             precioM2 = Math.round(precioVentaEstimado / areaComp);
                         }
                     }
 
+                    // Construir array de badges (verificado + ubicación)
+                    const badges = [];
+
+                    // Badge 1: Verificar URL (si existe y es válida)
+                    const tieneURL = c.url_fuente && typeof c.url_fuente === 'string' && c.url_fuente.startsWith('http');
+
+                    let urlValida = false;
+                    if (tieneURL) {
+                        // URLs genéricas/rotas que NO deben contar como "verificado"
+                        const urlsInvalidas = [
+                            /fincaraiz\.com\/?$/i,           // fincaraiz.com (sin ID)
+                            /metrocuadrado\.com\/?$/i,       // metrocuadrado.com (sin ID)
+                            /ciencuadras\.com\/?$/i,         // ciencuadras.com (sin ID)
+                            /mercadolibre\.com\/?$/i,        // mercadolibre.com (sin ID)
+                            /mitula\.com\/?$/i,              // mitula.com (sin ID)
+                            /\/casas\/?$/i,                  // .../casas (genérico)
+                            /\/lotes\/?$/i,                  // .../lotes (genérico)
+                            /\/apartamentos\/?$/i,           // .../apartamentos (genérico)
+                            /\/venta\/?$/i,                  // .../venta (genérico)
+                            /\/arriendo\/?$/i,               // .../arriendo (genérico)
+                        ];
+
+                        // Verificar que la URL NO sea genérica
+                        urlValida = !urlsInvalidas.some(regex => regex.test(c.url_fuente));
+
+                        if (urlValida) {
+                            badges.push('verificado');
+                        } else {
+                            console.log(`⚠️ URL genérica/rota descartada: ${c.url_fuente}`);
+                        }
+                    }
+
+                    // Badge 2: Etiqueta de ubicación (OBLIGATORIA si es válida)
+                    const ubicacionBadge = c.fuente_validacion || null;
+
+                    if (ubicacionBadge && ['coincidencia', 'zona_similar', 'zona_extendida'].includes(ubicacionBadge)) {
+                        // Si Perplexity envió etiqueta válida de ubicación
+                        badges.push(ubicacionBadge);
+                    } else {
+                        // Fallback: zona_extendida si no hay etiqueta de ubicación
+                        badges.push('zona_extendida');
+                    }
+
+                    // Nota: 'verificado' ya se agregó arriba si urlValida === true
 
                     const comparable = {
                         titulo: c.titulo || 'Inmueble',
@@ -745,25 +1033,20 @@ Devuelve SOLO JSON válido.
                         area_m2: areaComp,
                         habitaciones: sanitizeFloat(c.habitaciones),
                         banos: sanitizeFloat(c.banos),
-
                         precio_publicado: precioLista,
                         precio_cop: precioVentaEstimado,
                         precio_m2: precioM2,
                         yield_mensual: esArriendo ? yieldFinal : null,
-
-                        fuente_validacion: c.fuente_validacion || 'portal_verificado',
-                        nota_adicional: c.nota_adicional || null
+                        fuente: c.fuente || null,
+                        fuente_validacion: badges, // ✅ AHORA ES ARRAY
+                        nota_adicional: c.nota_adicional || null,
+                        url_fuente: c.url_fuente || null
                     };
-
-                    // Logging interno para verificación (no se envía al frontend)
-                    const notaSafe = comparable.nota_adicional ? String(comparable.nota_adicional) : '';
-                    console.log(`[${comparable.titulo}] Validación: ${comparable.fuente_validacion}${notaSafe ? ' | Nota: ' + notaSafe.substring(0, 50) : ''}`);
 
                     return comparable;
                 })
                 .filter((c) => c && c.precio_cop > 0 && c.area_m2 > 0);
 
-            // Validación Mínima
             if (comparables.length < 5) {
                 return new Response(
                     JSON.stringify({
@@ -775,13 +1058,10 @@ Devuelve SOLO JSON válido.
                 );
             }
 
-            // Cálculos Finales
             const compsVenta = comparables.filter((c) => c.tipo_origen === 'venta');
             const compsArriendo = comparables.filter((c) => c.tipo_origen === 'arriendo');
 
-            // ═══════════════════════════════════════════════════════════
-            // PASO A: Calcular valor SIMPLE del Worker (promedio de comparables)
-            // ═══════════════════════════════════════════════════════════
+            // PASO A: Calcular valor SIMPLE del Worker
             let precioM2PromedioSimple = 0;
             let valorVentaDirectaSimple = null;
 
@@ -797,151 +1077,158 @@ Devuelve SOLO JSON válido.
                 valorVentaDirectaSimple = Math.round(precioM2PromedioSimple * area);
             }
 
-            // ═══════════════════════════════════════════════════════════
-            // PASO B: Extraer valor de Perplexity y factor de ajuste
-            // ═══════════════════════════════════════════════════════════
-            const valorMercadoPerplexity = sanitizePrice(extractedData.valor_mercado_calculado)
-                || sanitizePrice(extractedData.valor_recomendado_venta);
+            // PASO B: Extraer valor de Perplexity
+            const valorVentaDirectaPerplexity = sanitizePrice(extractedData.valor_venta_directa);
             const factorAjusteTotal = sanitizeFloat(extractedData.factor_ajuste_total) || 1.0;
-            const precioM2Ajustado = sanitizeFloat(extractedData.precio_m2_ajustado) || precioM2PromedioSimple;
-            const ajustesDetallados = Array.isArray(extractedData.ajustes_detallados)
-                ? extractedData.ajustes_detallados : [];
+            const precioM2AjustadoExtraido = sanitizeFloat(extractedData.precio_m2_ajustado);
+            const ajustesDetallados = Array.isArray(extractedData.ajustes_detallados) ? extractedData.ajustes_detallados : [];
 
-            // ═══════════════════════════════════════════════════════════
-            // PASO C: Validar Perplexity vs Simple
-            // ═══════════════════════════════════════════════════════════
-            const desviacion = valorVentaDirectaSimple > 0
-                ? Math.abs(valorMercadoPerplexity - valorVentaDirectaSimple) / valorVentaDirectaSimple
-                : 0;
-            const factorValido = factorAjusteTotal >= 0.7 && factorAjusteTotal <= 1.4;
+            // PASO C: Validar Perplexity vs Simple (SSOT: Prioridad a Perplexity si existe)
 
-            // PASO D: Asignar a variables EXISTENTES
+
             let valorVentaDirecta;
             let valorMercadoFuente;
-            let precioM2Promedio;
+            let precioM2Mercado;
 
-            if (valorMercadoPerplexity && desviacion < 0.25 && factorValido) {
-                valorVentaDirecta = valorMercadoPerplexity;
+            // Lógica "Trust Perplexity": Si la IA da un valor, lo usamos (especialmente si hay ajuste).
+            // Solo usamos fallback si la IA no dio nada o el valor es absurdo (<= 0).
+            if (valorVentaDirectaPerplexity && valorVentaDirectaPerplexity > 0) {
+                valorVentaDirecta = valorVentaDirectaPerplexity;
                 valorMercadoFuente = 'perplexity';
-                precioM2Promedio = precioM2Ajustado || Math.round(valorMercadoPerplexity / area);
-                console.log(`✓ Perplexity: $${valorMercadoPerplexity.toLocaleString()} (desv: ${(desviacion * 100).toFixed(1)}%)`);
+                precioM2Mercado = Math.round(valorVentaDirectaPerplexity / area);
+                console.log(`✓ Usando Valor Perplexity: ${valorVentaDirecta.toLocaleString()} (Factor: ${factorAjusteTotal})`);
             } else {
                 valorVentaDirecta = valorVentaDirectaSimple;
                 valorMercadoFuente = 'calculado_fallback';
-                precioM2Promedio = precioM2PromedioSimple;
-                console.log(`⚠️ Fallback: $${valorVentaDirectaSimple?.toLocaleString()} (desv: ${(desviacion * 100).toFixed(1)}%, factor: ${factorAjusteTotal})`);
+                precioM2Mercado = precioM2PromedioSimple;
+                console.log(`⚠️ Usando Valor Fallback (Simple): ${valorVentaDirecta?.toLocaleString()}`);
             }
 
-            // ═══════════════════════════════════════════════════════════
-            // PASO E: Rentabilidad (PRIORIZA PERPLEXITY)
-            // ═══════════════════════════════════════════════════════════
+            // PASO E: Rentabilidad
             let valorRentabilidad = null;
             let canonPromedio = 0;
-
-            // Primero intenta usar el valor que Perplexity calcula (ajustado)
+            let valorRentabilidadFallback = null;
             const valorRentabilidadPerplexity = sanitizePrice(extractedData.valor_rentabilidad_ajustado);
 
             if (!esLote) {
-                if (valorRentabilidadPerplexity) {
-                    // Usar valor de Perplexity (ajustado con factor)
+                // Calcular fallback del worker primero (para validación o uso si falta IA)
+                if (compsArriendo.length > 0) {
+                    const canonPorM2Array = compsArriendo
+                        .filter(c => c.precio_publicado > 0 && c.area_m2 > 0)
+                        .map(c => c.precio_publicado / c.area_m2);
+
+                    if (canonPorM2Array.length > 0) {
+                        const canonPorM2Promedio = canonPorM2Array.reduce((acc, val) => acc + val, 0) / canonPorM2Array.length;
+                        canonPromedio = Math.round(canonPorM2Promedio * area);
+                        valorRentabilidadFallback = Math.round(canonPromedio / yieldFinal);
+                    } else {
+                        const sumCanon = compsArriendo.reduce((acc, c) => acc + c.precio_publicado, 0);
+                        canonPromedio = Math.round(sumCanon / compsArriendo.length);
+                        valorRentabilidadFallback = Math.round(canonPromedio / yieldFinal);
+                    }
+                }
+
+                // Lógica "Trust Perplexity" para Rentabilidad
+                if (valorRentabilidadPerplexity && valorRentabilidadPerplexity > 0) {
                     valorRentabilidad = valorRentabilidadPerplexity;
-                    console.log(`✓ Rentabilidad (Perplexity): $${valorRentabilidad.toLocaleString()}`);
-                } else if (compsArriendo.length > 0) {
-                    // Fallback: calcular si Perplexity no lo proporciona
-                    const sumCanon = compsArriendo.reduce((acc, c) => acc + c.precio_publicado, 0);
-                    canonPromedio = Math.round(sumCanon / compsArriendo.length);
-                    valorRentabilidad = Math.round(canonPromedio / yieldFinal);
-                    console.log(`⚠️ Rentabilidad (Fallback calculado): $${valorRentabilidad.toLocaleString()}`);
+                    console.log(`✓ Rentabilidad (Perplexity): ${valorRentabilidad.toLocaleString()}`);
+                } else if (valorRentabilidadFallback) {
+                    valorRentabilidad = valorRentabilidadFallback;
+                    console.log(`⚠️ Rentabilidad (Fallback): ${valorRentabilidad.toLocaleString()}`);
                 } else if (valorVentaDirecta) {
-                    valorRentabilidad = valorVentaDirecta;
+                    valorRentabilidad = valorVentaDirecta; // Fallback extremo
                     canonPromedio = Math.round(valorVentaDirecta * yieldFinal);
                 }
             }
 
-            // ═══════════════════════════════════════════════════════════
-            // PASO F: Valor Final
-            // ═══════════════════════════════════════════════════════════
-            let valorPonderado = null;
+            // PASO F: Valor Final (CÁLCULO SSOT EN WORKER)
+            // Aquí imponemos la matemática estricta sobre los componentes confiables
+            let valorCalculadoWorker = 0;
             if (esLote) {
-                valorPonderado = valorVentaDirecta;
+                // Para lotes, usar el valor recomendado de Perplexity que incluye construcciones
+                const valorRecomendadoPerplexity = sanitizePrice(extractedData.valor_recomendado_venta);
+                if (valorRecomendadoPerplexity && valorRecomendadoPerplexity > 0) {
+                    valorCalculadoWorker = valorRecomendadoPerplexity;
+                    console.log(`✓ Usando Valor Recomendado Perplexity para lote: ${valorCalculadoWorker.toLocaleString()} (incluye construcciones)`);
+                } else {
+                    // Fallback al valor de mercado si Perplexity no dio valor recomendado
+                    valorCalculadoWorker = valorVentaDirecta;
+                    console.log(`⚠️ Fallback: Usando solo valor de mercado para lote: ${valorCalculadoWorker.toLocaleString()}`);
+                }
             } else {
-                valorPonderado = (valorVentaDirecta && valorRentabilidad && compsArriendo.length > 0)
-                    ? Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4)
-                    : null;
+                // Para propiedades, PRIMERO intentar usar el Valor Recomendado de Perplexity
+                const valorRecomendadoPerplexity = sanitizePrice(extractedData.valor_recomendado_venta);
+                if (valorRecomendadoPerplexity && valorRecomendadoPerplexity > 0) {
+                    valorCalculadoWorker = valorRecomendadoPerplexity;
+                    console.log(`✓ Usando Valor Recomendado Perplexity para propiedad: ${valorCalculadoWorker.toLocaleString()}`);
+                } else {
+                    // Fallback al cálculo Worker si Perplexity no dio valor recomendado
+                    if (valorVentaDirecta && valorRentabilidad) {
+                        valorCalculadoWorker = Math.round(valorVentaDirecta * 0.6 + valorRentabilidad * 0.4);
+                        console.log('⚠️ Fallback: Cálculo Ponderado Worker 60/40 (Perplexity no envió valor recomendado)');
+                    } else {
+                        valorCalculadoWorker = valorVentaDirecta || valorRentabilidad || 0;
+                        console.log('⚠️ Fallback: Usando solo un componente disponible');
+                    }
+                }
             }
 
-            const valorFinal = sanitizePrice(extractedData.valor_recomendado_venta)
-                || valorPonderado
-                || valorVentaDirecta
-                || valorRentabilidad
-                || 0;
-            const valorFuente = extractedData.valor_recomendado_venta ? 'perplexity' : valorMercadoFuente;
+            // Forzamos que este sea el valor final
+            const valorFinal = valorCalculadoWorker;
+            const valorPonderado = valorCalculadoWorker; // Valor ponderado para referencia
+            const valorFuente = 'worker_ssot_calculated';
+            console.log(`Valor final (SSOT): ${valorFinal.toLocaleString()}`);
 
-            console.log(`Valor final: $${valorFinal.toLocaleString()} (fuente: ${valorFuente})`);
+            // Precio m² de mercado (ajustado por comparables)
+            const precioM2MercadoSeguro =
+                Number.isFinite(precioM2Mercado) && precioM2Mercado > 0
+                    ? precioM2Mercado
+                    : null;
 
-            const precioM2Usado = precioM2Promedio || (valorFinal > 0 ? Math.round(valorFinal / area) : 0);
+            // Precio m² implícito del valor final
+            const precioM2Implicito =
+                valorFinal > 0 && area > 0
+                    ? Math.round(valorFinal / area)
+                    : null;
 
-            // 4. Rangos
             const rangoMin = sanitizePrice(extractedData.rango_sugerido_min) || Math.round(valorFinal * 1.00);
             const rangoMax = sanitizePrice(extractedData.rango_sugerido_max) || Math.round(valorFinal * 1.04);
             const rangoFuente = extractedData.rango_sugerido_min ? 'perplexity' : 'calculado';
 
-            // --- 5. DEDUPLICACIÓN Y FILTRADO (V10) ---
-            const uniqueComparables = [];
-            for (const comp of comparables) {
-                const isDuplicate = uniqueComparables.some(existing => {
-                    const precioBaseExisting = existing.precio_cop || existing.precio_publicado || 0;
-                    const precioBaseComp = comp.precio_cop || comp.precio_publicado || 0;
-                    const areaBaseExisting = existing.area_m2 || 0;
-                    const areaBaseComp = comp.area_m2 || 0;
+            // --- 5. DEDUPLICACIÓN ELIMINADA ---
+            // NOTA: Se eliminó la deduplicación para mostrar TODOS los comparables que Perplexity analizó
+            // Esto evita inconsistencias entre el texto del análisis y la tabla de comparables
 
-                    const priceMatch = precioBaseExisting > 0
-                        ? Math.abs(precioBaseExisting - precioBaseComp) / precioBaseExisting < 0.01
-                        : false;
-                    const areaMatch = areaBaseExisting > 0
-                        ? Math.abs(areaBaseExisting - areaBaseComp) / areaBaseExisting < 0.01
-                        : false;
-                    const titleSim = getSimilarity(existing.titulo, comp.titulo);
+            // Usar TODOS los comparables procesados (sin filtros adicionales de deduplicación o área)
+            // Esto asegura que la tabla muestre exactamente lo que Perplexity analizó y mencionó en el texto
+            let comparablesParaTabla = comparables;
 
-                    return priceMatch && areaMatch && titleSim >= 0.7;
-                });
-                if (!isDuplicate) uniqueComparables.push(comp);
-            }
-
-            // Filtro Area
-            let comparablesFiltradosPorArea = uniqueComparables;
-            if (!esLote || area <= 1000) {
-                comparablesFiltradosPorArea = uniqueComparables.filter(c => {
-                    const a = c.area_m2 || 0;
-                    return a >= area * 0.5 && a <= area * 1.5;
-                });
-            }
-
-            // Filtro Lote Grande (Estricto con Fallback)
-            let comparablesParaTabla = comparablesFiltradosPorArea;
+            // FILTRO DE ÁREA ELIMINADO
+            // NOTA: Se eliminó el filtro de área para lotes grandes
+            // Ahora se muestran TODOS los comparables que Perplexity analizó
+            /*
             if (esLote && area > 1000) {
-                // Filtro primario: ±50% (estándar de la industria para lotes)
                 const filtradosEstrictos = uniqueComparables.filter(c => {
                     const a = c.area_m2 || 0;
                     return a >= area * 0.5 && a <= area * 1.5;
                 });
 
-                // Si hay suficientes comparables (≥5), usar filtro estricto
                 if (filtradosEstrictos.length >= 5) {
                     comparablesParaTabla = filtradosEstrictos;
                 } else {
-                    // Fallback: ±70% para mercados con poca oferta
                     const filtradosRelajados = uniqueComparables.filter(c => {
                         const a = c.area_m2 || 0;
                         return a >= area * 0.3 && a <= area * 1.7;
                     });
-                    comparablesParaTabla = filtradosRelajados.length >= 3
-                        ? filtradosRelajados
-                        : uniqueComparables; // Último recurso: usar todos y dejar que IQR filtre
+                    comparablesParaTabla = filtradosRelajados.length >= 3 ? filtradosRelajados : uniqueComparables;
                 }
             }
+            */
 
-            // D) FILTRO IQR (New V10 Logic)
+            // FILTRO IQR ELIMINADO
+            // NOTA: Se eliminó el filtro IQR (outliers) para mostrar TODOS los comparables
+            // Perplexity ya hace su propia selección y filtrado de comparables
+            /*
             if (comparablesParaTabla.length >= 5) {
                 const preciosM2 = comparablesParaTabla.map(c => c.precio_m2).filter(p => p > 0).sort((a, b) => a - b);
                 if (preciosM2.length >= 4) {
@@ -953,9 +1240,7 @@ Devuelve SOLO JSON válido.
                     const minThreshold = q1 - iqr * 1.5;
                     const maxThreshold = q3 + iqr * 1.5;
 
-                    const filtradosIQR = comparablesParaTabla.filter(c =>
-                        c.precio_m2 >= minThreshold && c.precio_m2 <= maxThreshold
-                    );
+                    const filtradosIQR = comparablesParaTabla.filter(c => c.precio_m2 >= minThreshold && c.precio_m2 <= maxThreshold);
 
                     if (filtradosIQR.length >= 5) {
                         console.log(`Filtro IQR aplicado.`);
@@ -963,6 +1248,7 @@ Devuelve SOLO JSON válido.
                     }
                 }
             }
+            */
 
             // Normalización Nombres
             comparablesParaTabla = comparablesParaTabla.map(c => {
@@ -976,25 +1262,19 @@ Devuelve SOLO JSON válido.
                 return { ...c, fuente };
             });
 
-            // Sincronización de Conteos
             const totalReal = comparablesParaTabla.length;
             const totalVenta = comparablesParaTabla.filter(c => c.tipo_origen === 'venta').length;
             const totalArriendo = comparablesParaTabla.filter(c => c.tipo_origen === 'arriendo').length;
 
             let finalPerplexityText = perplexityContent || '';
-            // Reemplazar frases naturales
             finalPerplexityText = finalPerplexityText.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
-            // Eliminar literal "total_comparables: X" (no debe ser visible)
             finalPerplexityText = finalPerplexityText.replace(/total_comparables:\s*\d+/gi, '');
-
-            // Clean LaTeX commands again (extra safety for any that might have been added during processing)
             finalPerplexityText = cleanLatexCommands(finalPerplexityText);
 
             let resumenFinal = extractedData.resumen_mercado || 'Análisis de mercado realizado.';
             resumenFinal = resumenFinal.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
 
-            // --- CÁLCULO AUTOMÁTICO DEL NIVEL DE CONFIANZA ---
-            // Protección: Si no hay comparables, nivel = Bajo
+            // Protección: Si no hay comparables
             if (!comparablesParaTabla || comparablesParaTabla.length === 0) {
                 const nivelConfianzaDetalle = {
                     fuente: 'calculado',
@@ -1013,11 +1293,11 @@ Devuelve SOLO JSON válido.
                     rango_valor_min: rangoMin,
                     rango_valor_max: rangoMax,
                     rango_fuente: rangoFuente,
-                    valor_estimado_venta_directa: valorVentaDirecta,
+                    //valor_estimado_venta_directa: valorVentaDirecta,
                     valor_estimado_rentabilidad: valorRentabilidad,
-                    precio_m2_final: precioM2Usado,
+                    precio_m2_implicito: precioM2Implicito,
                     metodo_mercado_label: 'Enfoque de Mercado (promedio real)',
-                    metodo_ajuste_label: valorRecomendado ? 'Ajuste de Perplexity (criterio técnico)' : 'Promedio de Mercado',
+                    metodo_ajuste_label: 'Promedio de Mercado',
                     comparables: [],
                     total_comparables: 0,
                     total_comparables_venta: 0,
@@ -1025,12 +1305,14 @@ Devuelve SOLO JSON válido.
                     nivel_confianza: 'Bajo',
                     nivel_confianza_detalle: nivelConfianzaDetalle,
                     estadisticas_fuentes: {
-                        total_portal_verificado: 0,
-                        total_estimacion_zona: 0,
+                        total_coincidencia: 0,
+                        total_verificado: 0,
                         total_zona_similar: 0,
-                        total_promedio_municipal: 0,
+                        total_zona_extendida: 0,
                     },
-                    ficha_tecnica_defaults: {
+                    ficha_tecnica_defaults: esLote ? {
+                        uso_lote: 'No especificado'
+                    } : {
                         habitaciones: 'No especificado',
                         banos: 'No especificado',
                         garajes: 'No especificado',
@@ -1047,114 +1329,87 @@ Devuelve SOLO JSON válido.
                 });
             }
 
-            // ========================================
             // CÁLCULO DE NIVEL DE CONFIANZA V2
-            // Sistema de puntos ponderados + casos especiales
-            // ========================================
-
-            // Verificar que esLote está definido
             console.assert(typeof esLote === 'boolean', 'esLote debe estar definido');
 
             const total = comparablesParaTabla.length;
 
-            // --- PASO 1: CLASIFICAR COMPARABLES POR CALIDAD ---
-            const totalVerificados = comparablesParaTabla.filter(
-                c => c.fuente_validacion === 'portal_verificado'
-            ).length;
+            // Adaptar a arrays de badges
+            const totalVerificados = comparablesParaTabla.filter(c => {
+                const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                return badges.includes('coincidencia');
+            }).length;
 
-            const totalZonasSimilares = comparablesParaTabla.filter(
-                c => c.fuente_validacion === 'zona_similar'
-            ).length;
+            const totalZonasSimilares = comparablesParaTabla.filter(c => {
+                const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                return badges.includes('zona_similar');
+            }).length;
 
-            const totalEstimacionZona = comparablesParaTabla.filter(
-                c => c.fuente_validacion === 'estimacion_zona'
-            ).length;
+            const totalEstimaciones = comparablesParaTabla.filter(c => {
+                const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                return badges.includes('zona_extendida');
+            }).length;
+            // totalPromedioMunicipal deprecated
 
-            const totalPromedioMunicipal = comparablesParaTabla.filter(
-                c => c.fuente_validacion === 'promedio_municipal'
-            ).length;
-
-            // Suma total de estimaciones (para lógica de penalización)
-            const totalEstimaciones = totalEstimacionZona + totalPromedioMunicipal;
-
-            // Compatibilidad con frontend (alias)
-            const totalZonasAlternas = totalZonasSimilares + totalPromedioMunicipal;
+            const totalZonasAlternas = totalZonasSimilares; // Simplificado
 
             console.log(`Clasificación: ${totalVerificados} verificados, ${totalZonasSimilares} zonas similares, ${totalEstimaciones} estimaciones`);
 
-            // --- PASO 2: SISTEMA DE PUNTOS PONDERADOS ---
-            // Cada tipo de fuente tiene un "peso" de calidad
+            // Sistema de puntos ponderados
             let puntosConfianza = 0;
+            puntosConfianza += totalVerificados * 3; // coincidencia
+            puntosConfianza += totalZonasSimilares * 2; // zona_similar + verificado
+            puntosConfianza += totalEstimaciones * 1; // zona_extendida
 
-            puntosConfianza += totalVerificados * 3;      // Datos reales valen más
-            puntosConfianza += totalZonasSimilares * 2;   // Zonas similares son buenas (especialmente lotes)
-            puntosConfianza += totalEstimaciones * 1;     // Estimaciones cuentan menos
-
-            // Normalizar: promedio de calidad por comparable
             const promedioCalidad = total > 0 ? puntosConfianza / total : 0;
             console.log(`Promedio calidad: ${promedioCalidad.toFixed(2)} (max: 3.0)`);
 
-            // --- PASO 3: PENALIZACIÓN POR DISPERSIÓN (CV 80%) ---
+            // Penalización por dispersión
             let dispersionAlta = false;
             let cvDispersion = 0;
-            const preciosM2Validos = comparablesParaTabla
-                .map(c => c.precio_m2)
-                .filter(v => typeof v === 'number' && v > 0);
+            const preciosM2Validos = comparablesParaTabla.map(c => c.precio_m2).filter(v => typeof v === 'number' && v > 0);
 
             if (preciosM2Validos.length >= 2) {
                 const max = Math.max(...preciosM2Validos);
                 const min = Math.min(...preciosM2Validos);
-                cvDispersion = (max - min) / ((max + min) / 2); // Coeficiente de variación simplificado
-                dispersionAlta = cvDispersion > 0.8; // 80% de variación
+                cvDispersion = (max - min) / ((max + min) / 2);
+                dispersionAlta = cvDispersion > 0.8;
                 console.log(`Dispersión CV: ${(cvDispersion * 100).toFixed(1)}% ${dispersionAlta ? '(ALTA)' : '(normal)'}`);
             }
 
-            const factorDispersion = dispersionAlta ? 0.7 : 1.0; // Penalización 30% si hay alta dispersión
-
-            // --- PASO 4: PUNTUACIÓN FINAL ---
+            const factorDispersion = dispersionAlta ? 0.7 : 1.0;
             const puntuacionFinal = promedioCalidad * factorDispersion;
             console.log(`Puntuación final: ${puntuacionFinal.toFixed(2)}`);
 
-            // --- PASO 5: CRITERIOS DE NIVEL ---
+            // Criterios de nivel
             let nivelConfianzaCalc = 'Bajo';
 
             if (puntuacionFinal >= 2.2 && total >= 8 && !dispersionAlta) {
-                // Alto: Datos mayormente verificados, muestra suficiente, baja dispersión
                 nivelConfianzaCalc = 'Alto';
             } else if (puntuacionFinal >= 1.8 && total >= 6) {
-                // Medio: Mix de verificados y zonas similares, muestra aceptable
                 nivelConfianzaCalc = 'Medio';
             } else if (puntuacionFinal >= 1.3 && total >= 5) {
-                // Medio-Bajo: Pocas fuentes verificadas pero suficientes para referencia
                 nivelConfianzaCalc = 'Medio';
             } else {
-                // Bajo: Muy pocos datos o demasiadas estimaciones
                 nivelConfianzaCalc = 'Bajo';
             }
 
-            // --- PASO 6: CASOS ESPECIALES ---
-
-            // CASO A: Lotes con buena cobertura regional
+            // Casos especiales
             if (esLote && totalZonasSimilares >= 4 && totalVerificados >= 2 && total >= 7) {
-                // Para lotes, las zonas similares son VALIOSAS (mercado más homogéneo regionalmente)
                 if (nivelConfianzaCalc === 'Bajo') {
                     nivelConfianzaCalc = 'Medio';
                     console.log('↑ Ajuste lotes: Bajo → Medio (buena cobertura regional)');
                 }
             }
 
-            // CASO B: Propiedades con zona muy específica (hiperlocales)
             if (!esLote && totalVerificados >= 5 && totalZonasSimilares === 0 && total >= 6) {
-                // Apartamentos/casas con datos solo del barrio objetivo (muy confiable)
                 if (nivelConfianzaCalc === 'Medio' && !dispersionAlta) {
                     nivelConfianzaCalc = 'Alto';
                     console.log('↑ Ajuste propiedades: Medio → Alto (datos hiperlocales)');
                 }
             }
 
-            // CASO C: Penalización por exceso de estimaciones
             if (totalEstimaciones > total * 0.5) {
-                // Más del 50% son estimaciones → Bajar nivel
                 if (nivelConfianzaCalc === 'Alto') {
                     nivelConfianzaCalc = 'Medio';
                     console.log('↓ Penalización: Alto → Medio (muchas estimaciones)');
@@ -1166,34 +1421,28 @@ Devuelve SOLO JSON válido.
 
             console.log(`✓ Nivel de confianza final: ${nivelConfianzaCalc}`);
 
-            // --- PASO 7: METADATA DETALLADA ---
             const nivelConfianzaLLM = extractedData.nivel_confianza || null;
-            const ratioReal = total > 0 ? totalVerificados / total : 0;
 
             const nivelConfianzaDetalle = {
-                fuente: 'calculado_v2', // Versión del algoritmo
-                nivel_llm: nivelConfianzaLLM, // Guardamos lo que dijo Perplexity (informativo)
-
-                // Métricas principales
+                fuente: 'calculado_v2',
+                nivel_llm: nivelConfianzaLLM,
                 total_comparables: total,
                 porcentaje_reales: total > 0 ? Math.round((totalVerificados / total) * 100) : 0,
-
-                // Desglose de fuentes (separado para claridad)
-                total_portal_verificado: totalVerificados,
-                total_zona_similar: totalZonasSimilares,
-                total_estimacion_zona: totalEstimacionZona,
-                total_promedio_municipal: totalPromedioMunicipal,
-
-                // Compatibilidad con frontend actual
+                total_coincidencia: totalVerificados,
+                total_verificado: comparablesParaTabla.filter(c => {
+                    const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                    return badges.includes('verificado');
+                }).length,
+                total_zona_similar: comparablesParaTabla.filter(c => {
+                    const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                    return badges.includes('zona_similar');
+                }).length,
+                total_zona_extendida: totalEstimaciones,
                 total_zonas_alternativas: totalZonasAlternas,
-
-                // Indicadores de calidad (NUEVOS)
                 puntuacion_calidad: parseFloat(promedioCalidad.toFixed(2)),
                 puntuacion_final: parseFloat(puntuacionFinal.toFixed(2)),
                 dispersion_alta: dispersionAlta,
                 cv_dispersion: parseFloat(cvDispersion.toFixed(3)),
-
-                // Contexto
                 es_lote: esLote,
                 zonas_alternativas_positivas: totalZonasSimilares > 0
             };
@@ -1206,37 +1455,41 @@ Devuelve SOLO JSON válido.
                 rango_valor_min: rangoMin,
                 rango_valor_max: rangoMax,
                 rango_fuente: rangoFuente,
-
                 valor_estimado_venta_directa: valorVentaDirecta,
                 valor_estimado_rentabilidad: valorRentabilidad,
-
-                // ═══ CAMPOS NUEVOS (V13) ═══
-                valor_mercado: valorVentaDirecta,
+                //valor_mercado: valorVentaDirecta,
+                precio_m2_ref: precioM2Implicito,  // Para que el frontend lo muestre
+                precio_m2_implicito: precioM2Implicito, // Ponderado / Area
+                precio_m2_mercado: precioM2MercadoSeguro,
                 valor_mercado_fuente: valorMercadoFuente,
                 factor_ajuste_total: factorAjusteTotal,
                 ajustes_detallados: ajustesDetallados,
-
-                precio_m2_final: precioM2Usado,
-
                 metodo_mercado_label: 'Enfoque de Mercado (promedio real)',
                 metodo_ajuste_label: valorMercadoFuente === 'perplexity' ? 'Ajuste de Perplexity (criterio técnico)' : 'Promedio de Mercado',
-
                 comparables: comparablesParaTabla,
                 total_comparables: comparablesParaTabla.length,
                 total_comparables_venta: totalVenta,
                 total_comparables_arriendo: totalArriendo,
-
-                // Nivel de confianza y estadísticas de fuentes (V11 - Calculado)
                 nivel_confianza: nivelConfianzaCalc,
                 nivel_confianza_detalle: nivelConfianzaDetalle,
                 estadisticas_fuentes: {
-                    total_portal_verificado: comparablesParaTabla.filter(c => c.fuente_validacion === 'portal_verificado').length,
-                    total_estimacion_zona: comparablesParaTabla.filter(c => c.fuente_validacion === 'estimacion_zona').length,
-                    total_zona_similar: comparablesParaTabla.filter(c => c.fuente_validacion === 'zona_similar').length,
-                    total_promedio_municipal: comparablesParaTabla.filter(c => c.fuente_validacion === 'promedio_municipal').length,
+                    total_coincidencia: comparablesParaTabla.filter(c => {
+                        const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                        return badges.includes('coincidencia');
+                    }).length,
+                    total_verificado: comparablesParaTabla.filter(c => {
+                        const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                        return badges.includes('verificado');
+                    }).length,
+                    total_zona_similar: comparablesParaTabla.filter(c => {
+                        const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                        return badges.includes('zona_similar');
+                    }).length,
+                    total_zona_extendida: comparablesParaTabla.filter(c => {
+                        const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
+                        return badges.includes('zona_extendida');
+                    }).length,
                 },
-
-                // Defaults condicionales según tipo de inmueble
                 ficha_tecnica_defaults: esLote ? {
                     uso_lote: 'No especificado'
                 } : {
@@ -1246,19 +1499,34 @@ Devuelve SOLO JSON válido.
                     estrato: 'No especificado',
                     antiguedad: 'No especificado'
                 },
-
                 yield_mensual_mercado: esLote ? null : yieldFinal,
+                yield_fuente: esLote ? null : yieldFuente,
+                canon_estimado: esLote ? null : canonPromedio,
                 area_construida: area,
                 uso_lote: usoLote,
                 perplexity_full_text: finalPerplexityText
             };
+
+            t6 = Date.now();
+            const perfEnd = Date.now();
+            const perfTotal = ((perfEnd - perfStart) / 1000).toFixed(2);
+            const perfPerplexity = ((t2 - t1) / 1000).toFixed(1);
+            const perfDeepSeek = ((t4 - t3) / 1000).toFixed(1);
+            const perfProcessing = ((t6 - t5) / 1000).toFixed(1);
+
+            console.log(`⏱️ [PERF] ============================================`);
+            console.log(`⏱️ [PERF] TOTAL: ${perfTotal}s`);
+            console.log(`⏱️ [PERF] Desglose:`);
+            console.log(`⏱️ [PERF]   - Perplexity: ${perfPerplexity}s`);
+            console.log(`⏱️ [PERF]   - DeepSeek: ${perfDeepSeek}s`);
+            console.log(`⏱️ [PERF]   - Processing: ${perfProcessing}s`);
+            console.log(`⏱️ [PERF] ============================================`);
 
             return new Response(JSON.stringify(resultado), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
 
         } catch (processingError) {
-            // GLOBAL CATCH: Captura CUALQUIER error no manejado en el procesamiento
             console.error('Error crítico en procesamiento:', processingError);
             return new Response(
                 JSON.stringify({

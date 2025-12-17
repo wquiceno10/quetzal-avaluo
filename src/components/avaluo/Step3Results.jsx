@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { generateAvaluoEmailHtml } from '@/lib/emailGenerator';
+import { mapearEstadoSinPrecio } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -24,12 +25,27 @@ import {
     X,
     Loader2,
     Mail,
-    Send
+    Send,
+    CheckCircle2,
+    XCircle,
+    RefreshCw
 } from 'lucide-react';
 import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
+import { MarkdownTable } from './MarkdownTable';
 import { construirTextoConfianza } from '@/lib/confidenceHelper';
+import { NOTA_DISCLAIMER } from '@/lib/constants';
 import { isDevelopmentMode, getDevUser } from '@/utils/devAuth';
+
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Helper: Convertir texto a Title Case (Primera Letra Mayúscula)
 const toTitleCase = (str) => {
@@ -47,43 +63,43 @@ const toTitleCase = (str) => {
         .join(' ');
 };
 
+const validarNumero = (val) => {
+    if (val === null || val === undefined || val === '') return null;
+    const num = parseFloat(val);
+    return isNaN(num) ? null : num;
+};
+
 // --- COMPONENTE DE FORMATO DE TEXTO ---
-// Force rebuild 2025-12-09 - Ensure 2 columns
 const AnalisisAI = ({ text }) => {
-    console.log('📝 RAW ANALISIS TEXT (Frontend):', text);
     if (!text) return null;
 
-    // 1. Limpieza de LaTeX básico (Igual que en BotonPDF)
-    // 1. Limpieza de LaTeX básico (Mejorada para soportar fórmulas matemáticas complejas)
     let cleanText = text
         .replace(/^-{3,}\s*$/gm, '')
         // INJECT DEFAULT NOTES IF MISSING (Fallback)
-        // Detecta si falta nota (considerando variantes como *Nota:, Nota:, **NOTA:**, *TextoItalico*)
-        // CRÍTICO: Soporta CRLF (Windows) y LF (Unix) line endings
-        .replace(/(fuente_validacion:\s*(?:estimacion_zona|promedio_municipal|portal_verificado|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
+        // INJECT DEFAULT NOTES IF MISSING (Fallback)
+        .replace(/(fuente_validacion:\s*(?:coincidencia|zona_extendida|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
             let note = "";
             let p = prefix.toLowerCase();
-            if (p.includes("estimacion_zona")) note = "Basado en datos de propiedades similares en la zona.";
-            else if (p.includes("promedio_municipal")) note = "Basado en datos de propiedades similares en ciudad/municipio.";
-            else if (p.includes("portal_verificado")) note = "Anuncio de listado en la misma zona.";
-            else if (p.includes("zona_similar")) note = "Propiedad en zona con características similares.";
+            if (p.includes("zona_extendida")) note = "Similitud socioeconómica en otra zona.";
+            else if (p.includes("coincidencia")) note = "Anuncio de listado en la misma zona.";
+            else if (p.includes("zona_similar")) note = "Ubicación cercana con mercado comparable.";
+
             return `${prefix}\n**NOTA:** ${note}`;
         })
-        // LaTeX spacing commands (NEW)
-        .replace(/\\quad/g, '<br>')        // \quad → line break
-        .replace(/\\qquad/g, '<br>')       // \qquad → line break
-        .replace(/\\,/g, ' ')              // thin space
-        .replace(/\\:/g, ' ')              // medium space
-        .replace(/\\;/g, ' ')              // thick space
-        .replace(/\\!/g, '')               // negative thin space
+        // LaTeX spacing commands
+        .replace(/\\quad/g, '<br>')
+        .replace(/\\qquad/g, '<br>')
+        .replace(/\\,/g, ' ')
+        .replace(/\\:/g, ' ')
+        .replace(/\\;/g, ' ')
+        .replace(/\\!/g, '')
         .replace(/\\enspace/g, ' ')
         .replace(/\\hspace\{[^}]*\}/g, ' ')
-        // End LaTeX spacing commands
         .replace(/\\\(/g, '')
         .replace(/\\\)/g, '')
         .replace(/\\\[/g, '')
         .replace(/\\\]/g, '')
-        .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '($1 / $2)') // (Num / Den)
+        .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '($1 / $2)')
         .replace(/\\times/g, ' × ')
         .replace(/\\text\{([^}]+)\}/g, '$1')
         .replace(/\\sum/g, '∑')
@@ -91,15 +107,19 @@ const AnalisisAI = ({ text }) => {
         .replace(/\\cdot/g, '•')
         .replace(/\\{/g, '')
         .replace(/\\}/g, '')
-        .replace(/\^2/g, '²') // m^2 -> m²
+        .replace(/\^2/g, '²')
         .replace(/\s+COP\/m²/g, ' COP/m²')
         .replace(/Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi, 'Promedio precio por m² ≈ $1 COP/m²')
-        // Convertir markdown bold a HTML (IGUAL QUE PDF - PASO 1)
+        // 1. URLs Markdown: **[Portal](URL)** o [Portal](URL) -> <a href...>
+        .replace(/(?:\*\*)?\[([^\]]+)\]\(([^)]+)\)(?:\*\*)?/g, (match, text, url) => {
+            return `<strong><a href="${url}" target="_blank" rel="noopener noreferrer" class="text-[#2C3D37] hover:text-[#C9C19D] hover:underline font-bold" style="color: #2C3D37;">${text}</a></strong>`;
+        })
+        // Limpiar símbolos extraños y SEPARADORES antes de etiquetas (═══, --)
+        .replace(/[═]+/g, '')
+        .replace(/\s+--\s+/g, ' ')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        // Eliminar citaciones numéricas [1][2][3]...
         .replace(/\[\d+\]/g, '');
 
-    // Desescapear HTML entities que Perplexity pueda enviar escapadas
     cleanText = cleanText
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
@@ -107,14 +127,6 @@ const AnalisisAI = ({ text }) => {
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'");
 
-    // 4. Limpieza final de tags sobrantes si quedaron
-    // cleanText = cleanText.replace(/<\/?strong>/g, ''); // ELIMINADO: Queremos mantener strong para el parser HTML
-
-    console.log('🔍 DESPUÉS DE HTML entities cleanup:', cleanText.substring(0, 500));
-    console.log('🔍 ¿Contiene <strong>?', cleanText.includes('<strong>'));
-    console.log('🔍 ¿Contiene **?', cleanText.includes('**'));
-
-    // Limpiar notación científica: 3.18 × 10^6 → 3.180.000
     cleanText = cleanText.replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
         const num = parseFloat(coefficient.replace(',', '.'));
         const power = parseInt(exponent);
@@ -122,45 +134,41 @@ const AnalisisAI = ({ text }) => {
         return Math.round(result).toLocaleString('es-CO');
     });
 
-    // Helper para convertir validación a HTML badge (como en PDF)
-    const getBadgeHtml = (validation) => {
+    const getBadgeHtml = (validation, includeNote = false) => {
         const val = validation.trim().toLowerCase();
         let badgeClass = '';
         let badgeText = validation.trim();
+        let note = '';
 
-        if (val === 'portal_verificado') {
+        if (val === 'coincidencia') {
             badgeClass = 'bg-green-100 text-green-700 border-green-300';
             badgeText = '✓ Coincidencia';
-        } else if (val === 'estimacion_zona') {
-            badgeClass = 'bg-orange-100 text-orange-700 border-orange-300';
-            badgeText = '≈ Estimación';
+            if (includeNote) note = '<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px;">Ubicación exacta validada.</span>';
+        } else if (val === 'verificado') {
+            badgeClass = 'bg-emerald-100 text-emerald-700 border-emerald-300';
+            badgeText = '✓ Verificado'; // Keep legacy variable, update badge text
+            if (includeNote) note = '<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px;">Enlace verificado y activo.</span>';
         } else if (val === 'zona_similar') {
             badgeClass = 'bg-blue-100 text-blue-700 border-blue-300';
             badgeText = '→ Zona Similar';
-        } else if (val === 'promedio_municipal') {
-            badgeClass = 'bg-purple-100 text-purple-700 border-purple-300';
-            badgeText = '≈ Estimación';
+        } else if (val === 'zona_extendida') {
+            badgeClass = 'bg-orange-100 text-orange-700 border-orange-300';
+            badgeText = '≈ Zona Extendida';
         } else {
             badgeClass = 'bg-gray-100 text-gray-600 border-gray-300';
         }
 
-        return `<span class="inline-block px-2 py-1 rounded text-xs font-medium border ${badgeClass}">${badgeText}</span>`;
+        const badge = `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium border ${badgeClass} align-middle ml-1">${badgeText}</span>`;
+        return note ? `${badge}${note}` : badge;
     };
 
-    // PROCESAR PATRONES INLINE (como en PDF) - convertir a HTML directamente
-    // Limpiar HTML entities escapados (IGUAL QUE PDF - antes del procesamiento)
     cleanText = cleanText
         .replace(/&lt;strong&gt;/g, '<strong>')
         .replace(/&lt;\/strong&gt;/g, '</strong>');
 
-    // Detectar patrón: <strong>Portal</strong> (con posible salto de línea) fuente_validacion: xxx
-    // REFUERZO: Reemplazar ** que puedan haber quedado (IGUAL QUE PDF - PASO 2)
     cleanText = cleanText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-    // --- POST-PROCESAMIENTO: DESTACAR PALABRAS CLAVE ---
-    // Detectar y destacar automáticamente frases clave comunes para mejor legibilidad
     const keyPhrasePatterns = [
-        // Análisis de métodos
         /\b(Promedio de precios de venta de \d+ comparables):/gi,
         /\b(Precio por m² promedio):/gi,
         /\b(Precio\/m² ajustado):/gi,
@@ -169,19 +177,13 @@ const AnalisisAI = ({ text }) => {
         /\b(Valor total):/gi,
         /\b(Valor estimado):/gi,
         /\b(Factor total):/gi,
-
-        // Ajustes
         /^(Justificación):/gim,
         /^(Porcentaje aplicado):/gim,
         /\b(Ajuste por antigüedad):/gi,
         /\b(Ajuste por estado):/gi,
         /\b(Ajuste por ubicación):/gi,
         /\b(Ajuste por reformas):/gi,
-
-        // Pasos metodológicos
         /\b(PASO \d+):/gi,
-
-        // Resultados
         /\b(Valor Recomendado de Venta):/gi,
         /\b(Rango sugerido):/gi,
         /\b(Precio m² final):/gi,
@@ -189,111 +191,96 @@ const AnalisisAI = ({ text }) => {
 
     keyPhrasePatterns.forEach(pattern => {
         cleanText = cleanText.replace(pattern, (match, group1) => {
-            // Si ya está en <strong>, no duplicar
             if (cleanText.includes(`<strong>${group1}</strong>`)) return match;
             return `<strong>${group1}</strong>:`;
         });
     });
 
-    // Ahora procesar los badges
-    cleanText = cleanText.replace(/(<strong>[^<]+<\/strong>)[\s\r\n]*fuente_validacion:\s*([^\r\n]+)/gi, (match, portal, validation) => {
-        return `${portal} ${getBadgeHtml(validation.trim())}`;
+    // PROCESAR BADGES - MÚLTIPLES FORMATOS
+    // 1. Formato con fuente_validacion: prefijo
+    cleanText = cleanText.replace(/(<\/strong>|<\/a>)\s*fuente_validacion:\s*([^\r\n<]+)/gi, (match, tagEnd, validation) => {
+        return `${tagEnd} ${getBadgeHtml(validation.trim(), true)}`;
     });
 
-    // Si encuentra fuente_validacion sin portal antes (legacy), solo mostrar badge
-    cleanText = cleanText.replace(/^fuente_validacion:\s*(.+)$/gim, (match, validation) => {
-        return getBadgeHtml(validation.trim());
+    // 2. Formato legacy: fuente_validacion: al inicio de línea
+    cleanText = cleanText.replace(/^fuente_validacion:\s*([^\r\n<]+)/gim, (match, validation) => {
+        return getBadgeHtml(validation.trim(), true);
     });
 
-    // FORMATEAR NOTA en tamaño pequeño (8pt) debajo del badge (para zona_similar u otros)
-    // Mejorar el formato: "Centro está a 3 km..." → "A 3 km de distancia, tiene características..."
-    // Regex flexible para capturar: "**NOTA:**", "*Nota:", "Nota:", "NOTA:", etc.
+    // 3. CRÍTICO: Etiquetas sueltas (sin fuente_validacion:) 
+    // FIX: EVITAR DUPLICADOS SI ESTÁ ENTRE PARÉNTESIS (ej. "(zona_similar, ...)")
+    // Usamos una función de reemplazo que verifica el contexto
+    cleanText = cleanText.replace(/(\()?\b(coincidencia|verificado|zona_extendida|zona_similar)\b/gi, (match, parenthesis, tag) => {
+        // Si hay un paréntesis antes, NO convertir (retorna el match original)
+        if (parenthesis) return match;
+        return getBadgeHtml(tag.trim(), false);
+    });
+
+
+
     cleanText = cleanText.replace(/(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
-        // Extraer distancia y características del texto original
-        let formattedNote = noteText.trim()
-            // Limpiar asteriscos finales si quedaron (Markdown malformado)
-            .replace(/\*+$/, '');
-
-        // Patrón 1: "Ciudad está a X km de Objetivo, [con/condiciones] características..."
+        let formattedNote = noteText.trim().replace(/\*+$/, '');
         const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
         const match1 = formattedNote.match(pattern1);
 
         if (match1) {
             const distance = match1[2];
             let characteristics = match1[3];
-
-            // Normalizar: "con características" o "condiciones" → "tiene características"
             characteristics = characteristics
                 .replace(/^con\s+/i, 'tiene ')
                 .replace(/^condiciones\s+/i, 'tiene condiciones ');
-
             formattedNote = `A ${distance} km de distancia, ${characteristics}`;
         }
-
         return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
-    })
-        // Formatear notas "huerfanas" en itálicas (sin prefijo Nota:)
-        // Captura líneas enteras *Texto* que vengan después de un badge (o en contexto de validación)
-        .replace(/(?:^|\n)\s*\*([^*]{10,})\*\s*(?:\n|$)/g, (match, noteText) => {
-            let formattedNote = noteText.trim();
-            // Limpiar asteriscos si se capturaron
-            // El regex captura el grupo interno 1 sin asteriscos si hacemos *([^...])*, ajustemos:
-            // *([^*]{10,})* => captura lo de adentro.
+    }).replace(/(?:^|\n)\s*\*([^*]{10,})\*\s*(?:\n|$)/g, (match, noteText) => {
+        let formattedNote = noteText.trim();
+        const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
+        const match1 = formattedNote.match(pattern1);
+        if (match1) {
+            const distance = match1[2];
+            let characteristics = match1[3];
+            characteristics = characteristics.replace(/^con\s+/i, 'tiene ').replace(/^condiciones\s+/i, 'tiene condiciones ');
+            formattedNote = `A ${distance} km de distancia, ${characteristics}`;
+        }
+        return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
+    });
 
-            // Misma lógica de limpieza de distancia
-            const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
-            const match1 = formattedNote.match(pattern1);
-            if (match1) {
-                const distance = match1[2];
-                let characteristics = match1[3];
-                characteristics = characteristics.replace(/^con\s+/i, 'tiene ').replace(/^condiciones\s+/i, 'tiene condiciones ');
-                formattedNote = `A ${distance} km de distancia, ${characteristics}`;
-            }
-
-            return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
-        });
-
-    // --- SMART FORMATTER: Rehidratar estructura ---
-    // 1. Reemplazar separadores "---" o líneas horizontales por saltos dobles
     cleanText = cleanText.replace(/\s*-{3,}\s*/g, '\n\n');
-
-    // 2. Convertir títulos numerados ("1. TÍTULO") en Headers Markdown ("# 1. TÍTULO")
-    // Busca patrones como: "1. TÍTULO", "**1. TÍTULO**" (solo en la misma línea)
-    // Usamos [ \t] en vez de \s para NO capturar saltos de línea accidentalmente
-    cleanText = cleanText.replace(/(?:^|\n|\.)[ \t]*\**(\d+\.\s+[A-ZÁÉÍÓÚÑ ]{3,100}[:]??)\**/g, '\n\n# $1\n');
-
-    // 3. Separar fórmulas de bloque LaTeX (\[ ... \])
+    // Solo convertir en título si hay texto después del número (ej: "3. Título" o "3.3. Título")
+    // NO convertir números sueltos sin texto descriptivo
+    cleanText = cleanText.replace(/(?:^|\n)[ \t]*\**(\d+(?:\.\d+)?\.?\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Za-z ]{5,100}[:]??)\**/g, '\n\n# $1\n');
     cleanText = cleanText.replace(/\\\[/g, '\n\n').replace(/\\\]/g, '\n\n');
-
-    // 4. Asegurar que las tablas tengan espacio antes (si una línea empieza con | y la anterior no es vacía)
     cleanText = cleanText.replace(/([^\n])\n(\|)/g, '$1\n\n$2');
 
-    // 5. LISTAS DE COMPARABLES: Convertir bloques pegados ("**Casa...") en listas ("- **Casa...")
-    // Detecta inicio de comparable en medio de línea y fuerza nueva línea + viñeta
-    const comparableRegex = /([^\n])\s+(\*\*(?:Casa|Apartamento|Lote|Fincaraíz|Ciencuadras|Metrocudrado|Inmueble|Propiedad)\b)/g;
-    cleanText = cleanText.replace(comparableRegex, '$1\n\n- $2');
+    // GENÉRICO: Detectar títulos en negrita que no estén en su propia línea y forzar salto
+    // Busca: Texto previo + espacio + **Texto en Mayúscula...**
+    const titleRegex = /([^\n])\s+(\*\*[A-ZÁÉÍÓÚÑ].+?\*\*)/g;
+    cleanText = cleanText.replace(titleRegex, '$1\n\n- $2');
 
-    // También si ya está al inicio de línea pero sin viñeta
-    cleanText = cleanText.replace(/\n(\*\*(?:Casa|Apartamento|Lote)\b)/g, '\n- $1');
+    // Asegurar que si ya está en nueva línea, tenga guión (si parece un título de comparable)
+    cleanText = cleanText.replace(/\n(\*\*[A-ZÁÉÍÓÚÑ].+?\*\*)/g, '\n- $1');
 
-    // Primero dividir en bloques por doble salto de línea
-    // CORRECCIÓN: NO reemplazar \n por <br> aquí, hacerlo solo al renderizar párrafos
+    // CRÍTICO: Unificar tablas rotas.
+    // Iteramos para asegurar que se unan todas las filas consecutivas separadas por saltos de línea excesivos.
+    // Patrón: Una línea que empieza con | (ignorando whitespace), salto(s) de línea, otra línea que empieza con |
+    let previousText = cleanText;
+    do {
+        previousText = cleanText;
+        cleanText = cleanText.replace(/(^\s*\|[^\n]*)\n{2,}(\s*\|)/gm, '$1\n$2');
+    } while (cleanText !== previousText);
+
     const blocks = cleanText.split('\n\n');
 
     return (
-        <div className="text-[#4F5B55] font-raleway columns-2 gap-10 space-y-4">
+        <div className="text-[#4F5B55] font-raleway md:columns-2 gap-10 space-y-4">
             {blocks.map((block, index) => {
                 const trimmed = block.trim();
                 if (!trimmed) return null;
 
-                // HEADERS
                 if (trimmed.startsWith('#')) {
-                    // CRÍTICO: Solo tomar la PRIMERA LÍNEA como header
-                    // Si hay texto después del salto de línea, procesarlo como bloque separado
                     const lines = trimmed.split('\n');
                     const headerLine = lines[0];
                     const remainingText = lines.slice(1).join('\n').trim();
-
                     const title = toTitleCase(headerLine.replace(/^#+\s*/, ''));
 
                     return (
@@ -308,64 +295,20 @@ const AnalisisAI = ({ text }) => {
                     );
                 }
 
-                // TABLAS MARKDOWN
                 if (trimmed.startsWith('|')) {
-                    const rows = trimmed.split('\n').filter(r => r.trim());
-                    return (
-                        <div key={index} className="overflow-x-auto mb-4 break-inside-avoid shadow-sm rounded-lg border border-[#E0E5E2] bg-white">
-                            <table className="w-full text-xs border-collapse">
-                                <tbody>
-                                    {rows.map((row, rIdx) => {
-                                        if (row.includes('---')) return null; // Ignorar separadores
-                                        const cells = row.split('|').filter(c => c.trim() !== '');
-                                        if (cells.length === 0) return null;
-
-                                        const isHeader = rIdx === 0;
-                                        return (
-                                            <tr key={rIdx} className={isHeader ? "bg-[#F0ECD9] text-[#2C3D37] font-bold" : "border-t border-[#f0f0f0] text-[#4F5B55]"}>
-                                                {cells.map((cell, cIdx) => {
-                                                    // Alineación: Primera columna Izquierda, Última Derecha, Resto Centro
-                                                    // Vertical: Middle
-                                                    let alignClass = "text-center";
-                                                    if (cIdx === 0) alignClass = "text-left";
-                                                    if (cIdx === cells.length - 1) alignClass = "text-right";
-
-                                                    // Padding: Menos padding vertical en el header para quitar espacio blanco
-                                                    const paddingClass = isHeader ? "px-2 py-1" : "p-2";
-
-                                                    return (
-                                                        <td
-                                                            key={cIdx}
-                                                            className={`${paddingClass} border-r border-[#f0f0f0] last:border-r-0 ${alignClass} align-middle`}
-                                                            dangerouslySetInnerHTML={{ __html: cell.trim() }}
-                                                        />
-                                                    );
-                                                })}
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )
+                    return <MarkdownTable key={index} content={trimmed} />;
                 }
 
-                // LISTAS
-                // IMPORTANTE: NO capturar títulos con números (3.1., 3.2.) - solo listas reales
                 if (trimmed.match(/^[-*•]\s/) || (trimmed.match(/^\d+[\.\)]\s/) && !trimmed.match(/^\d+\.\d+/))) {
-                    // Dividir solo por líneas que EMPIEZAN con marcador de lista
                     const lines = trimmed.split('\n');
                     const items = [];
                     let currentItem = '';
 
                     for (const line of lines) {
-                        // Si la línea empieza con marcador de lista, es un nuevo item
-                        // PERO NO si es un título de sección (3.1., 3.2., etc.)
                         if ((line.match(/^[-*•]\s/) || line.match(/^\d+[\.\)]\s/)) && !line.match(/^\d+\.\d+/)) {
                             if (currentItem) items.push(currentItem);
                             currentItem = line.replace(/^(?:[-*•]|\d+[\.\)])\s*/, '');
                         } else if (line.trim()) {
-                            // Línea de continuación (cálculo, etc.) - agregar al item actual
                             currentItem += '\n' + line;
                         }
                     }
@@ -383,8 +326,6 @@ const AnalisisAI = ({ text }) => {
                     );
                 }
 
-                // PARRAGRAFOS (ahora incluyen badges inline)
-                // Convertir \n a <br> AQUÍ, solo para párrafos normales
                 const paragraphHtml = trimmed.replace(/\n/g, '<br>');
                 return (
                     <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: paragraphHtml }} />
@@ -394,24 +335,19 @@ const AnalisisAI = ({ text }) => {
     );
 };
 
-
-
-
-export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF }) {
+export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF, onEmailSent, actionButtonLabel = "Continuar / Guardar Avalúo", ActionButtonIcon = ArrowRight, actionButtonIconPosition = "right" }) {
     const [mostrarComparables, setMostrarComparables] = useState(false);
     const [hasAvaluos, setHasAvaluos] = useState(false);
+    const [feedbackModal, setFeedbackModal] = useState({ open: false, title: '', description: '', type: 'success' }); // Nuevo state para feedback
     const pdfButtonRef = useRef(null);
     const navigate = useNavigate();
 
-    // Verificar si el usuario tiene avalúos guardados
     useEffect(() => {
         const checkAvaluos = async () => {
             try {
-                // En modo desarrollo, usar usuario mock
                 if (isDevelopmentMode()) {
                     const devUser = getDevUser();
                     if (devUser) {
-                        console.log('🔧 Usuario de desarrollo:', devUser.email);
                         setHasAvaluos(true);
                     }
                     return;
@@ -437,10 +373,8 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
         checkAvaluos();
     }, []);
 
-    // Auto-download PDF cuando viene desde email
     useEffect(() => {
         if (autoDownloadPDF && pdfButtonRef.current) {
-            // Esperar un momento para que la página cargue completamente
             const timer = setTimeout(() => {
                 pdfButtonRef.current?.click();
             }, 1000);
@@ -453,7 +387,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
             const data = formData.comparables_data || formData;
             const codigoAvaluo = formData.codigo_avaluo || data.codigo_avaluo;
 
-            // Recalcular valores para el email (misma lógica que en render)
             const valorVentaDirecta = validarNumero(data.valor_estimado_venta_directa);
             const valorRentabilidad = validarNumero(data.valor_estimado_rentabilidad);
             const rangoMin = validarNumero(data.rango_valor_min);
@@ -471,7 +404,8 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 codigoAvaluo,
                 valorEstimadoFinal: valorPrincipal,
                 rangoMin,
-                rangoMax
+                rangoMax,
+                confianzaInfo: construirTextoConfianza(data, validarNumero(data.comparables_totales_encontrados), validarNumero(data.comparables_usados_en_calculo) || validarNumero(data.total_comparables))
             });
 
             const response = await fetch(`${import.meta.env.VITE_WORKER_EMAIL_URL}/send-email`, {
@@ -491,23 +425,48 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
             return true;
         },
         onSuccess: () => {
-            alert("¡Correo reenviado con éxito!");
+            // If callback provided (for historical views), call it instead of showing modal
+            if (onEmailSent) {
+                onEmailSent();
+            } else {
+                setFeedbackModal({
+                    open: true,
+                    title: '¡Correo enviado!',
+                    description: `El reporte del avalúo ha sido enviado exitosamente a ${formData.email || formData.contacto_email}.`,
+                    type: 'success'
+                });
+            }
         },
         onError: (error) => {
             console.error("Error reenviando correo:", error);
-            alert("Error al reenviar el correo. Por favor intenta de nuevo.");
+            // alert("Error al reenviar el correo. Por favor intenta de nuevo.");
+            setFeedbackModal({
+                open: true,
+                title: 'Error al enviar',
+                description: 'No pudimos enviar el correo en este momento. Por favor intenta de nuevo más tarde.',
+                type: 'error'
+            });
         }
     });
 
     const handleAction = () => {
-        // Si ya tiene ID y datos de contacto, reenviar directamente
         if (formData.id && (formData.email || formData.contacto_email)) {
             sendEmailMutation.mutate();
         } else {
-            // Si es nuevo o no tiene datos, ir al formulario
             onNext();
         }
     };
+
+    const renderErrorState = (message, action) => (
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-gray-50 rounded-xl border border-gray-200">
+            <AlertCircle className="w-12 h-12 text-[#FF9E9E] mb-4" />
+            <h3 className="text-xl font-semibold text-[#2C3D37] mb-2">No pudimos analizar esta propiedad</h3>
+            <p className="text-[#4F5B55] mb-6 max-w-md">{message}</p>
+            <Button onClick={action} className="bg-[#2C3D37] text-white">
+                <ArrowLeft className="w-4 h-4 mr-2" /> Volver al formulario
+            </Button>
+        </div>
+    );
 
     if (!formData) return renderErrorState('Datos del formulario no disponibles', onBack);
 
@@ -518,14 +477,14 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
         }
     }
 
-    // Priorizar nuevo campo valor_mercado, fallback a legacy
     const valorMercado = validarNumero(data.valor_mercado) || validarNumero(data.valor_estimado_venta_directa);
-    const valorVentaDirecta = valorMercado;  // Alias para compatibilidad
+    const valorVentaDirecta = valorMercado;
     const factorAjuste = validarNumero(data.factor_ajuste_total) || 1.0;
     const valorRentabilidad = validarNumero(data.valor_estimado_rentabilidad);
     const rangoMin = validarNumero(data.rango_valor_min);
     const rangoMax = validarNumero(data.rango_valor_max);
-    const precioM2Usado = validarNumero(data.precio_m2_final) || validarNumero(data.precio_m2_usado) || validarNumero(data.precio_m2_venta_directa);
+    const precioM2Usado = validarNumero(data.precio_m2_ref) || validarNumero(data.precio_m2_implicito) || validarNumero(data.precio_m2_final);
+
 
     let valorPrincipal = validarNumero(data.valor_final);
     if (!valorPrincipal) {
@@ -554,22 +513,21 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
     const tieneAnalisisCompleto = data.perplexity_full_text && data.perplexity_full_text.length > 50;
     const tieneResumen = data.resumen_busqueda && data.resumen_busqueda.length > 10;
 
-    // Corrección 3: Usar contadores consistentes del Worker
     const totalComparables = validarNumero(data.comparables_usados_en_calculo) || validarNumero(data.total_comparables);
     const totalEncontrados = validarNumero(data.comparables_totales_encontrados);
     const totalVenta = validarNumero(data.total_comparables_venta);
     const totalArriendo = validarNumero(data.total_comparables_arriendo);
     const portales = data.portales_consultados || [];
 
-    // Código de avalúo
     const codigoAvaluo = formData.codigo_avaluo || data.codigo_avaluo;
+
+    // Calcular confianza una sola vez para asegurar consistencia
+    const confianzaInfo = construirTextoConfianza(data, totalEncontrados, totalComparables);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 pb-10">
 
-            {/* MINIMALIST NAVIGATION LINKS */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
-                {/* IZQUIERDA: Código de Avalúo + Botón Mis Avalúos */}
                 <div className="flex items-center gap-3">
                     {hasAvaluos && codigoAvaluo && (
                         <Badge variant="outline" className="bg-[#C9C19D]/10 text-[#2C3D37] border-[#C9C19D] px-4 py-2 text-sm font-semibold">
@@ -587,7 +545,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                     )}
                 </div>
 
-                {/* DERECHA: Acciones */}
                 <div className="flex flex-wrap gap-6">
                     <button
                         onClick={() => pdfButtonRef.current?.click()}
@@ -616,7 +573,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 </div>
             </div>
 
-            {/* 1. SECCIÓN HERO */}
             <Card className="border-none shadow-lg bg-gradient-to-br from-[#2C3D37] to-[#1a2620] text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[#C9C19D] opacity-10 rounded-full blur-2xl"></div>
                 <CardHeader className="pb-1 relative z-10">
@@ -646,7 +602,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                             </div>
                             <p className="text-xs md:text-sm text-[#D3DDD6] mt-2 opacity-80">COP (Pesos Colombianos)</p>
 
-                            {/* Ficha Técnica Resumida */}
                             <div className="flex flex-wrap gap-2 mt-4">
                                 {esLote ? (
                                     <>
@@ -684,7 +639,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                         )}
                                         {(formData.estado_inmueble || formData.estado || data.estado_inmueble || data.estado) && (
                                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20">
-                                                ✨ {toTitleCase((formData.estado_inmueble || formData.estado || data.estado_inmueble || data.estado || '').replace(/_/g, ' '))}
+                                                ✨ {mapearEstadoSinPrecio(formData.estado_inmueble || formData.estado || data.estado_inmueble || data.estado)}
                                             </span>
                                         )}
                                         {(formData.estrato || data.estrato) && (
@@ -724,7 +679,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                         </div>
                     </div>
                 </CardContent>
-                {/* Corrección 4: Explicación del Valor Final */}
                 <div className="px-6 pb-6 relative z-10">
                     <p className="text-xs text-[#D3DDD6]/80 italic leading-relaxed">
                         El valor final es una recomendación técnica ponderada entre el enfoque de mercado y el de rentabilidad,
@@ -734,14 +688,12 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 </div>
             </Card>
 
-            {/* 2. MÉTODOS DESGLOSADOS (ADAPTATIVO) */}
             <div className={valorRentabilidad ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "flex justify-center"}>
-                {/* Venta Directa */}
                 <Card className="border-[#e6e0c7] shadow-sm hover:shadow-md transition-shadow duration-200 w-full max-w-lg bg-[#F8F6EF]">
                     <CardHeader className="pb-3 bg-[#F8F6EF] border-b border-[#e6e0c7]">
                         <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
                             <TrendingUp className="w-4 h-4 text-[#C9C19D]" />
-                            {esLote ? 'Metodología Ajustada (Lotes)' : 'Enfoque de Mercado (Comparables)'}
+                            {esLote ? 'Valor Estimado por Mercado' : 'Enfoque de Mercado (Comparables)'}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6 space-y-4 bg-[#F8F6EF]">
@@ -755,8 +707,8 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                 className="text-sm text-[#4F5B55] text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3 mb-[20px]"
                                 dangerouslySetInnerHTML={{
                                     __html: esLote
-                                        ? 'Calculado a partir del precio promedio por m² de lotes comparables y ajuste residual.'
-                                        : 'Calculado a partir del <strong>precio promedio por m²</strong> de las propiedades comparables<br>(precio promedio por m² × área del inmueble).'
+                                        ? 'Calculado a partir de la <strong>mediana de precio por m²</strong> de lotes comparables en la zona (sin incluir construcciones ni ajustes adicionales).'
+                                        : 'Calculado a partir de la <strong>mediana de precio por m²</strong> de las propiedades comparables<br>(mediana de precio por m² × área del inmueble).'
                                 }}
                             />
                         </div>
@@ -769,7 +721,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                     </CardContent>
                 </Card>
 
-                {/* Rentabilidad (Condicional) */}
                 {valorRentabilidad && (
                     <Card className="border-[#e6e0c7] shadow-sm hover:shadow-md transition-shadow duration-200 bg-[#F8F6EF]">
                         <CardHeader className="pb-3 bg-[#F8F6EF] border-b border-[#e6e0c7]">
@@ -791,7 +742,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                         __html: 'Calculado a partir del <strong>canon mensual</strong> y la fórmula del rendimiento (yield) del sector<br>(canon mensual estimado ÷ yield mensual).'
                                     }}
                                 />
-                                {/* Corrección 5: Nota sobre Yield */}
                                 {data.yield_mensual_mercado && (
                                     <p
                                         className="text-xs text-[#7A8C85] italic px-4 mt-2 text-center"
@@ -801,10 +751,10 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                     />
                                 )}
                             </div>
-                            <div className="flex justify-between items-center pt-2 mt-1">
-                                <span className="text-sm text-[#7A8C85]">Precio m² implícito:</span>
+                            <div className="flex justify-between items-center pt-2">
+                                <span className="text-sm text-[#7A8C85]">Canon mensual estimado:</span>
                                 <span className="text-sm font-semibold text-[#2C3D37]">
-                                    {areaInmueble && valorRentabilidad ? `${formatCurrency(valorRentabilidad / areaInmueble)}/m²` : '—'}
+                                    {data.canon_estimado ? formatCurrency(data.canon_estimado) : '—'}
                                 </span>
                             </div>
                         </CardContent>
@@ -812,191 +762,215 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 )}
             </div>
 
-            <Alert className="border-[#C9C19D]/30 bg-[#FFFDF5] text-[#2C3D37]">
-                <Info className="h-4 w-4 text-[#C4A356]" />
-                <AlertDescription className="text-sm">
-                    Este informe es una estimación automatizada basada en datos estadísticos. <strong>No reemplaza un avalúo certificado profesional.</strong>
+
+            {/* Nota Disclaimer - Avalúo no certificado */}
+            <Alert className="border-amber-200 bg-[#FFF8E1] text-amber-900">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-900 text-sm">
+                    <strong>Nota importante:</strong> {NOTA_DISCLAIMER}
                 </AlertDescription>
             </Alert>
 
-            {/* 3. RESUMEN DEL MERCADO (ESTILO ESTIMACIÓN IA) */}
-            {tieneResumen && (
-                <div className="bg-[#C9C19D]/90 rounded-xl p-6 shadow-sm border border-[#C9C19D]">
-                    <h3 className="font-outfit font-semibold text-lg text-[#1a2620] mb-3 flex items-center gap-2">
-                        <span className="w-1.5 h-6 bg-[#1a2620] rounded-full"></span>
-                        Resumen del Mercado
-                    </h3>
-                    <p className="text-sm text-[#1a2620] leading-relaxed font-raleway whitespace-pre-line font-medium" dangerouslySetInnerHTML={{ __html: data.resumen_busqueda.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+            {/* Nivel de Confianza y Resumen - Lado a lado */}
+            <div className="space-y-8">
+                {/* Resumen de Comparables - AHORA PRIMERO */}
+                <Alert className="border-[#E0E5E2] bg-[#EFF2F1]">
+                    <TrendingUp className="h-4 w-4 text-[#2C3D37]" />
+                    <AlertDescription className="space-y-3">
+                        <strong className="text-base text-[#2C3D37]">Resumen de Avalúo</strong>
+
+                        {tieneResumen ? (
+                            <p className="text-sm text-[#4F5B55] leading-relaxed text-justify">
+                                {data.resumen_busqueda}
+                            </p>
+                        ) : (
+                            <p className="text-sm text-[#7A8C85] italic">
+                                No hay un resumen de búsqueda disponible.
+                            </p>
+                        )}
+
+                        {tieneComparables && (
+                            <div className="flex justify-center mt-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setMostrarComparables(!mostrarComparables)}
+                                    className="text-[#2C3D37] border-[#B0BDB4] hover:bg-[#F0F2F1] text-sm"
+                                >
+                                    {mostrarComparables ? (
+                                        <>
+                                            <ChevronUp className="w-4 h-4 mr-2" /> Ocultar Comparables
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ChevronDown className="w-4 h-4 mr-2" /> Ver Comparables Utilizados
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        )}
+                    </AlertDescription>
+                </Alert>
+
+                {/* Tabla de Comparables - Aparece justo después de Resumen */}
+                {mostrarComparables && tieneComparables && (
+                    <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                        <TablaComparables comparables={data.comparables} esLote={esLote} areaInmueble={areaInmueble} />
+                    </div>
+                )}
+
+                {/* Nivel de Confianza - AHORA SEGUNDO */}
+                <div>
+                    {(() => {
+                        const nivel = confianzaInfo.nivel;
+
+                        let alertVariant = "default";
+                        let alertClass = "";
+                        let barColor = "bg-gray-300";
+                        let percentage = 20;
+
+                        if (nivel === 'ALTO') {
+                            alertClass = "border-green-200 bg-green-50";
+                            barColor = "bg-green-500";
+                            percentage = 90;
+                        } else if (nivel === 'MEDIO') {
+                            alertClass = "border-blue-200 bg-blue-50";
+                            barColor = "bg-blue-500";
+                            percentage = 60;
+                        } else {
+                            alertClass = "border-orange-200 bg-orange-50";
+                            barColor = "bg-orange-500";
+                            percentage = 30;
+                        }
+
+                        return (
+                            <Alert className={alertClass}>
+                                <Info className="h-4 w-4" />
+                                <AlertDescription className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <strong className="text-base">Solidez del Análisis: {confianzaInfo.label}</strong>
+                                        <span className="text-xs font-medium text-[#7A8C85]">{percentage}%</span>
+                                    </div>
+
+                                    <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                                        <div className={`h-full ${barColor} rounded-full transition-all duration-1000`} style={{ width: `${percentage}%` }}></div>
+                                    </div>
+
+                                    <div className="space-y-2 text-sm">
+                                        {confianzaInfo.razones.map((razon, idx) => (
+                                            <div key={idx} className="flex gap-2 items-start">
+                                                <div className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${barColor}`} />
+                                                <p className="leading-relaxed">{razon}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        );
+                    })()}
                 </div>
-            )}
+            </div>
 
-            {/* AVISO DE DESCARGA PDF */}
-            <Alert className="border-[#C9C19D]/30 bg-[#FFFDF5] text-[#2C3D37]">
-                <Download className="h-4 w-4 text-[#C9C19D]" />
-                <AlertDescription className="text-sm">
-                    <strong>Descarga el reporte completo en PDF</strong> para compartir o guardar esta valoración con todos los detalles y comparables.
-                </AlertDescription>
-            </Alert>
 
-            {/* 4. PORTALES CONSULTADOS (BLOQUE DESTACADO TIPO ALERTA) */}
-            {portales.length > 0 && (
-                <Alert className="border-[#C9C19D]/30 bg-[#FFFDF5] text-[#2C3D37]">
-                    <Globe className="h-4 w-4 text-[#C9C19D]" />
-                    <div className="flex flex-col gap-2 w-full">
-                        <span className="text-sm font-semibold">Fuentes Consultadas:</span>
-                        <div className="flex flex-wrap gap-2">
-                            {portales.map((portal, idx) => (
-                                <Badge key={idx} variant="outline" className="bg-white border-[#C9C19D]/50 text-[#4F5B55] font-normal hover:bg-[#E0E5E2]">
-                                    {portal}
-                                </Badge>
-                            ))}
+            <Card className="border-[#E0E5E2] shadow-sm bg-white overflow-hidden">
+                <CardHeader className="py-4 bg-[#2C3D37] border-b border-[#1a2620]">
+                    <div className="flex justify-between items-center">
+                        <CardTitle className="text-lg text-white flex items-center gap-2 font-outfit">
+                            <FileText className="w-5 h-5 text-[#C9C19D]" />
+                            Análisis detallado
+                        </CardTitle>
+                        <div className="hidden md:flex items-center">
+                            <BotonPDF
+                                formData={formData}
+                                confianzaInfo={confianzaInfo}
+                                variant="ghost"
+                                label=""
+                                className="text-[#C9C19D]/70 hover:text-[#C9C19D] text-xs font-normal p-1"
+                            />
                         </div>
                     </div>
-                </Alert>
-            )}
-
-            {/* 5. TABLA DE COMPARABLES */}
-            {tieneComparables && (
-                <>
-                    {/* Alert de nivel de confianza (todos los niveles) */}
-                    {data.nivel_confianza && (
-                        <Alert
-                            variant="default"
-                            className={
-                                data.nivel_confianza === 'Alto'
-                                    ? "border-green-300 bg-green-50 mb-6 mt-6"
-                                    : data.nivel_confianza === 'Medio'
-                                        ? "border-blue-300 bg-blue-50 mb-6 mt-6"
-                                        : "border-yellow-300 bg-yellow-50 mb-6 mt-6"
-                            }
-                        >
-                            <AlertCircle className={
-                                data.nivel_confianza === 'Alto'
-                                    ? "h-4 w-4 text-green-600"
-                                    : data.nivel_confianza === 'Medio'
-                                        ? "h-4 w-4 text-blue-600"
-                                        : "h-4 w-4 text-yellow-600"
-                            } />
-                            <AlertDescription className={
-                                data.nivel_confianza === 'Alto'
-                                    ? "text-green-800"
-                                    : data.nivel_confianza === 'Medio'
-                                        ? "text-blue-800"
-                                        : "text-yellow-800"
-                            }>
-                                {construirTextoConfianza(
-                                    data.nivel_confianza,
-                                    data.nivel_confianza_detalle
-                                )}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
-                    <Card className="border-[#E0E5E2] shadow-sm overflow-hidden transition-all duration-300 mt-6">
-                        <button
-                            onClick={() => setMostrarComparables(!mostrarComparables)}
-                            className="w-full flex items-center justify-between p-4 bg-[#F9FAF9] hover:bg-[#F0F2F1] transition-colors text-left"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="p-1.5 bg-white border border-[#E0E5E2] rounded-md text-[#2C3D37]">
-                                    <FileText className="w-4 h-4" />
-                                </div>
-                                <div>
-                                    <h3 className="font-outfit font-semibold text-base text-[#2C3D37]">Propiedades Comparables</h3>
-                                    <p className="text-xs text-[#7A8C85]">Ver los {totalComparables || data.comparables.length} inmuebles usados para el cálculo</p>
-                                </div>
-                            </div>
-                            {mostrarComparables ? <ChevronUp className="w-5 h-5 text-[#7A8C85]" /> : <ChevronDown className="w-5 h-5 text-[#7A8C85]" />}
-                        </button>
-                        {mostrarComparables && (
-                            <div className="border-t border-[#E0E5E2] animate-in slide-in-from-top-2 duration-300">
-                                <TablaComparables comparables={data.comparables} yieldMensualMercado={data.yield_mensual_mercado} esLote={esLote} />
-                            </div>
-                        )}
-                    </Card>
-                </>
-            )}
-
-            {/* 6. ANÁLISIS COMPLETO IA */}
-            {tieneAnalisisCompleto && (
-                <Card className="border-[#E0E5E2] shadow-sm overflow-hidden mt-8">
-                    <CardHeader className="bg-[#2C3D37] py-4">
-                        <CardTitle className="text-base text-white font-outfit flex items-center gap-2">
-                            <span className="bg-[#C9C19D] text-[#2C3D37] text-[10px] font-bold px-2 py-0.5 rounded">AI</span>
-                            Análisis Detallado del Modelo
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 md:p-8 bg-white">
+                </CardHeader>
+                <CardContent className="pt-8 px-6 md:px-10">
+                    {tieneAnalisisCompleto ? (
                         <AnalisisAI text={data.perplexity_full_text} />
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* 7. NAVEGACIÓN (BOTONES ALINEADOS) */}
-            <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4 pt-3 border-t border-[#E0E5E2] mt-8">
-                <div className="flex gap-3">
-                    <Button variant="ghost" onClick={onBack} className="text-[#7A8C85] hover:text-[#2C3D37] hover:bg-[#F5F7F6]">
-                        <ArrowLeft className="w-4 h-4 mr-2" /> Editar Datos
-                    </Button>
-                </div>
-                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-                    <BotonPDF ref={pdfButtonRef} formData={formData} />
-                    {onReset && (
-                        <Button
-                            variant="outline"
-                            onClick={onReset}
-                            className="bg-transparent text-[#2C3D37] border-2 border-[#2C3D37] hover:bg-[#2C3D37]/5 rounded-full py-6 text-lg font-medium"
-                        >
-                            Nuevo Avalúo
-                        </Button>
+                    ) : (
+                        <div className="text-center py-10 text-[#7A8C85]">
+                            <p>No se ha generado un análisis detallado para este avalúo.</p>
+                        </div>
                     )}
+                </CardContent>
+            </Card>
+
+
+            {/* Botones de acción: Editar, Guardar, Nuevo */}
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-6 pb-6">
+
+                {/* 1. Volver: Editar Datos */}
+                <Button
+                    onClick={onBack}
+                    variant="outline"
+                    className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6] px-8 py-6 rounded-full text-base w-full sm:w-auto order-1"
+                >
+                    <ArrowLeft className="mr-2 w-4 h-4" />
+                    Volver
+                </Button>
+
+                {/* 2. Nuevo Avalúo */}
+                {onReset && (
                     <Button
-                        onClick={handleAction}
-                        className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium shadow-lg transition-all"
-                        disabled={!valorPrincipal || sendEmailMutation.isPending}
+                        onClick={onReset}
+                        className="bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] rounded-full px-8 py-6 text-lg font-medium w-full sm:w-auto order-2 shadow-lg hover:shadow-xl transition-all"
                     >
-                        {sendEmailMutation.isPending ? (
-                            <>
-                                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                                Enviando...
-                            </>
-                        ) : (
-                            <>
-                                {formData.id && (formData.email || formData.contacto_email) ? (
-                                    <>Reenviar al correo <Send className="w-5 h-5 ml-2" /></>
-                                ) : (
-                                    <>Enviar al correo <ArrowRight className="w-5 h-5 ml-2" /></>
-                                )}
-                            </>
-                        )}
+                        <RefreshCw className="mr-2 w-5 h-5" />
+                        Nuevo Avalúo
                     </Button>
+                )}
+
+                {/* 3. Descargar PDF */}
+                <div className="w-full sm:w-auto order-3">
+                    <BotonPDF ref={pdfButtonRef} label="Descargar PDF" formData={formData} confianzaInfo={confianzaInfo} className="w-full sm:w-auto px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37]" />
                 </div>
-            </div>
-        </div>
-    );
-}
 
-function validarNumero(valor) {
-    if (valor === null || valor === undefined) return null;
-    if (typeof valor === 'number') return isFinite(valor) && !isNaN(valor) ? valor : null;
-    if (typeof valor === 'string') {
-        const num = parseFloat(valor.replace(/[^\d.-]/g, ''));
-        return isFinite(num) && !isNaN(num) ? num : null;
-    }
-    return null;
-}
-
-function renderErrorState(mensaje, onBack) {
-    return (
-        <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-6">
-            <div className="bg-red-50 p-4 rounded-full"><AlertCircle className="h-10 w-10 text-red-500" /></div>
-            <div className="max-w-md space-y-2">
-                <h3 className="text-lg font-semibold text-[#2C3D37]">No pudimos generar el análisis</h3>
-                <p className="text-sm text-[#4F5B55]">{mensaje}</p>
+                {/* 4. Continuar / Guardar / Enviar (Principal) */}
+                <Button
+                    onClick={handleAction}
+                    className="bg-[#2C3D37] text-white hover:bg-[#1a2620] px-10 py-6 rounded-full text-lg shadow-lg hover:shadow-xl transition-all w-full sm:w-auto order-4"
+                >
+                    {actionButtonIconPosition === "left" && <ActionButtonIcon className="mr-2 w-5 h-5" />}
+                    {actionButtonLabel}
+                    {actionButtonIconPosition === "right" && <ActionButtonIcon className="ml-2 w-5 h-5" />}
+                </Button>
             </div>
-            <Button onClick={onBack} variant="outline" className="border-[#B0BDB4] text-[#2C3D37] rounded-full">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Intentar nuevamente
-            </Button>
-        </div>
+
+            {/* Modal de Feedback (Email Alert) */}
+            <AlertDialog open={feedbackModal.open} onOpenChange={(open) => !open && setFeedbackModal(prev => ({ ...prev, open: false }))}>
+                <AlertDialogContent className="bg-white border-[#E0E5E2]">
+                    <AlertDialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                            {feedbackModal.type === 'success' ? (
+                                <div className="bg-green-100 p-2 rounded-full">
+                                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                                </div>
+                            ) : (
+                                <div className="bg-red-100 p-2 rounded-full">
+                                    <XCircle className="w-6 h-6 text-red-600" />
+                                </div>
+                            )}
+                            <AlertDialogTitle className="text-[#2C3D37] text-xl">{feedbackModal.title}</AlertDialogTitle>
+                        </div>
+                        <AlertDialogDescription className="text-[#4F5B55] text-base">
+                            {feedbackModal.description}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction
+                            onClick={() => setFeedbackModal(prev => ({ ...prev, open: false }))}
+                            className={`border-none ${feedbackModal.type === 'success' ? 'bg-[#2C3D37] hover:bg-[#1a2620]' : 'bg-red-600 hover:bg-red-700'} text-white`}
+                        >
+                            Aceptar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div >
     );
 }

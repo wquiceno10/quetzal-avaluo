@@ -81,7 +81,7 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
           {/* ESTADO: CARGANDO */}
           {searchMutation.isPending && (
             <div className="text-center py-12">
-              <Loader2 className="w-16 h-16 mx-auto mb-4 text-[#2C3D37] animate-spin" />
+              <img src="/src/assets/loader.gif" alt="Cargando..." className="w-[75px] h-auto mx-auto mb-1" />
               <p className="text-lg text-[#2C3D37] font-medium mb-2">
                 Buscando propiedades comparables...
               </p>

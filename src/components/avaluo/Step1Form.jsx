@@ -26,6 +26,13 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Sincronizar localData si formData cambia (ej: al volver de resultados)
+    if (formData) {
+      setLocalData(formData);
+    }
+  }, [formData]);
+
+  useEffect(() => {
     const checkAvaluos = async () => {
       try {
         // En modo desarrollo, usar usuario mock
@@ -397,9 +404,10 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                     <SelectItem value="nuevo">Nuevo</SelectItem>
                     <SelectItem value="remodelado">Remodelado</SelectItem>
                     <SelectItem value="buen_estado">Buen Estado</SelectItem>
-                    <SelectItem value="requiere_reformas_minimas">Requiere Reformas Mínimas</SelectItem>
-                    <SelectItem value="requiere_reformas_moderadas">Requiere Reformas Moderadas</SelectItem>
-                    <SelectItem value="requiere_reforma_amplia">Requiere Reforma Amplia</SelectItem>
+                    <SelectItem value="requiere_reformas_ligeras">Requiere Reformas Ligeras (≤ $5.000.000)</SelectItem>
+                    <SelectItem value="requiere_reformas_moderadas">Requiere Reformas Moderadas ($5.000.000 - $15.000.000)</SelectItem>
+                    <SelectItem value="requiere_reformas_amplias">Requiere Reformas Amplias ($15.000.000 - $25.000.000)</SelectItem>
+                    <SelectItem value="requiere_reformas_superiores">Requiere Reformas Superiores (&gt;$25.000.000)</SelectItem>
                     <SelectItem value="obra_gris">Obra Gris</SelectItem>
                   </SelectContent>
                 </Select>
@@ -418,10 +426,10 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                         <SelectValue placeholder="Selecciona" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ligera">Reforma Ligera ($0 - $5'000.000)</SelectItem>
+                        <SelectItem value="ligera">Reforma Ligera (≤ $5'000.000)</SelectItem>
                         <SelectItem value="moderada">Reforma Moderada ($5'000.000 - $15'000.000)</SelectItem>
-                        <SelectItem value="amplia">Remodelación Amplia ($15'000.000 - $20'000.000)</SelectItem>
-                        <SelectItem value="premium">Remodelación Premium (Más de $20'000.000)</SelectItem>
+                        <SelectItem value="amplia">Remodelación Amplia ($15'000.000 - $25'000.000)</SelectItem>
+                        <SelectItem value="premium">Remodelación Superior (&gt;$25'000.000)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -467,7 +475,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
               value={localData.informacion_complementaria || ''}
               onChange={(e) => handleChange('informacion_complementaria', e.target.value)}
               placeholder="Ej: El inmueble tiene una hipoteca vigente con Davivienda. Es una sucesión en trámite..."
-              className="min-h-[100px] border-[#B0BDB4] focus:border-[#2C3D37]"
+              className="min-h-[200px] border-[#B0BDB4] focus:border-[#2C3D37]"
             />
           </div>
 

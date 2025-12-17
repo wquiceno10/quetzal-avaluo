@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Home } from 'lucide-react';
+import { Home, Globe } from 'lucide-react';
 
 export default function TablaComparables({ comparables, esLote = false }) {
 
@@ -80,56 +80,77 @@ export default function TablaComparables({ comparables, esLote = false }) {
                       {item.titulo || 'Propiedad Comparable'}
                     </span>
 
-                    {/* Badge de fuente (condicional) */}
-                    {(() => {
-                      const { fuente_validacion, nota_adicional } = item;
-
-                      if (fuente_validacion === 'portal_verificado') {
-                        return (
-                          <Badge
-                            variant="outline"
-                            className="mt-1.5 w-fit bg-green-50 text-green-700 border-green-200 text-[10px] px-2 py-0.5"
+                    {/* Fuente del portal (con enlace si existe) + Badges en línea */}
+                    {item.fuente && (
+                      <div className="mt-1 text-xs font-medium text-gray-500 flex items-center gap-1.5 flex-wrap">
+                        {item.url_fuente ? (
+                          <a
+                            href={item.url_fuente}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#2C3D37] hover:text-[#C9C19D] hover:underline flex items-center gap-1"
                           >
-                            ✓ Coincidencia
-                          </Badge>
-                        );
-                      }
+                            <Globe className="w-3 h-3" />
+                            {item.fuente}
+                          </a>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <Globe className="w-3 h-3" />
+                            {item.fuente}
+                          </span>
+                        )}
 
-                      if (fuente_validacion === 'zona_similar') {
-                        return (
-                          <Badge
-                            variant="outline"
-                            className="mt-1.5 w-fit bg-blue-50 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5"
-                          >
-                            → Zona Similar
-                          </Badge>
-                        );
-                      }
+                        {/* Badges múltiples en línea */}
+                        {(() => {
+                          const badges = Array.isArray(item.fuente_validacion)
+                            ? item.fuente_validacion
+                            : [item.fuente_validacion];
 
-                      if (fuente_validacion === 'estimacion_zona') {
-                        return (
-                          <Badge
-                            variant="outline"
-                            className="mt-1.5 w-fit bg-orange-50 text-orange-700 border-orange-200 text-[10px] px-2 py-0.5"
-                          >
-                            ≈ Estimación
-                          </Badge>
-                        );
-                      }
-
-                      if (fuente_validacion === 'promedio_municipal') {
-                        return (
-                          <Badge
-                            variant="outline"
-                            className="mt-1.5 w-fit bg-purple-50 text-purple-700 border-purple-200 text-[10px] px-2 py-0.5"
-                          >
-                            ≈ Estimación
-                          </Badge>
-                        );
-                      }
-
-                      return null;
-                    })()}
+                          return badges.map((badge, idx) => {
+                            if (badge === 'verificado') {
+                              return (
+                                <Badge key={idx} variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0.5">
+                                  ✓ Verificado
+                                </Badge>
+                              );
+                            }
+                            if (badge === 'coincidencia') {
+                              return (
+                                <Badge key={idx} variant="outline" className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0.5">
+                                  ✓ Coincidencia
+                                </Badge>
+                              );
+                            }
+                            if (badge === 'verificado') {
+                              return (
+                                <Badge key={idx} variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0.5">
+                                  ✓ Portal Verificado
+                                </Badge>
+                              );
+                            }
+                            if (badge === 'zona_similar') {
+                              return (
+                                <Badge key={idx} variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">
+                                  → Zona Similar
+                                </Badge>
+                              );
+                            }
+                            if (badge === 'zona_extendida') {
+                              return (
+                                <Badge key={idx} variant="outline" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-2 py-0.5">
+                                  ≈ Zona Extendida
+                                </Badge>
+                              );
+                            }
+                            return (
+                              <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-600 border-gray-200 text-[10px] px-2 py-0.5">
+                                {toTitleCase(badge?.replace(/_/g, ' ') || 'Fuente Externa')}
+                              </Badge>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
 
                     {/* Notas explicativas */}
                     {(() => {
@@ -140,10 +161,10 @@ export default function TablaComparables({ comparables, esLote = false }) {
 
                       // Fallbacks si no hay nota de Perplexity
                       if (!formattedNote) {
-                        if (fuente_validacion === 'estimacion_zona') formattedNote = 'Basado en datos de propiedades similares en la zona.';
-                        else if (fuente_validacion === 'promedio_municipal') formattedNote = 'Basado en datos de propiedades similares en ciudad/municipio.';
-                        else if (fuente_validacion === 'portal_verificado') formattedNote = 'Anuncio de listado en la misma zona.';
-                        else if (fuente_validacion === 'zona_similar') formattedNote = 'Propiedad en zona con características similares.';
+                        if (fuente_validacion === 'coincidencia') formattedNote = 'Ubicación exacta validada.';
+                        else if (fuente_validacion === 'verificado') formattedNote = null; // Verificado no tiene nota
+                        else if (fuente_validacion === 'zona_extendida') formattedNote = 'Similitud socioeconómica en otra zona.';
+                        else if (fuente_validacion === 'zona_similar') formattedNote = 'Ubicación cercana con mercado comparable.';
                       }
 
                       if (!formattedNote) return null;

@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import Step3Results from '../components/avaluo/Step3Results';
 import Step4Contact from '../components/avaluo/Step4Contact';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Mail } from 'lucide-react';
 
 export default function AvaluoDetalle() {
     const { id } = useParams();
@@ -17,7 +17,7 @@ export default function AvaluoDetalle() {
     const [avaluo, setAvaluo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [showContact, setShowContact] = useState(false);
+    const [emailSent, setEmailSent] = useState(false);
 
     useEffect(() => {
         fetchAvaluo();
@@ -98,27 +98,19 @@ export default function AvaluoDetalle() {
         contacto_telefono: avaluo.contacto_telefono || avaluo.telefono
     };
 
-    // DEBUG: Log Estado/Estrato values
-    console.log('🔍 DEBUG AvaluoDetalle:', {
-        'avaluo.estrato': avaluo.estrato,
-        'avaluo.estado_inmueble': avaluo.estado_inmueble,
-        'payload_json.estrato': avaluo.payload_json?.estrato,
-        'payload_json.estado_inmueble': avaluo.payload_json?.estado_inmueble,
-        'formData.estrato': formData.estrato,
-        'formData.estado_inmueble': formData.estado_inmueble
-    });
-    console.log('🔍 FULL payload_json:', avaluo.payload_json);
-    console.log('🔍 FULL avaluo object keys:', Object.keys(avaluo));
 
-    // Si mostramos la vista de contacto (Finalizar Informe)
-    if (showContact) {
+
+    // Email sent success view
+    if (emailSent) {
         return (
-            <div className="container mx-auto px-4 py-8 max-w-4xl">
-                <Button onClick={() => setShowContact(false)} variant="ghost" className="mb-6 pl-0 hover:bg-transparent hover:text-[#2C3D37]/70 text-[#2C3D37]">
-                    <ArrowLeft className="w-5 h-5 mr-2" />
-                    Volver al reporte
-                </Button>
-                <Step4Contact formData={formData} />
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <Step4Contact
+                    formData={formData}
+                    onBack={() => setEmailSent(false)}
+                    onReset={() => navigate('/AvaluoInmobiliario')}
+                    initialEnviado={true}
+                    emailToShow={avaluo.email}
+                />
             </div>
         );
     }
@@ -141,12 +133,16 @@ export default function AvaluoDetalle() {
 
             <Step3Results
                 formData={formData}
-                onBack={() => navigate('/mis-avaluos')}
+                onBack={() => navigate('/AvaluoInmobiliario', { state: { avaluoData: formData } })}
                 onReset={() => navigate('/AvaluoInmobiliario')}
-                onNext={() => setShowContact(true)}
+                onNext={() => { }}
                 onUpdate={() => { }}
                 autoDownloadPDF={autoDownload}
+                onEmailSent={() => setEmailSent(true)}
+                ActionButtonIcon={Mail}
+                actionButtonLabel="Enviar al Correo"
+                actionButtonIconPosition="left"
             />
-        </div >
+        </div>
     );
 }
