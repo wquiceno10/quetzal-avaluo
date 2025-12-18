@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Search, AlertCircle } from 'lucide-react';
-// import { api } from '@/api/client'; // Removed legacy import
+import { Search, AlertCircle } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import loaderGif from '@/assets/loader.gif';
 
 export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
 
@@ -81,7 +81,7 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
           {/* ESTADO: CARGANDO */}
           {searchMutation.isPending && (
             <div className="text-center py-12">
-              <img src="/src/assets/loader.gif" alt="Cargando..." className="w-[75px] h-auto mx-auto mb-1" />
+              <img src={loaderGif} alt="Cargando..." className="w-[75px] h-auto mx-auto mb-1" />
               <p className="text-lg text-[#2C3D37] font-medium mb-2">
                 Buscando propiedades comparables...
               </p>
