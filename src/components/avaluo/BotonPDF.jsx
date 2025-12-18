@@ -1160,7 +1160,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo }, ref) => {
       ref={ref}
       onClick={() => generatePDFMutation.mutate(formData)}
       disabled={generatePDFMutation.isPending}
-      className="flex-1 bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] rounded-full py-4 text-lg font-medium"
+      className="w-full bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] rounded-full py-6 text-lg font-medium"
     >
       {generatePDFMutation.isPending ? (
         <>

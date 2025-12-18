@@ -430,7 +430,7 @@ export default function MisAvaluos() {
                                             <div className="flex flex-col sm:flex-row gap-3">
                                                 <Button
                                                     onClick={() => navigate(`/resultados/${avaluo.id}`)}
-                                                    className="bg-[#2C3D37] text-white hover:bg-[#1a2620] rounded-full py-4 flex-1 text-lg font-medium"
+                                                    className="bg-[#2C3D37] text-white hover:bg-[#1a2620] rounded-full py-6 w-full text-lg font-medium"
                                                 >
                                                     <ArrowRight className="w-4 h-4 mr-2" />
                                                     Ver Detalles
@@ -445,7 +445,7 @@ export default function MisAvaluos() {
                                                 variant="outline"
                                                 onClick={() => handleResendEmail(avaluo)}
                                                 disabled={sendingEmailId === avaluo.id}
-                                                className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-4 w-full text-lg font-medium"
+                                                className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-6 w-full text-lg font-medium"
                                             >
                                                 {sendingEmailId === avaluo.id ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
