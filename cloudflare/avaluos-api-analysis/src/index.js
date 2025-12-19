@@ -256,9 +256,20 @@ INSTRUCCIONES ESPECIALES PARA LOTES
 
 **1. ESTRATEGIA DE BÚSQUEDA (META FLEXIBLE):**
 
-Busca al menos 15 propiedades comparables REALES SOLO EN VENTA en ${formData.municipio} y municipios vecinos. El uso de la propiedad solo debes usarlo para el analisis y cálculo de los ajustes.
+Busca al menos 15+ propiedades comparables REALES SOLO EN VENTA en ${formData.municipio} y municipios vecinos. El uso de la propiedad solo debes usarlo para el analisis y cálculo de los ajustes.
 Si ${formData.informacion_complementaria} dice que tiene construcciones, entonces busca casas campestres y fincas en ${formData.municipio}.
 
+   **Aplica expansiones de zona y expansión automática ante escasez de resultados**
+   **OBLIGATORIO**: Buscar comparables en al menos 5+ portales inmobiliarios.
+   **PROHIBIDO:** Listar en un solo ítem un promedio, ejemplo: "Casas promedio Mosquera estrato 3". SIEMPRE lista propiedades individuales.
+
+   **EXCLUSIÓN AUTOMÁTICA POR PALABRAS CLAVE:**
+   ANTES de incluir cualquier comparable, verifica que el título/descripción 
+   NO contenga estas palabras (excluir inmediatamente si las tiene):
+   - "remate", "adjudicación", "subasta", "judicial"
+   - "oportunidad única", "urgente", "por deuda", "embargo"
+   - "permuta", "cesión de derechos"
+   
    **REGLA DE TIPO:** Expande la busqueda segun PRIORIDAD 1, ZONA SECUNDARIA, EXPANSIÓN CONDICIONAL y ACTIVACIÓN RESIDUAL.
    **REGLA DE ÁREA OBLIGATORIO:** Respeta el RANGO DE ÁREA TOTAL CONSTRUIDA ${rangoAreaTexto} especificado en los filtros de calidad. 
    **FILTRO DE PRECIO OBLIGATORIO:** Excluir si precio/m² desvía >40% de la media.
@@ -267,8 +278,30 @@ Si ${formData.informacion_complementaria} dice que tiene construcciones, entonce
 
    b) **ZONA SECUNDARIA:** Activa la búsqueda en Lotes del mismo departamento con características similares.
       
-   c) **EXPANSIÓN CONDICIONAL:** Ampliar el rango máximo en: ±80%.
+   c) **EXPANSIÓN AUTOMATICA (si menos de 15 comparables):** Ampliar el rango máximo en: ±80%.
    - NUNCA excedas estos límites de expansión.
+
+   🌐 **VERIFICACIÓN MULTI-PORTAL (OBLIGATORIA):**
+
+   Busca en AL MENOS estos portales:
+   1. ✅ Fincaraíz (fincaraiz.com.co)
+   2. ✅ Metrocuadrado (metrocuadrado.com)
+   3. ✅ Ciencuadras (ciencuadras.com)
+   4. ✅ MercadoLibre (mercadolibre.com.co)
+   5. ✅ Properati (properati.com.co)
+
+   🏆 **BONUS POR MUESTRA ABUNDANTE:**
+
+   Si logras encontrar 20+ comparables:
+   - Aumenta la confianza del análisis explícitamente
+   - Menciona en RESUMEN EJECUTIVO: "Análisis basado en muestra robusta de X comparables"
+
+   📋 **REGISTRO DE COMPARABLES DESCARTADOS:**
+
+   En la sección "LIMITACIONES", reporta:
+   - "Comparables encontrados: X"
+   - "Comparables descartados: Y (razones: Z por área fuera de rango, W por precio outlier, etc.)"
+   - "Comparables incluidos en análisis: X - Y = TOTAL"
 
 **2. VALORACIÓN PROPORCIONAL - LENGUAJE SIMPLE (si aplica):**
    
@@ -461,21 +494,30 @@ INSTRUCCIONES PARA PROPIEDADES (Apartamentos/Casas)
 
 **1. BÚSQUEDA DE COMPARABLES:**
 
-   Busca al menos 25 comparables (venta y arriendo) ${formData.tipoInmueble} en ${formData.barrio}, ${formData.municipio}.
-   **Aplica expansiones de zona y expansión automática ante escasez de resultados**
-   **OBLIGATORIO** SIEMPRE buscar arriendos.
-   **OBLIGATORIO**:La lista debe contener SIEMPRE propiedades en arriendo, en zona similar y extendida.
-   
-   **REGLA DE TIPO:** Busca SOLO **${formData.tipo_inmueble === 'casa' ? 'casas' : 'apartamentos'}**. NO mezcles tipos de inmueble.
-   ⚠️ **RESTRICCIÓN DE ÁREA OBLIGATORIA:** Solo incluir propiedades entre ${rangoAreaMin} y ${rangoAreaMax}
-   **FILTRO DE PRECIO:**- VENTAS: Excluir si precio/m² desvía >40% de la mediana de ventas
-   - ARRIENDOS: Excluir si canon/m² desvía >40% de la mediana de arriendos
+   Busca 25+ propiedades comparables de ${formData.tipoInmueble} en ${formData.barrio}, ${formData.municipio}.
+   **Aplica siempre la expansión geográfica automática**
+   **OBLIGATORIO**: Buscar comparables en venta y arriendo en al menos 5+ portales inmobiliarios.
+   **OBLIGATORIO**: La lista debe contener 10+ propiedades en arriendo, así como propiedades en venta/arriendo en zona similar y extendida.
+   **PROHIBIDO:** Listar en un solo ítem un promedio, ejemplo: "Casas promedio Mosquera estrato 3". SIEMPRE lista propiedades individuales.
 
-   **EXPANSIÓN AUTOMÁTICA DE BÚSQUEDA ante escasez de resultados:**
+    **REGLA DE TIPO:** Busca SOLO **${formData.tipo_inmueble === 'casa' ? 'casas' : 'apartamentos'}**. NO mezcles tipos de inmueble.
+   ⚠️ **RESTRICCIÓN DE ÁREA OBLIGATORIA:** Solo incluir propiedades entre ${rangoAreaMin} y ${rangoAreaMax}
+   **FILTRO DE PRECIO:**- VENTAS: Excluir de la lista si precio/m² desvía >40% de la mediana de ventas
+   - ARRIENDOS: Excluir de la lista si canon/m² desvía >40% de la mediana de arriendos
+
+   EXCLUSIÓN AUTOMÁTICA POR PALABRAS CLAVE:**
+   ANTES de incluir cualquier comparable, verifica que el título/descripción 
+   NO contenga estas palabras (excluir inmediatamente si las tiene):
+   - "remate", "adjudicación", "subasta", "judicial"
+   - "oportunidad única", "urgente", "por deuda", "embargo"
+   - "permuta", "cesión de derechos"
+   - "VIS", "VIP", "interés social", "interés prioritario"
+  
+   **EXPANSIÓN GEOGRÁFICA AUTOMÁTICA**
    1. **Barrios cercanos a ${formData.barrio} >3km y <=7km** → zona_similar
    2. **Barrios aislados o Municipios vecinos >7km y <40km** → zona_extendida
    
-   📐 **EXPANSIÓN AUTOMÁTICA DE ÁREA (si menos de 9 comparables):**
+   📐 **EXPANSIÓN AUTOMÁTICA DE ÁREA (si menos de 25 comparables):**
    - Propiedades <100m²: expande ±60% (máximo ±50m²)
    - Propiedades ≥100m²: expande ±40% (máximo ±100m²)
 
@@ -484,9 +526,29 @@ INSTRUCCIONES PARA PROPIEDADES (Apartamentos/Casas)
    - Si la distancia es **>3km y <=7km** → es **zona_similar**
    - Si la distancia es **>7km pero <40km** → es **zona_extendida**
    - **NUNCA** etiquetes como zona_extendida algo que esté a <=7km
-
-
    
+   🌐 **VERIFICACIÓN MULTI-PORTAL (OBLIGATORIA):**
+   
+   Busca en AL MENOS estos portales:
+   1. ✅ Fincaraíz (fincaraiz.com.co)
+   2. ✅ Metrocuadrado (metrocuadrado.com)
+   3. ✅ Ciencuadras (ciencuadras.com)
+   4. ✅ MercadoLibre (mercadolibre.com.co)
+   5. ✅ Properati (properati.com.co)
+
+   🏆 **BONUS POR MUESTRA ABUNDANTE:**
+
+   Si logras encontrar 30+ comparables:
+   - Aumenta la confianza del análisis explícitamente
+   - Menciona en RESUMEN EJECUTIVO: "Análisis basado en muestra robusta de X comparables"
+
+   📋 **REGISTRO DE COMPARABLES DESCARTADOS:**
+
+   En la sección "LIMITACIONES", reporta:
+   - "Comparables encontrados: X"
+   - "Comparables descartados: Y (razones: Z por área fuera de rango, W por precio outlier, etc.)"
+   - "Comparables incluidos en análisis: X - Y = TOTAL"
+
 **2. MÉTODO DE RENTABILIDAD:**
    
    **Canon Mensual:** Calcula precio arriendo/m² de cada arriendo, promedia, multiplica por el área del objeto.
