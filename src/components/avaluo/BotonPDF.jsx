@@ -4,6 +4,7 @@ import { Download, Loader2 } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { construirTextoConfianza } from '@/lib/confidenceHelper';
 import { mapearEstadoSinPrecio } from '@/lib/utils';
+import { procesarTextoParaPDF } from '@/lib/pdfTextProcessor';
 
 const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) => {
   const generatePDFMutation = useMutation({
@@ -100,329 +101,6 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
           .join(' ');
       };
 
-      // Helper para generar tablas HTML con estilos
-      const generateTableHtml = (rows) => {
-        if (!rows.length) return '';
-        const htmlRows = rows.map((row, i) => {
-          const cells = row.split('|').filter(c => c.trim() !== '');
-          if (cells.length === 0) return '';
-          const tag = i === 0 ? 'th' : 'td';
-
-          const inner = cells.map((c, cIdx) => {
-            let align = 'center';
-            if (cIdx === 0) align = 'left';
-            else if (cIdx === cells.length - 1) align = 'right';
-
-            let style = `padding:8px; border-bottom:1px solid #f0f0f0; color:#4F5B55; vertical-align:middle; text-align:${align};`;
-            if (i === 0) {
-              // Header: Menos padding vertical
-              style = `background:#F0ECD9; font-weight:600; padding:4px 8px; border-bottom:1px solid #ddd; color:#2C3D37; vertical-align:middle; text-align:${align};`;
-            }
-
-            return `<${tag} style="${style}">${c.trim()}</${tag}>`;
-          }).join('');
-          return `<tr>${inner}</tr>`;
-        }).join('');
-        return `
-          <div style="overflow-x:auto; margin:15px 0; border:1px solid #E0E5E2; border-radius:8px; background:#fff;">
-            <table style="width:100%; border-collapse:collapse; font-size:12px;">
-              <tbody>${htmlRows}</tbody>
-            </table>
-          </div>
-        `;
-      };
-
-      const formatText = (text) => {
-        if (!text) return '';
-
-        // 1. Limpieza Inicial (Artefactos y LaTeX) - Sincronizado con Step3Results
-        let cleanText = text
-          // Eliminar líneas horizontales MD (reforzado)
-          .replace(/^-{3,}\s*$/gm, '')
-          .replace(/^[ \t]*[-_]{2,}[ \t]*$/gm, '')
-          // Eliminar saltos de línea excesivos
-          .replace(/\n{3,}/g, '\n\n')
-          // INJECT DEFAULT NOTES IF MISSING (Fallback) - Sincronizado con Step3Results
-          // Detecta si falta nota (considerando variantes como *Nota:, Nota:, **NOTA:**, *TextoItalico*)
-          // CRÍTICO: Soporta CRLF (Windows) y LF (Unix) line endings
-          .replace(/(fuente_validacion:\s*(?:coincidencia|zona_extendida|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
-            let note = "";
-            let p = prefix.toLowerCase();
-            if (p.includes("zona_extendida")) note = "Similitud socioeconómica en otra zona.";
-            else if (p.includes("coincidencia")) note = "Anuncio de listado en la misma zona.";
-            else if (p.includes("zona_similar")) note = "Ubicación cercana con mercado comparable.";
-            return `${prefix}\n**NOTA:** ${note}`;
-          })
-          // LaTeX spacing commands (NEW)
-          .replace(/\\quad/g, '<br>')        // \quad → line break
-          .replace(/\\qquad/g, '<br>')       // \qquad → line break
-          .replace(/\\,/g, ' ')              // thin space
-          .replace(/\\:/g, ' ')              // medium space
-          .replace(/\\;/g, ' ')              // thick space
-          .replace(/\\!/g, '')               // negative thin space
-          .replace(/\\enspace/g, ' ')
-          .replace(/\\hspace\{[^}]*\}/g, ' ')
-          // End LaTeX spacing commands
-          // Limpiar LaTeX básico
-          .replace(/\\\(/g, '')
-          .replace(/\\\)/g, '')
-          .replace(/\\\[/g, '')
-          .replace(/\\\]/g, '')
-          .replace(/\\text\{([^}]+)\}/g, '$1')
-          // LaTeX \frac con soporte de espacios
-          .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '$1 / $2')
-          .replace(/\\sum/g, '∑')
-          .replace(/\\approx/g, '≈')
-          // Limpiar unidades duplicadas
-          .replace(/\s+COP\/m²/g, ' COP/m²')
-          // Convertir markdown bold a HTML
-          // CRÍTICO: Asegurar que esto es lo ÚLTIMO que se hace antes de retornar o que no se escape después
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          // Eliminar citaciones numéricas [1][2][3]...
-          .replace(/\[\d+\]/g, '');
-
-
-        // Normalizar "Promedio precio..."
-        cleanText = cleanText.replace(
-          /Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi,
-          'Promedio precio por m² ≈ $1 COP/m²'
-        );
-
-        // NO eliminar números de títulos - necesarios para detectar secciones principales
-        // cleanText = cleanText.replace(/^[\d\.]+\s+(?=[A-Z])/gm, '');
-
-        // 2. Detectar y Formatear Tablas Markdown
-        const lines = cleanText.split('\n');
-        let newLines = [];
-        let inTable = false;
-        let tableRows = [];
-
-        lines.forEach(line => {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('|')) {
-            if (!inTable) inTable = true;
-            if (!trimmed.includes('---')) {
-              tableRows.push(trimmed);
-            }
-          } else {
-            if (inTable) {
-              newLines.push(generateTableHtml(tableRows));
-              tableRows = [];
-              inTable = false;
-            }
-            newLines.push(line);
-          }
-        });
-        if (inTable) {
-          newLines.push(generateTableHtml(tableRows));
-        }
-
-        cleanText = newLines.join('\n');
-
-        // Limpiar notación científica: 3.18 × 10^6 → 3.180.000
-        cleanText = cleanText.replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
-          const num = parseFloat(coefficient.replace(',', '.'));
-          const power = parseInt(exponent);
-          const result = num * Math.pow(10, power);
-          return Math.round(result).toLocaleString('es-CO');
-        });
-
-        // 3. Convertir markdown a HTML con estilos mejorados
-        cleanText = cleanText
-          // Limpiar HTML entities escapados (IGUAL QUE WEB - antes del procesamiento)
-          .replace(/&lt;strong&gt;/g, '<strong>').replace(/&lt;\/strong&gt;/g, '</strong>')
-          // Negritas (asegurar que cierra) - REFUERZO
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-        // --- POST-PROCESAMIENTO: DESTACAR PALABRAS CLAVE (IGUAL QUE WEB) ---
-        const keyPhrasePatterns = [
-          // Análisis de métodos
-          /\b(Promedio de precios de venta de \d+ comparables):/gi,
-          /\b(Precio por m² promedio):/gi,
-          /\b(Precio\/m² ajustado):/gi,
-          /\b(Canon mensual estimado):/gi,
-          /\b(Yield promedio mercado):/gi,
-          /\b(Valor total):/gi,
-          /\b(Valor estimado):/gi,
-          /\b(Factor total):/gi,
-
-          // Ajustes
-          /^(Justificación):/gim,
-          /^(Porcentaje aplicado):/gim,
-          /\b(Ajuste por antigüedad):/gi,
-          /\b(Ajuste por estado):/gi,
-          /\b(Ajuste por ubicación):/gi,
-          /\b(Ajuste por reformas):/gi,
-
-          // Pasos metodológicos
-          /\b(PASO \d+):/gi,
-
-          // Resultados
-          /\b(Valor Recomendado de Venta):/gi,
-          /\b(Rango sugerido):/gi,
-          /\b(Precio m² final):/gi,
-        ];
-
-        keyPhrasePatterns.forEach(pattern => {
-          cleanText = cleanText.replace(pattern, (match, group1) => {
-            // Si ya está en <strong>, no duplicar
-            if (cleanText.includes(`<strong>${group1}</strong>`)) return match;
-            return `<strong>${group1}</strong>:`;
-          });
-        });
-
-        return cleanText
-          // Limpiar ## inline que no están al inicio de línea
-          .replace(/\s+##\s+/g, ' - ')
-          // 1. URLs Markdown: **[Portal](URL)** o [Portal](URL) -> <a href...> (VERDE CORPORATIVO)
-          .replace(/(?:\*\*)?\[([^\]]+)\]\(([^)]+)\)(?:\*\*)?/g, (match, text, url) => {
-            return `<strong><a href="${url}" target="_blank" style="color:#2C3D37; text-decoration:none;">${text}</a></strong>`;
-          })
-          // Limpiar símbolos extraños y SEPARADORES antes de etiquetas (═══, --)
-          .replace(/[═]+/g, '')
-          .replace(/\s+--\s+/g, ' ')
-          // 2. Bold Markdown normal
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          // Títulos con ### markdown (ej: "### 2.1. Método..." o "## 2. Análisis...")
-          // Primero convertir a formato de título con salto de línea ANTES de eliminar #
-          .replace(/^(#{1,3})\s*(\d+(?:\.\d+)?\.?\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚáéíóúñÑ ()²\-,]+)/gm, (_match, hashes, title) => {
-            const level = hashes.length;
-            const formattedTitle = toTitleCase(title.trim());
-            if (level <= 2 || !title.includes('.')) {
-              // Títulos principales (## o solo un dígito sin punto decimal)
-              return `<h4 style="font-size:14px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
-            } else {
-              // Subsecciones (### o dígitos con decimal como 2.1, 3.2)
-              return `<h5 style="font-size:13px; margin:12px 0 6px 0; color:#2C3D37; font-weight:700;">${formattedTitle}</h5>`;
-            }
-          })
-          // Títulos principales SIN # (solo 1 dígito: "5. LIMITACIONES", "6. RESUMEN EJECUTIVO")
-          .replace(/^(\d{1}\.?\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z a-zÁÉÍÓÚáéíóúñÑ]{3,})$/gm, (_match, title) => {
-            const formattedTitle = toTitleCase(title.trim());
-            return `<h4 style="font-size:14px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
-          })
-          // Subsecciones SIN # (ej: "3.1. Método", "3.4. VALOR TOTAL") → <h5> sin borde
-          .replace(/^(\d+\.\d+\.?\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚáéíóúñÑ ()²\-,]{3,})$/gm, (_match, title) => {
-            const formattedTitle = toTitleCase(title.trim());
-            return `<h5 style="font-size:13px; margin:12px 0 6px 0; color:#2C3D37; font-weight:700;">${formattedTitle}</h5>`;
-          })
-          // PROCESAR BADGES - MÚLTIPLES FORMATOS
-          // 1. Formato con fuente_validacion: prefijo
-          .replace(/(<\/strong>|<\/a>)\s*fuente_validacion:\s*([^\r\n<]+)/gi, (match, tagEnd, validation) => {
-            const val = validation.trim().toLowerCase();
-            let badgeStyle = '';
-            let badgeText = validation.trim();
-
-            if (val === 'coincidencia') {
-              badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
-              badgeText = '✓ Coincidencia';
-            } else if (val === 'verificado') {
-              badgeStyle = 'background:#ecfdf5; color:#047857; border:1px solid #6ee7b7;';
-              badgeText = '✓ Verificado';
-            } else if (val === 'zona_similar') {
-              badgeStyle = 'background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;';
-              badgeText = '→ Zona Similar';
-            } else if (val === 'zona_extendida') {
-              badgeStyle = 'background:#fef3c7; color:#92400e; border:1px solid #fcd34d;';
-              badgeText = '≈ Zona Extendida';
-            } else {
-              badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
-            }
-
-            return `${tagEnd} <span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:500; margin-left:4px; vertical-align:middle; ${badgeStyle}">${badgeText}</span>`;
-          })
-          // 2. Formato legacy: fuente_validacion: al inicio
-          .replace(/^fuente_validacion:\s*([^\r\n<]+)/gim, (match, validation) => {
-            const val = validation.trim().toLowerCase();
-            let badgeStyle = '';
-            let badgeText = validation.trim();
-
-            if (val === 'verificado') {
-              badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
-              badgeText = '✓ Coincidencia';
-            } else {
-              badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
-            }
-            return `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
-          })
-          // 3. CRÍTICO: Etiquetas sueltas (sin fuente_validacion:) 
-          // FIX: EVITAR DUPLICADOS SI ESTÁ ENTRE PARÉNTESIS (ej. "(zona_similar, ...)")
-          .replace(/(\()?\b(coincidencia|verificado|zona_similar|zona_extendida)\b/gi, (match, parenthesis, tag) => {
-            if (parenthesis) return match; // Si hay paréntesis antes, ignorar
-
-            const val = tag.trim().toLowerCase();
-            let badgeStyle = '';
-            let badgeText = tag.trim();
-
-            if (val === 'coincidencia') {
-              badgeStyle = 'background:#d1fae5; color:#065f46; border:1px solid #6ee7b7;';
-              badgeText = '✓ Coincidencia';
-            } else if (val === 'verificado') {
-              badgeStyle = 'background:#ecfdf5; color:#047857; border:1px solid #6ee7b7;';
-              badgeText = '✓ Verificado';
-            } else if (val === 'zona_similar') {
-              badgeStyle = 'background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;';
-              badgeText = '→ Zona Similar';
-            } else if (val === 'zona_extendida') {
-              badgeStyle = 'background:#fef3c7; color:#92400e; border:1px solid #fcd34d;';
-              badgeText = '≈ Zona Extendida';
-            } else {
-              badgeStyle = 'background:#f3f4f6; color:#6b7280; border:1px solid #d1d5db;';
-            }
-            return `<span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:500; ${badgeStyle}">${badgeText}</span>`;
-          })
-          // NOTA con formato mejorado (tamaño 10px y NOTA: en negrita)
-          // Regex flexible Sincronizado con Step3Results
-          .replace(/(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
-            let formattedNote = noteText.trim()
-              // Limpiar asteriscos finales
-              .replace(/\*+$/, '');
-
-            // Patrón: "Ciudad está a X km de Objetivo, [con/condiciones] características..."
-            const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
-            const match1 = formattedNote.match(pattern1);
-
-            if (match1) {
-              const distance = match1[2];
-              let characteristics = match1[3];
-
-              characteristics = characteristics
-                .replace(/^con\s+/i, 'tiene ')
-                .replace(/^condiciones\s+/i, 'tiene condiciones ');
-
-              formattedNote = `A ${distance} km de distancia, ${characteristics}`;
-            }
-
-            return `<span style="display:block; font-size:10px; color:#6B7280; font-style:italic; margin-top:4px; margin-bottom:12px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
-          })
-          // Formatear notas "huerfanas" en itálicas (sin prefijo Nota:)
-          .replace(/(?:^|\n)\s*\*([^*]{10,})\*\s*(?:\n|$)/g, (match, noteText) => {
-            let formattedNote = noteText.trim();
-
-            // Misma lógica de limpieza de distancia
-            const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
-            const match1 = formattedNote.match(pattern1);
-            if (match1) {
-              const distance = match1[2];
-              let characteristics = match1[3];
-              characteristics = characteristics.replace(/^con\s+/i, 'tiene ').replace(/^condiciones\s+/i, 'tiene condiciones ');
-              formattedNote = `A ${distance} km de distancia, ${characteristics}`;
-            }
-
-            return `<span style="display:block; font-size:10px; color:#6B7280; font-style:italic; margin-top:4px; margin-bottom:12px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
-          })
-
-          // Listas
-          .replace(
-            /^\s*[-*•]\s+(.*?)$/gm,
-            '<li style="margin-left:18px; font-size:14px; margin-bottom:4px; color:#4F5B55; line-height:1.25;">$1</li>'
-          )
-          // Párrafos (líneas sueltas que no son tags HTML)
-          .replace(
-            /^(?!<(h4|li|table|div|strong|span|p))(.+)$/gm,
-            '<p style="font-size:14px; line-height:1.25; margin:6px 0; text-align:justify; color:#4F5B55;">$2</p>'
-          );
-      };
 
       // -----------------------------------------------------------------------------------
       // HTML DEL REPORTE
@@ -802,7 +480,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               text-align: left;
             }
             
-            /* Two-column layout for analysis content with balanced fill */
+            /* Two-column layout for analysis content */
             .analysis-content {
               column-count: 2;
               column-gap: 30px;
@@ -1031,7 +709,9 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
                         border: 1px solid ${confianzaInfo.nivel === 'ALTO' ? '#bbf7d0' : confianzaInfo.nivel === 'MEDIO' ? '#bfdbfe' : '#fed7aa'};
                         border-radius: 8px; 
                         padding: 16px; 
-                        margin: 20px 0;">
+                        margin: 20px 0;
+                        page-break-inside: avoid;
+                        break-inside: avoid;">
               <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <span style="font-size: 18px;">ℹ️</span>
@@ -1067,7 +747,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
             <div class="analysis-section">
               <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Análisis Detallado del Modelo</h3>
               <div class="analysis-content">
-                ${formatText(comparablesData.perplexity_full_text)}
+                ${procesarTextoParaPDF(comparablesData.perplexity_full_text)}
               </div>
             </div>
             ` : ''}

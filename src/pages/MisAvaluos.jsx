@@ -9,6 +9,7 @@ import BotonPDF from '@/components/avaluo/BotonPDF';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { generateAvaluoEmailHtml } from '@/lib/emailGenerator';
+import { construirTextoConfianza } from '@/lib/confidenceHelper';
 
 import {
     AlertDialog,
@@ -140,7 +141,8 @@ export default function MisAvaluos() {
                 codigoAvaluo,
                 valorEstimadoFinal,
                 rangoMin,
-                rangoMax
+                rangoMax,
+                confianzaInfo: construirTextoConfianza(comparablesData, comparablesData.comparables_totales_encontrados, comparablesData.comparables_usados_en_calculo || comparablesData.total_comparables)
             });
 
             const response = await fetch(`${import.meta.env.VITE_WORKER_EMAIL_URL}/send-email`, {
@@ -434,6 +436,7 @@ export default function MisAvaluos() {
                                             </Button>
                                             <BotonPDF
                                                 formData={formDataForPDF}
+                                                confianzaInfo={construirTextoConfianza(compData, compData.comparables_totales_encontrados, compData.comparables_usados_en_calculo || compData.total_comparables)}
                                                 className="bg-[#E8E4D0] text-[#2C3D37] hover:bg-[#DDD8C4] rounded-full py-5 w-full text-sm font-medium"
                                             />
                                             <Button

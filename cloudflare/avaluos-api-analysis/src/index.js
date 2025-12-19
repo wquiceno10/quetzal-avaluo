@@ -358,7 +358,7 @@ FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Lote | Venta | $180.000.000
     Área: 2000 m² | Uso: Comercial
     Filandia | Quindío
-    **[Metrocuadrado](https://www.metrocuadrado.com/lote-en-venta/filandia-123456)** coincidencia
+    **[Metrocuadrado](url cruda)** coincidencia
     **Nota:** Distancia: 1.2 km. Mismo municipio del lote objeto.
 
     **EJEMPLO CORRECTO de zona_similar:**
@@ -366,7 +366,7 @@ FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Lote | Venta | $150.000.000
     Área: 1800 m² | Uso: Residencial
     Salento | Quindío
-    **[Fincaraíz](https://www.fincaraiz.com.co/lote-en-venta/salento-789012)** zona_similar
+    **[Fincaraíz](url cruda)** zona_similar
     **Nota:** Distancia: 18 km. Municipio vecino con vocación turística similar.
 
     **EJEMPLO CORRECTO de zona_extendida:**
@@ -374,7 +374,7 @@ FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Lote | Venta | $200.000.000
     Área: 2200 m² | Uso: Comercial
     Armenia | Quindío
-    **[Ciencuadras](https://www.ciencuadras.com/lote-en-venta/armenia-456789)** zona_extendida
+    **[Ciencuadras](url cruda)** zona_extendida
     **Nota:** Distancia: 35 km. Capital del departamento con dinámica comercial comparable.
 
 ## 2. ANÁLISIS DEL VALOR
@@ -589,7 +589,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Casa | Venta | $320.000.000
     Área: 65 m² | 3 hab | 2 baños | 2 Niveles
     Las Villas | Mosquera
-    **[Fincaraíz](https://www.fincaraiz.com.co/casa-en-venta/mosquera/las-villas-123456)** coincidencia
+    **[Fincaraíz](url cruda)** coincidencia
     **Nota:** Distancia: 0.3 km. Mismo barrio del inmueble objeto.
 
     **EJEMPLO CORRECTO de zona_similar:**
@@ -597,7 +597,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Apartamento | Arriendo | $1.200.000
     Área: 60 m² | 2 hab | 2 baños | Piso 3
     Centro | Mosquera
-    **[Metrocuadrado](https://www.metrocuadrado.com/inmueble/arriendo-apartamento-mosquera-789012)** zona_similar
+    **[Metrocuadrado](url cruda)** zona_similar
     **Nota:** Distancia: 5 km. Barrio del mismo municipio entre 3km y 7km.
 
     **EJEMPLO CORRECTO de zona_extendida:**
@@ -605,7 +605,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Casa | Venta | $350.000.000
     Área: 70 m² | 3 hab | 2 baños | 2 Niveles
     Centro | Funza
-    **[Ciencuadras](https://www.ciencuadras.com/inmueble/venta-casa-funza-456789)** zona_extendida
+    **[Ciencuadras](url cruda)** zona_extendida
     **Nota:** Distancia: 8 km. Municipio vecino con condiciones socioeconómicas similares.
 
 ## 2. ANÁLISIS DEL VALOR
@@ -818,7 +818,7 @@ INSTRUCCIONES DE EXTRACCIÓN:
    Apartamento | Venta | $450.000.000
    Área: 95 m² | 3 hab | 2 baños | Piso 5
    Las Acacias | Bogotá
-   **[Fincaraíz](https://fincaraiz.com.co/ejemplo)** coincidencia
+   **[Fincaraíz](url cruda)** coincidencia
    **Nota:** Distancia: 0.5 km. Mismo barrio del inmueble objeto.
    
    EJEMPLO Lote:
@@ -826,7 +826,7 @@ INSTRUCCIONES DE EXTRACCIÓN:
    Lote | Venta | $180.000.000
    Área: 2000 m² | Uso: Residencial
    Filandia | Quindío
-   **[Metrocuadrado](https://metrocuadrado.com/ejemplo)** zona_similar
+   **[Metrocuadrado](url cruda)** zona_similar
    **Nota:** Distancia: 18 km. Municipio vecino con vocación turística similar.
    
    Extrae:
