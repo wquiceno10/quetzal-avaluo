@@ -884,7 +884,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                 confianzaInfo={confianzaInfo}
                                 variant="ghost"
                                 label=""
-                                className="text-[#C9C19D]/70 hover:text-[#C9C19D] text-xs font-normal p-1"
+                                className="bg-transparent text-[#C9C19D] hover:text-[#E8E4D0] hover:bg-black/30 text-sm font-medium rounded-full px-4 py-2"
                             />
                         </div>
                     </div>
@@ -918,7 +918,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 {onReset && (
                     <Button
                         onClick={onReset}
-                        className="bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] rounded-full px-8 py-6 text-lg font-medium w-full sm:w-auto order-2 shadow-lg hover:shadow-xl transition-all"
+                        className="bg-[#E8E4D0] hover:bg-[#DDD8C4] text-[#2C3D37] rounded-full px-8 py-6 text-lg font-medium w-full sm:w-auto order-2 shadow-lg hover:shadow-xl transition-all"
                     >
                         <RefreshCw className="mr-2 w-5 h-5" />
                         Nuevo Avalúo
@@ -927,7 +927,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
 
                 {/* 3. Descargar PDF */}
                 <div className="w-full sm:w-auto order-3">
-                    <BotonPDF ref={pdfButtonRef} label="Descargar PDF" formData={formData} confianzaInfo={confianzaInfo} className="w-full sm:w-auto px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37]" />
+                    <BotonPDF ref={pdfButtonRef} label="Descargar PDF" formData={formData} confianzaInfo={confianzaInfo} className="w-full sm:w-auto px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all bg-[#E8E4D0] hover:bg-[#DDD8C4] text-[#2C3D37]" />
                 </div>
 
                 {/* 4. Continuar / Guardar / Enviar (Principal) */}

@@ -5,7 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { construirTextoConfianza } from '@/lib/confidenceHelper';
 import { mapearEstadoSinPrecio } from '@/lib/utils';
 
-const BotonPDF = forwardRef(({ formData, confianzaInfo }, ref) => {
+const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) => {
   const generatePDFMutation = useMutation({
     mutationFn: async (data) => {
       const comparablesData = data.comparables_data || {};
@@ -1173,7 +1173,8 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo }, ref) => {
       ref={ref}
       onClick={() => generatePDFMutation.mutate(formData)}
       disabled={generatePDFMutation.isPending}
-      className="w-full bg-[#C9C19D] hover:bg-[#b8b08c] text-[#2C3D37] rounded-full py-6 text-lg font-medium"
+      className={className || "w-full bg-[#E8E4D0] hover:bg-[#DDD8C4] text-[#2C3D37] rounded-full py-6 text-lg font-medium"}
+      size={size}
     >
       {generatePDFMutation.isPending ? (
         <>

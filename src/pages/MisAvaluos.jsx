@@ -299,7 +299,7 @@ export default function MisAvaluos() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="mb-8 flex items-start justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-[#2C3D37] font-outfit">Mis Avalúos</h1>
@@ -331,7 +331,7 @@ export default function MisAvaluos() {
                         </div>
                     </Card>
                 ) : (
-                    <div className="grid gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {avaluos.map((avaluo) => {
                             const formDataForPDF = {
                                 ...avaluo,
@@ -349,103 +349,98 @@ export default function MisAvaluos() {
                             }
 
                             return (
-                                <Card key={avaluo.id} className="border-[#E0E5E2] hover:shadow-md transition-all duration-300 overflow-hidden relative">
-                                    <CardHeader className="pb-3 bg-[#F9FAF9] border-b border-[#F0F2F1]">
+                                <Card key={avaluo.id} className="border-[#E0E5E2] hover:shadow-md transition-all duration-300 overflow-hidden relative flex flex-col">
+                                    {/* Header compacto */}
+                                    <CardHeader className="pb-2 pt-4 px-4 bg-[#F9FAF9] border-b border-[#F0F2F1]">
                                         <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <Badge variant="outline" className="bg-white text-[#2C3D37] border-[#B0BDB4]">
-                                                    {avaluo.codigo_avaluo || 'SIN CÓDIGO'}
-                                                </Badge>
-                                                <span className="text-xs text-[#7A8C85] flex items-center gap-1 uppercase tracking-wide">
-                                                    <Calendar className="w-3 h-3" />
-                                                    {formatDate(avaluo.created_at)}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Badge className="bg-[#DEE8E9] text-[#2C3D37] hover:bg-[#d0ddde]">
+                                            <Badge variant="outline" className="bg-white text-[#2C3D37] border-[#B0BDB4] text-xs">
+                                                {avaluo.codigo_avaluo || 'SIN CÓDIGO'}
+                                            </Badge>
+                                            <div className="flex items-center gap-1">
+                                                <Badge className="bg-[#DEE8E9] text-[#2C3D37] hover:bg-[#d0ddde] text-xs">
                                                     {avaluo.status || 'Completado'}
                                                 </Badge>
                                                 <button
                                                     onClick={() => confirmDelete(avaluo)}
                                                     disabled={deletingId === avaluo.id}
-                                                    className="p-2 text-[#7A8C85] hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    className="p-1.5 text-[#7A8C85] hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
                                                     title="Eliminar avalúo"
                                                 >
                                                     {deletingId === avaluo.id ? (
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                     ) : (
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <Trash2 className="w-3.5 h-3.5" />
                                                     )}
                                                 </button>
                                             </div>
                                         </div>
+                                        <span className="text-[10px] text-[#7A8C85] flex items-center gap-1 mt-1">
+                                            <Calendar className="w-3 h-3" />
+                                            {formatDate(avaluo.created_at)}
+                                        </span>
                                     </CardHeader>
-                                    <CardContent className="pt-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            <div className="space-y-1">
-                                                <p className="text-xs text-[#7A8C85] font-bold uppercase tracking-wider">Inmueble</p>
-                                                <div className="flex items-start gap-3">
-                                                    <div className="bg-[#F0F2F1] p-2 rounded-md">
-                                                        <Home className="w-5 h-5 text-[#2C3D37]" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-[#2C3D37] capitalize text-lg">{toTitleCase(avaluo.tipo_inmueble)}</p>
-                                                        <p className="text-sm text-[#4F5B55]">
-                                                            {(avaluo.tipo_inmueble || '').toLowerCase().includes('lote') ? (
-                                                                <>
-                                                                    {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {toTitleCase(avaluo.uso_lote || avaluo.payload_json?.uso_lote || '—')} • {toTitleCase(avaluo.municipio || avaluo.ciudad || '—')}
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {avaluo.habitaciones || avaluo.payload_json?.habitaciones || '—'} Hab • {avaluo.banos || avaluo.payload_json?.banos || '—'} Baños
-                                                                </>
-                                                            )}
-                                                        </p>
-                                                    </div>
+
+                                    {/* Contenido principal - layout vertical */}
+                                    <CardContent className="pt-4 px-4 pb-4 flex-1 flex flex-col">
+                                        {/* Valor destacado arriba */}
+                                        <div className="text-center mb-4 pb-3 border-b border-[#F0F2F1]">
+                                            <p className="text-[10px] text-[#7A8C85] font-bold uppercase tracking-wider mb-1">Valor Estimado</p>
+                                            <p className="text-2xl font-bold text-[#2C3D37] font-outfit">
+                                                {formatCurrency(valorMostrar)}
+                                            </p>
+                                        </div>
+
+                                        {/* Info del inmueble - 2 columnas lado a lado */}
+                                        <div className="grid grid-cols-2 gap-3 flex-1">
+                                            <div className="flex items-start gap-2">
+                                                <div className="bg-[#F0F2F1] p-1.5 rounded-md shrink-0">
+                                                    <Home className="w-4 h-4 text-[#2C3D37]" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-[#2C3D37] capitalize text-sm truncate">{toTitleCase(avaluo.tipo_inmueble)}</p>
+                                                    <p className="text-xs text-[#4F5B55] truncate">
+                                                        {(avaluo.tipo_inmueble || '').toLowerCase().includes('lote') ? (
+                                                            <>
+                                                                {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {toTitleCase(avaluo.uso_lote || avaluo.payload_json?.uso_lote || '—')}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {avaluo.habitaciones || avaluo.payload_json?.habitaciones || '—'} Hab • {avaluo.banos || avaluo.payload_json?.banos || '—'} Baños
+                                                            </>
+                                                        )}
+                                                    </p>
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-1">
-                                                <p className="text-xs text-[#7A8C85] font-bold uppercase tracking-wider">Ubicación</p>
-                                                <div className="flex items-start gap-3">
-                                                    <div className="bg-[#F0F2F1] p-2 rounded-md">
-                                                        <MapPin className="w-5 h-5 text-[#2C3D37]" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-[#2C3D37] text-lg">{toTitleCase(avaluo.barrio)}</p>
-                                                        <p className="text-sm text-[#4F5B55]">{toTitleCase(avaluo.municipio || avaluo.ciudad)}</p>
-                                                    </div>
+                                            <div className="flex items-start gap-2">
+                                                <div className="bg-[#F0F2F1] p-1.5 rounded-md shrink-0">
+                                                    <MapPin className="w-4 h-4 text-[#2C3D37]" />
                                                 </div>
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <p className="text-xs text-[#7A8C85] font-bold uppercase tracking-wider">Valor Estimado</p>
-                                                <p className="text-3xl font-bold text-[#2C3D37] font-outfit">
-                                                    {formatCurrency(valorMostrar)}
-                                                </p>
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-[#2C3D37] text-sm truncate">{toTitleCase(avaluo.barrio)}</p>
+                                                    <p className="text-xs text-[#4F5B55] truncate">{toTitleCase(avaluo.municipio || avaluo.ciudad)}</p>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col gap-3 mt-8 pt-6 border-t border-[#F0F2F1]">
-                                            <div className="flex flex-col sm:flex-row gap-3">
-                                                <Button
-                                                    onClick={() => navigate(`/resultados/${avaluo.id}`)}
-                                                    className="bg-[#2C3D37] text-white hover:bg-[#1a2620] rounded-full py-6 w-full text-lg font-medium"
-                                                >
-                                                    <ArrowRight className="w-4 h-4 mr-2" />
-                                                    Ver Detalles
-                                                </Button>
-                                                <BotonPDF
-                                                    formData={formDataForPDF}
-                                                    className="bg-white text-[#2C3D37] border border-[#2C3D37] hover:bg-[#F0F2F1] rounded-full py-6 flex-1"
-                                                    variant="outline"
-                                                />
-                                            </div>
+                                        {/* Botones apilados verticalmente con mismo tamaño */}
+                                        <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-[#F0F2F1]">
+                                            <Button
+                                                onClick={() => navigate(`/resultados/${avaluo.id}`)}
+                                                className="bg-[#2C3D37] text-white hover:bg-[#1a2620] rounded-full py-5 w-full text-sm font-medium"
+                                            >
+                                                <ArrowRight className="w-4 h-4 mr-2" />
+                                                Ver Detalles
+                                            </Button>
+                                            <BotonPDF
+                                                formData={formDataForPDF}
+                                                className="bg-[#E8E4D0] text-[#2C3D37] hover:bg-[#DDD8C4] rounded-full py-5 w-full text-sm font-medium"
+                                            />
                                             <Button
                                                 variant="outline"
                                                 onClick={() => handleResendEmail(avaluo)}
                                                 disabled={sendingEmailId === avaluo.id}
-                                                className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-6 w-full text-lg font-medium"
+                                                className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-5 w-full text-sm font-medium"
                                             >
                                                 {sendingEmailId === avaluo.id ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

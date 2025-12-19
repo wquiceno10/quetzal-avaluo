@@ -176,12 +176,34 @@ Nueva sección en "LIMITACIONES" para reportar cuántos comparables fueron encon
 
 ---
 
+## 🎨 9. Mejoras de UI - Tarjetas y Botones (19-Dic)
+
+### ✅ A. Layout de Tarjetas en "Mis Avalúos"
+- Grid de 3 columnas en desktop, 2 en tablet, 1 en mobile
+- Contenedor expandido a `max-w-7xl`
+- Layout vertical compacto: valor arriba, inmueble/ubicación en fila horizontal
+- Botones apilados verticalmente con mismo tamaño
+
+### ✅ B. Nuevo Color para Botón PDF
+- Cambio de `#C9C19D` (oliva) a `#E8E4D0` (beige claro)
+- Aplicado en MisAvaluos y Step3Results
+- BotonPDF ahora acepta `className` prop externo
+
+### ✅ C. Botón PDF en Header "Análisis Detallado"
+- Fondo transparente (`bg-transparent`)
+- Hover: texto más claro + fondo negro 30% (`hover:bg-black/30`)
+- Bordes redondeados (`rounded-full`)
+- Fuente más grande (`text-sm font-medium`)
+
+---
+
 ## 📂 Archivos Modificados
 1. `cloudflare/avaluos-api-analysis/src/index.js` - Prompt + reglas de ajuste + multi-portal
 2. `src/lib/utils.js` - Funciones de mapeo de estado
-3. `src/components/avaluo/Step3Results.jsx` - mapearEstadoSinPrecio + mediana
-4. `src/components/avaluo/BotonPDF.jsx` - Formateo títulos + mapearEstadoSinPrecio
-5. `src/lib/emailGenerator.js` - mapearEstadoSinPrecio
+3. `src/components/avaluo/Step3Results.jsx` - UI botones + colores
+4. `src/components/avaluo/BotonPDF.jsx` - Acepta className + nuevo color default
+5. `src/pages/MisAvaluos.jsx` - Layout 3 columnas + tarjetas compactas
+6. `src/lib/emailGenerator.js` - mapearEstadoSinPrecio
 
 ---
 
@@ -192,6 +214,6 @@ Nueva sección en "LIMITACIONES" para reportar cuántos comparables fueron encon
 - CSS para alineación left en secciones de cálculo del PDF
 
 ---
-**Estado Final:** Prompt optimizado con búsqueda multi-portal, filtros de exclusión, expansión geográfica siempre activa, ajustes corregidos, y PDF sincronizado.
+**Estado Final:** Prompt optimizado, UI de tarjetas mejorada con layout 3 columnas, colores de botones unificados (beige claro).
 
 
