@@ -173,9 +173,9 @@ INSTRUCCIONES GENERALES
 
       RANGO DE AREA: ${rangoAreaTexto}
    
-   b) **FILTRO DE ANTIGÜEDAD:**
+   b) **FILTRO DE VIGENCIA DE ANUNCIOS:**
 
-      BUSCA portales vigentes a la fecha. 100% datos reales.
+      BUSCA anuncios vigentes.
 
 **4. ETIQUETAS DE VALIDACIÓN (OBLIGATORIAS):**
 
@@ -223,18 +223,27 @@ INSTRUCCIONES GENERALES
 REGLAS DE AJUSTE (MÉTODO DE MERCADO)
 ═══════════════════════════════════════════════════════════
 
-Aplica ajustes **SOLO** si hay diferencias evidentes.
+Aplica ajustes **SOLO** si hay diferencias evidentes entre el objeto y los comparables.
 
-| Característica | Si Comparable es... | Ajuste al Precio |
-|----------------|---------------------|------------------|
-| Estado | Mejor que objeto | **NEGATIVO** (-) |
-| Estado | Peor que objeto | **POSITIVO** (+) |
-| Antigüedad | Más nuevo | **NEGATIVO** (-) |
-| Antigüedad | Más viejo | **POSITIVO** (+) |
-| Ubicación | Mejor zona | **NEGATIVO** (-) |
-| Ubicación | Peor zona | **POSITIVO** (+) |
+⚠️ **REGLA CRÍTICA DE DIRECCIÓN:**
+El factor ajusta el valor de la propiedad en función de su condición con los comparables.
+- Si la propiedad está en PEOR condición que los comparables → su valor BAJA → **Factor < 1**
+- Si la propiedad está en MEJOR condición que los comparables → su valor SUBE → **Factor > 1**
 
-**Nota:** Si no tienes información suficiente para comparar, NO inventes el ajuste (déjalo en 0%).
+| Condición de la propiedad vs Comparables | Factor |
+|-------------------------------------|--------|
+| Peor estado | **Factor < 1** (ej: 0.90 = -10%) |
+| Mejor estado | **Factor > 1** (ej: 1.10 = +10%) |
+| Más viejo | **Factor < 1** (ej: 0.95 = -5%) |
+| Más nuevo | **Factor > 1** (ej: 1.05 = +5%) |
+| Peor ubicación | **Factor < 1** |
+| Mejor ubicación | **Factor > 1** |
+
+**EJEMPLO:**
+- Propiedad: requiere reformas, >20 años
+- Comparables: buen estado, más nuevos
+→ La propiedad vale MENOS que los comparables
+→ Factor = <1 (equivalente a -X%)
 
      `.trim();
 
@@ -247,31 +256,19 @@ INSTRUCCIONES ESPECIALES PARA LOTES
 
 **1. ESTRATEGIA DE BÚSQUEDA (META FLEXIBLE):**
 
-Busca **20+ lotes comparables** SOLO en VENTA 
+Busca al menos 15 propiedades comparables REALES SOLO EN VENTA en ${formData.municipio} y municipios vecinos. El uso de la propiedad solo debes usarlo para el analisis y cálculo de los ajustes.
+Si ${formData.informacion_complementaria} dice que tiene construcciones, entonces busca casas campestres y fincas en ${formData.municipio}.
 
-   **REGLA DE TIPO:** Busca SOLO Lotes y expande la busqueda segun PRIORIDA1, ZONA SECUNDARIA, EXPANSIÓN CONDICIONAL y ACTIVACIÓN RESIDUAL.
+   **REGLA DE TIPO:** Expande la busqueda segun PRIORIDAD 1, ZONA SECUNDARIA, EXPANSIÓN CONDICIONAL y ACTIVACIÓN RESIDUAL.
    **REGLA DE ÁREA OBLIGATORIO:** Respeta el RANGO DE ÁREA TOTAL CONSTRUIDA ${rangoAreaTexto} especificado en los filtros de calidad. 
-   **FILTRO DE PRECIO OBLIGATORIO:** Excluir si precio/m² desvía >40% de la mediana de ventas
+   **FILTRO DE PRECIO OBLIGATORIO:** Excluir si precio/m² desvía >40% de la media.
 
-   a) **PRIORIDAD 1:** Buscar **lotes comparables reales**.
-      - Zona Primaria: ${formData.municipio || 'Municipio objetivo'}
-      - Si encuentras menos de 5 comparables reales, activa la busqueda en Zona Secundaria: Municipios cercanos (Máximo 60km de distancia) del mismo departamento.
+   a) **ZONA PRIMARIA:** Activa la busqueda en Municipios cercanos (Máximo 60km de distancia) del mismo departamento.
 
-   b) **ZONA SECUNDARIA** (si aun tienes menos de 10 comparables reales):
-      - Activa la búsqueda en Lotes de la región con características similares.
-      - Mismo uso (${usoLote}), estrato socioeconómico similar.
-
-   c) **EXPANSIÓN CONDICIONAL:**
-      - **SOLO si encuentras menos de 10 comparables** en el rango base:
-      - Ampliar el rango máximo en: ±80%.
-      - NUNCA excedas estos límites de expansión.
-
-   d) **ACTIVACIÓN RESIDUAL (ULTIMO RECURSO):**
-      - Si aun no alcanzas la meta, tras buscar en todas las zonas:
-      - **DETÉN** la búsqueda obsesiva de lotes.
-      - **ACTIVA** la búsqueda de **Fincas** en la misma zona
-      - Usa estas propiedades para aplicar el Método Residual (valoración proporcional).
+   b) **ZONA SECUNDARIA:** Activa la búsqueda en Lotes del mismo departamento con características similares.
       
+   c) **EXPANSIÓN CONDICIONAL:** Ampliar el rango máximo en: ±80%.
+   - NUNCA excedas estos límites de expansión.
 
 **2. VALORACIÓN PROPORCIONAL - LENGUAJE SIMPLE (si aplica):**
    
@@ -320,7 +317,7 @@ FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Lote | Venta | $Precio
     Área: XX m² | Uso: [tipo de uso]
     Ciudad | Departamento
-    **[Portal](https://url-completa-del-anuncio.com)** etiqueta
+    **[Portal](URL cruda)** etiqueta
     **Nota:** Distancia: X km. [Justificación breve]
 
     **EJEMPLO CORRECTO de coincidencia:**
@@ -410,8 +407,6 @@ Para CADA construcción mencionada:
    | Comercial urbana | 10-20% |
    | Rural/Residencial | 5-15% |
    
-   🚨 **TOPE:** Parqueadero NUNCA supera 25% del valor del lote.
-   
    **Formato:** "Parqueadero (XX m², ~XX carros): Valor lote × XX% = $XXX"
 
    **AJUSTE TOTAL CONSTRUCCIONES: +$XXX.XXX**
@@ -466,27 +461,20 @@ INSTRUCCIONES PARA PROPIEDADES (Apartamentos/Casas)
 
 **1. BÚSQUEDA DE COMPARABLES:**
 
-   Busca 30+ comparables (venta + arriendo combinados). 
+   Busca al menos 25 comparables (venta y arriendo) ${formData.tipoInmueble} en ${formData.barrio}, ${formData.municipio}.
    **Aplica expansiones de zona y expansión automática ante escasez de resultados**
-   **IMPORTANTE**:La muestra debe tener 8 propiedades entre arriendos, zona similar o extendida.
+   **OBLIGATORIO** SIEMPRE buscar arriendos.
+   **OBLIGATORIO**:La lista debe contener SIEMPRE propiedades en arriendo, en zona similar y extendida.
    
    **REGLA DE TIPO:** Busca SOLO **${formData.tipo_inmueble === 'casa' ? 'casas' : 'apartamentos'}**. NO mezcles tipos de inmueble.
-   **REGLA DE DATOS:** Debes asegurarte de usar al menos el 70% de los datos de la propiedad de muestra (habitaciones, baños, niveles, ciudad,etc.).
-   **REGLA DE ÁREA OBLIGATORIO:** Respeta el RANGO DE ÁREA TOTAL CONSTRUIDA ${rangoAreaTexto} especificado en los filtros de calidad. 
+   ⚠️ **RESTRICCIÓN DE ÁREA OBLIGATORIA:** Solo incluir propiedades entre ${rangoAreaMin} y ${rangoAreaMax}
    **FILTRO DE PRECIO:**- VENTAS: Excluir si precio/m² desvía >40% de la mediana de ventas
    - ARRIENDOS: Excluir si canon/m² desvía >40% de la mediana de arriendos
-   
-   **PRIORIDAD DE BÚSQUEDA EN VENTA Y ARRIENDO (en este orden):**
-   1. **Mismo conjunto cerrado** **ETIQUETA** → coincidencia
-   2. **Mismo barrio, diferente conjunto** **ETIQUETA** → coincidencia
-   3. **Barrios vecinos <=3km** **ETIQUETA** → coincidencia
-   4. **Otros barrios del mismo Municipio >3km y <=7km** **ETIQUETA** → zona_similar
-   5. **Barrios aislados o Municipios vecinos >7km y <40km** **ETIQUETA** → zona_extendida
-   
-   📍 **EXPANSIÓN DE ZONA (progresiva):**
-   1. Si menos de 15 comparables → activa la busqueda a zona_similar (3-7km)
-   2. Si menos de 10 comparables → activa la busqueda a zona_extendida (7-40km)
 
+   **EXPANSIÓN AUTOMÁTICA DE BÚSQUEDA ante escasez de resultados:**
+   1. **Barrios cercanos a ${formData.barrio} >3km y <=7km** → zona_similar
+   2. **Barrios aislados o Municipios vecinos >7km y <40km** → zona_extendida
+   
    📐 **EXPANSIÓN AUTOMÁTICA DE ÁREA (si menos de 9 comparables):**
    - Propiedades <100m²: expande ±60% (máximo ±50m²)
    - Propiedades ≥100m²: expande ±40% (máximo ±100m²)
@@ -515,7 +503,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
 
 ## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES
 
-    Describe brevemente la propiedad del calculo y haz una introduccion general de las propiedades listadas.
+    Describe brevemente la propiedad del cálculo y haz una introduccion general de las propiedades listadas.
     
     🚫 **PROHIBIDO:**
     - NO uses numeración (1), 2), 3)...)
@@ -531,7 +519,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Tipo | Venta o Arriendo | $Precio
     Área: XX m² | X hab | X baños | X Niveles
     Barrio | Ciudad
-    **[Portal](https://url-completa-del-anuncio.com)** etiqueta
+    **[Portal](URL cruda)** etiqueta
     **Nota:** Distancia: X km. [Justificación breve]
 
     **EJEMPLO CORRECTO de coincidencia:**
@@ -578,7 +566,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
 
 ## 3. AJUSTES APLICADOS
    
-   Explica cada ajuste aplicado, cómo se usó y por qué.
+   Explica cada ajuste aplicado, cómo se usó y por qué. Ten en cuenta que si la propiedad objeto está en conjunto cerrado y los comparables no lo están, el ajuste debe ser positivo. -> Propiedad objeto +X% de acuerdo a la zona, demanda y proyección de la zona. 
    Separa por lineas para que se lea mejor. 
 
    **EJEMPLO:**

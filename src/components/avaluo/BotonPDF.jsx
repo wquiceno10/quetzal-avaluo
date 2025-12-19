@@ -232,10 +232,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo }, ref) => {
           // Limpiar HTML entities escapados (IGUAL QUE WEB - antes del procesamiento)
           .replace(/&lt;strong&gt;/g, '<strong>').replace(/&lt;\/strong&gt;/g, '</strong>')
           // Negritas (asegurar que cierra) - REFUERZO
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          // CRÍTICO: Normalizar títulos markdown eliminando TODOS los # al inicio
-          // Convertir "## 5. LIMITACIONES" o "### 3.1. Valor Base" → sin #
-          .replace(/^#+\s+/gm, '');
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
         // --- POST-PROCESAMIENTO: DESTACAR PALABRAS CLAVE (IGUAL QUE WEB) ---
         const keyPhrasePatterns = [
@@ -286,17 +283,28 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo }, ref) => {
           .replace(/\s+--\s+/g, ' ')
           // 2. Bold Markdown normal
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          // Títulos principales numerados (solo 1 dígito: "5. LIMITACIONES", "6. RESUMEN EJECUTIVO")
-          // SOLO títulos de sección principal (ej: 1-9, NO 3.1, 3.2, etc.)
-          // DEBE procesarse ANTES de otros replacements para evitar conflictos
+          // Títulos con ### markdown (ej: "### 2.1. Método..." o "## 2. Análisis...")
+          // Primero convertir a formato de título con salto de línea ANTES de eliminar #
+          .replace(/^(#{1,3})\s*(\d+(?:\.\d+)?\.?\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚáéíóúñÑ ()²\-,]+)/gm, (_match, hashes, title) => {
+            const level = hashes.length;
+            const formattedTitle = toTitleCase(title.trim());
+            if (level <= 2 || !title.includes('.')) {
+              // Títulos principales (## o solo un dígito sin punto decimal)
+              return `<h4 style="font-size:14px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
+            } else {
+              // Subsecciones (### o dígitos con decimal como 2.1, 3.2)
+              return `<h5 style="font-size:13px; margin:12px 0 6px 0; color:#2C3D37; font-weight:700;">${formattedTitle}</h5>`;
+            }
+          })
+          // Títulos principales SIN # (solo 1 dígito: "5. LIMITACIONES", "6. RESUMEN EJECUTIVO")
           .replace(/^(\d{1}\.?\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z a-zÁÉÍÓÚáéíóúñÑ]{3,})$/gm, (_match, title) => {
             const formattedTitle = toTitleCase(title.trim());
             return `<h4 style="font-size:14px; margin:16px 0 8px 0; color:#2C3D37; font-weight:700; border-bottom:1px solid #C9C19D; padding-bottom:4px;">${formattedTitle}</h4>`;
           })
-          // Subsecciones numeradas (ej: "3.1. Método", "3.4. VALOR TOTAL") → <h5> sin borde
-          .replace(/^(\d+\.\d+\.?\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Z a-zÁÉÍÓÚáéíóúñÑ]{3,})$/gm, (_match, title) => {
+          // Subsecciones SIN # (ej: "3.1. Método", "3.4. VALOR TOTAL") → <h5> sin borde
+          .replace(/^(\d+\.\d+\.?\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚáéíóúñÑ ()²\-,]{3,})$/gm, (_match, title) => {
             const formattedTitle = toTitleCase(title.trim());
-            return `<h5 style="font-size:12px; margin:12px 0 6px 0; color:#2C3D37; font-weight:700;">${formattedTitle}</h5>`;
+            return `<h5 style="font-size:13px; margin:12px 0 6px 0; color:#2C3D37; font-weight:700;">${formattedTitle}</h5>`;
           })
           // PROCESAR BADGES - MÚLTIPLES FORMATOS
           // 1. Formato con fuente_validacion: prefijo
@@ -453,6 +461,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo }, ref) => {
             h1 { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
             h2 { font-size: 18px; font-weight: 600; margin: 12px 0 4px; }
             h3 { font-size: 16px; font-weight: 600; margin: 10px 0 6px; }
+            h5 { font-size: 13px; font-weight: 700; margin: 12px 0 6px 0; color: #2C3D37; }
             .grid-2 {
               display: grid;
               grid-template-columns: 1fr 1fr;
@@ -787,6 +796,10 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo }, ref) => {
               text-align: justify;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
+            }
+            /* Calculation sections (after h5 subsections) use left-align */
+            .analysis-content h5 ~ p {
+              text-align: left;
             }
             
             /* Two-column layout for analysis content with balanced fill */
