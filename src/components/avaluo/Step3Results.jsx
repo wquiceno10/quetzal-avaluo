@@ -279,11 +279,12 @@ const AnalisisAI = ({ text }) => {
     const getBlockWeight = (block) => {
         const lineCount = block.split('\n').length;
         const isHeading = block.match(headingRegex);
-        return lineCount + (block.length / 500) + (isHeading ? 2 : 0);
+        const charWeight = block.length / 500;
+        return lineCount + charWeight + (isHeading ? 2 : 0);
     };
 
     const totalWeight = blocks.reduce((sum, b) => sum + getBlockWeight(b), 0);
-    const targetLeftWeight = totalWeight * 0.6;
+    const targetLeftWeight = totalWeight * 0.58; // Unificado al 58% solicitado
 
     let bestSplitIndex = 0;
     let minDifference = Infinity;
@@ -292,7 +293,9 @@ const AnalisisAI = ({ text }) => {
     for (let i = 0; i < blocks.length; i++) {
         runningWeight += getBlockWeight(blocks[i]);
         const currentDiff = Math.abs(runningWeight - targetLeftWeight);
-        const bias = (runningWeight >= targetLeftWeight) ? -0.1 : 0;
+
+        // Pequeño sesgo para preferir que la izquierda sea un poco más larga si la diferencia es igual
+        const bias = (runningWeight >= targetLeftWeight) ? -0.05 : 0;
 
         if (currentDiff + bias < minDifference) {
             minDifference = currentDiff + bias;
@@ -306,6 +309,9 @@ const AnalisisAI = ({ text }) => {
             bestSplitIndex--;
         }
     }
+
+    // Fallback mínimo
+    if (bestSplitIndex === 0 && blocks.length > 0) bestSplitIndex = Math.ceil(blocks.length * 0.58);
 
     const leftBlocks = blocks.slice(0, Math.max(1, bestSplitIndex));
     const rightBlocks = blocks.slice(Math.max(1, bestSplitIndex));
