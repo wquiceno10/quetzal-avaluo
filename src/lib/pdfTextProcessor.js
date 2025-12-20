@@ -61,6 +61,11 @@ export function procesarTextoParaPDF(text) {
     // Negritas: **texto** → <strong>texto</strong>
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
 
+    // TABLAS: Separar tablas del contenido anterior/posterior con \n\n
+    // Solo si hay una transición real (No-Tabla -> Tabla o viceversa)
+    .replace(/^([^|\s].*)\n(\s*\|)/gm, '$1\n\n$2')
+    .replace(/^(\s*\|.*)\n([^|\s])/gm, '$1\n\n$2')
+
     // Limpiar etiquetas [1], [2], etc.
     .replace(/\[\d+\]/g, '');
 
@@ -103,6 +108,14 @@ export function procesarTextoParaPDF(text) {
 
     return `<em style="font-size: 11px; color: #666; display: block; margin-top: 4px;">NOTA: ${formattedNote}</em>`;
   });
+
+  // --- UNIFICAR TABLAS ROTAS ---
+  // Eliminar \n\n entre líneas que empiezan por |
+  let previousText = cleanText;
+  do {
+    previousText = cleanText;
+    cleanText = cleanText.replace(/(^\s*\|[^\n]*)\n{2,}(\s*\|)/gm, '$1\n$2');
+  } while (cleanText !== previousText);
 
   // --- SPLIT EN PÁRRAFOS Y PROCESAR BLOQUES ---
   const blocks = cleanText.split('\n\n');
@@ -172,7 +185,7 @@ export function procesarTextoParaPDF(text) {
     // Detectar títulos (números seguidos de texto): "1. Título" o "2.1. Subtítulo"
     // AHORA: Detectar en la primera línea y procesar contenido adicional
     const firstLine = trimmed.split('\n')[0];
-    const numberedTitleMatch = firstLine.match(/^(\d+(?:\.\d+)?\.?)\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ²³ ()\-,\/]+)/);
+    const numberedTitleMatch = firstLine.match(/^(\d+(?:\.\d+)?\.?)\s+([^:\n]{3,120})/);
 
     if (numberedTitleMatch && firstLine.length < 120) {
       const titleText = numberedTitleMatch[2].trim();
@@ -220,24 +233,97 @@ export function procesarTextoParaPDF(text) {
 
     // Detectar tablas (comienzan con |)
     if (trimmed.startsWith('|')) {
-      const tableRows = trimmed.split('\n').filter(row => row.trim().startsWith('|'));
+      const allRows = trimmed.split('\n');
+
+      // Filtramos líneas vacías y SEPARADORES de markdown (|---|)
+      const tableRows = allRows.filter(r => {
+        const clean = r.trim();
+        if (!clean) return false;
+        // Ignorar líneas que contienen solo -, :, |, espacios
+        if (clean.match(/^[\|\s\-:]+$/)) return false;
+        // Ignorar líneas como |-----| o |:---:|
+        if (clean.includes('---') || clean.includes('--')) return false;
+        // Verificar contenido válido (al menos una celda con texto alfanumérico)
+        const cells = clean.split('|').filter(c => c.trim() !== '');
+        const hasRealContent = cells.some(c => /[a-zA-Z0-9]/.test(c));
+        return cells.length > 0 && hasRealContent;
+      });
+
+      if (tableRows.length === 0) return;
+
       let tableHTML = '<table style="width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 11px;">\n';
 
+      const dataRows = [];
+      const footerRows = [];
+
       tableRows.forEach((row, idx) => {
-        const cells = row.split('|').filter(c => c.trim()).map(c => c.trim());
-        const tag = idx === 0 ? 'th' : 'td';
-        const style = idx === 0
-          ? 'background: #F0ECD9; padding: 6px; border: 1px solid #ddd; font-weight: bold; text-align: left;'
-          : 'padding: 6px; border: 1px solid #ddd;';
+        const cleanRow = row.trim().replace(/^\||\|$/g, '');
+        const cells = cleanRow.split('|');
+        const validCells = cells.filter(c => c.trim() !== '');
+        const pipeCount = (row.match(/\|/g) || []).length;
+        const headerPipeCount = (tableRows[0].match(/\|/g) || []).length;
+
+        // Un footer debe tener pocos separadores O ser texto largo en una sola celda
+        const isFooterContent = (validCells.length === 1 && pipeCount < headerPipeCount && idx > 0) ||
+          row.toLowerCase().includes('ajuste total') ||
+          row.toLowerCase().includes('valor final');
+
+        if (isFooterContent && idx > 0) {
+          footerRows.push({ row, isTotal: row.toLowerCase().includes('ajuste total') });
+        } else {
+          dataRows.push(row);
+        }
+      });
+
+      // Calcular el número máximo de columnas basado en el header
+      const headerRow = dataRows[0] ? dataRows[0].trim().replace(/^\||\|$/g, '') : '';
+      const numCols = headerRow.split('|').length;
+
+      // Generar tabla HTML
+      dataRows.forEach((row, idx) => {
+        const cleanRow = row.trim().replace(/^\||\|$/g, '');
+        let cells = cleanRow.split('|').map(c => c.trim());
+        const validContent = cells.filter(c => c.trim() !== '');
+
+        // Saltar filas vacías (excepto header)
+        if (validContent.length === 0 && idx > 0) return;
+
+        // ASEGURAR MISMO NÚMERO DE COLUMNAS QUE EL HEADER
+        while (cells.length < numCols) cells.push('');
+        if (cells.length > numCols) cells = cells.slice(0, numCols);
+
+        const isHeader = idx === 0;
 
         tableHTML += '  <tr>\n';
-        cells.forEach(cell => {
-          tableHTML += `    <${tag} style="${style}">${cell}</${tag}>\n`;
+        cells.forEach((cell, cIdx) => {
+          const align = cIdx === 0 ? 'left' : 'center';
+          if (isHeader) {
+            // Header: fondo beige, negrita, alineado como data
+            tableHTML += `    <th style="background: #F0ECD9; padding: 6px; border: 1px solid #ddd; font-weight: bold; text-align: ${align};">${cell}</th>\n`;
+          } else {
+            // Data row: sin fondo, sin negrita, alineado consistente
+            tableHTML += `    <td style="padding: 6px; border: 1px solid #ddd; text-align: ${align};">${cell}</td>\n`;
+          }
         });
         tableHTML += '  </tr>\n';
       });
 
       tableHTML += '</table>\n';
+
+      // Renderizar Footer (fuera de tabla)
+      if (footerRows.length > 0) {
+        tableHTML += '<div style="background-color: #F9FAF9; border-top: 1px solid #E0E5E2; padding: 10px; margin-top: -10px; margin-bottom: 15px; border-radius: 0 0 8px 8px;">\n';
+        footerRows.forEach(item => {
+          const content = item.row.trim().replace(/^\||\|$/g, '').trim();
+          if (item.isTotal) {
+            tableHTML += `<div style="margin-top: 8px; padding: 8px; background-color: #F8F6EF; border-top: 1px solid #D4C8A8; text-align: center; font-weight: bold; color: #2C3D37; font-size: 13px;">${content}</div>\n`;
+          } else {
+            tableHTML += `<p style="margin-bottom: 6px; text-align: justify; font-style: italic; color: #4F5B55; font-size: 11px; line-height: 1.4;">${content}</p>\n`;
+          }
+        });
+        tableHTML += '</div>\n';
+      }
+
       htmlOutput += tableHTML;
       return;
     }

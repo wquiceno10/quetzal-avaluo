@@ -585,7 +585,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
                     </div>
                   </div>
                   <div class="hero-detail-row">
-                    <span class="hero-detail-label">Precio m² Ref.</span>
+                    <span class="hero-detail-label">Precio m² Sugerido</span>
                     <span class="hero-detail-value">${formatCurrency(precioM2)}/m²</span>
                   </div>
                   ${totalComparables ? `

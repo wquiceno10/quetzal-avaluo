@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { guardarAvaluoEnSupabase } from '@/lib/avaluos';
 import { generateAvaluoEmailHtml } from '@/lib/emailGenerator';
+import { construirTextoConfianza } from '@/lib/confidenceHelper';
 
 export default function Step4Contact({ formData, onBack, onReset, initialEnviado = false, emailToShow }) {
   const navigate = useNavigate();
@@ -81,7 +82,8 @@ export default function Step4Contact({ formData, onBack, onReset, initialEnviado
         codigoAvaluo,
         valorEstimadoFinal,
         rangoMin,
-        rangoMax
+        rangoMax,
+        confianzaInfo: construirTextoConfianza(comparablesData, comparablesData.comparables_totales_encontrados, comparablesData.comparables_usados_en_calculo || comparablesData.total_comparables)
       });
 
       const toTitleCase = (str) => {

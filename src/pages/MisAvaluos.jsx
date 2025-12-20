@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Mail, Calendar, MapPin, ArrowRight, Home, RefreshCw, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, FileText, Mail, Calendar, MapPin, ArrowRight, Home, RefreshCw, Trash2, CheckCircle2, XCircle, ArrowUpDown, ChevronDown } from 'lucide-react';
 import BotonPDF from '@/components/avaluo/BotonPDF';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -31,6 +31,8 @@ export default function MisAvaluos() {
     const [deletingId, setDeletingId] = useState(null);
     const [avaluoToDelete, setAvaluoToDelete] = useState(null); // State para modal confirmación eliminación
     const [feedbackModal, setFeedbackModal] = useState({ open: false, title: '', description: '', type: 'success' }); // Nuevo state para feedback general
+    const [sortBy, setSortBy] = useState('recent'); // recent | oldest | highPrice | lowPrice
+    const [showSortMenu, setShowSortMenu] = useState(false);
 
     useEffect(() => {
         fetchAvaluos();
@@ -300,6 +302,42 @@ export default function MisAvaluos() {
         );
     }
 
+    // Opciones de ordenamiento
+    const sortOptions = [
+        { value: 'recent', label: 'Más Recientes' },
+        { value: 'oldest', label: 'Más Antiguos' },
+        { value: 'highPrice', label: 'Mayor Precio' },
+        { value: 'lowPrice', label: 'Menor Precio' }
+    ];
+
+    // Función para obtener el valor final de un avalúo
+    const getValorFinal = (avaluo) => {
+        const compData = avaluo.payload_json || {};
+        let valor = avaluo.valor_final;
+        if (!valor) {
+            const v1 = compData.valor_estimado_venta_directa;
+            const v2 = compData.valor_estimado_rentabilidad;
+            if (v1 && v2) valor = (v1 + v2) / 2;
+            else valor = v1 || v2 || 0;
+        }
+        return valor || 0;
+    };
+
+    // Ordenar avalúos según la opción seleccionada
+    const sortedAvaluos = [...avaluos].sort((a, b) => {
+        switch (sortBy) {
+            case 'oldest':
+                return new Date(a.created_at) - new Date(b.created_at);
+            case 'highPrice':
+                return getValorFinal(b) - getValorFinal(a);
+            case 'lowPrice':
+                return getValorFinal(a) - getValorFinal(b);
+            case 'recent':
+            default:
+                return new Date(b.created_at) - new Date(a.created_at);
+        }
+    });
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="mb-8 flex items-start justify-between">
@@ -333,131 +371,163 @@ export default function MisAvaluos() {
                         </div>
                     </Card>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {avaluos.map((avaluo) => {
-                            const formDataForPDF = {
-                                ...avaluo,
-                                comparables_data: avaluo.payload_json || {},
-                                // Asegurar uso_lote para el PDF
-                                uso_lote: avaluo.uso_lote || avaluo.payload_json?.uso_lote || avaluo.payload_json?.ficha_tecnica_defaults?.uso_lote
-                            };
-                            const compData = avaluo.payload_json || {};
-                            let valorMostrar = avaluo.valor_final;
-                            if (!valorMostrar) {
-                                const v1 = compData.valor_estimado_venta_directa;
-                                const v2 = compData.valor_estimado_rentabilidad;
-                                if (v1 && v2) valorMostrar = (v1 + v2) / 2;
-                                else valorMostrar = v1 || v2;
-                            }
+                    <>
+                        {/* Dropdown de ordenamiento */}
+                        <div className="flex justify-end mb-4">
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowSortMenu(!showSortMenu)}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#4F5B55] bg-white border border-[#E0E5E2] rounded-lg hover:bg-[#F5F7F6] transition-colors"
+                                >
+                                    <ArrowUpDown className="w-4 h-4" />
+                                    Ordenar: {sortOptions.find(o => o.value === sortBy)?.label}
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
+                                </button>
+                                {showSortMenu && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white border border-[#E0E5E2] rounded-lg shadow-lg z-10">
+                                        {sortOptions.map((option) => (
+                                            <button
+                                                key={option.value}
+                                                onClick={() => {
+                                                    setSortBy(option.value);
+                                                    setShowSortMenu(false);
+                                                }}
+                                                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-[#F5F7F6] transition-colors first:rounded-t-lg last:rounded-b-lg ${sortBy === option.value ? 'bg-[#F0F2F1] text-[#2C3D37] font-medium' : 'text-[#4F5B55]'}`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                            return (
-                                <Card key={avaluo.id} className="border-[#E0E5E2] hover:shadow-md transition-all duration-300 overflow-hidden relative flex flex-col">
-                                    {/* Header compacto */}
-                                    <CardHeader className="pb-2 pt-4 px-4 bg-[#F9FAF9] border-b border-[#F0F2F1]">
-                                        <div className="flex items-center justify-between">
-                                            <Badge variant="outline" className="bg-white text-[#2C3D37] border-[#B0BDB4] text-xs">
-                                                {avaluo.codigo_avaluo || 'SIN CÓDIGO'}
-                                            </Badge>
-                                            <div className="flex items-center gap-1">
-                                                <Badge className="bg-[#DEE8E9] text-[#2C3D37] hover:bg-[#d0ddde] text-xs">
-                                                    {avaluo.status || 'Completado'}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {sortedAvaluos.map((avaluo) => {
+                                const formDataForPDF = {
+                                    ...avaluo,
+                                    comparables_data: avaluo.payload_json || {},
+                                    // Asegurar uso_lote para el PDF
+                                    uso_lote: avaluo.uso_lote || avaluo.payload_json?.uso_lote || avaluo.payload_json?.ficha_tecnica_defaults?.uso_lote
+                                };
+                                const compData = avaluo.payload_json || {};
+                                let valorMostrar = avaluo.valor_final;
+                                if (!valorMostrar) {
+                                    const v1 = compData.valor_estimado_venta_directa;
+                                    const v2 = compData.valor_estimado_rentabilidad;
+                                    if (v1 && v2) valorMostrar = (v1 + v2) / 2;
+                                    else valorMostrar = v1 || v2;
+                                }
+
+                                return (
+                                    <Card key={avaluo.id} className="border-[#E0E5E2] hover:shadow-md transition-all duration-300 overflow-hidden relative flex flex-col">
+                                        {/* Header compacto */}
+                                        <CardHeader className="pb-2 pt-4 px-4 bg-[#F9FAF9] border-b border-[#F0F2F1]">
+                                            <div className="flex items-center justify-between">
+                                                <Badge variant="outline" className="bg-white text-[#2C3D37] border-[#B0BDB4] text-xs">
+                                                    {avaluo.codigo_avaluo || 'SIN CÓDIGO'}
                                                 </Badge>
-                                                <button
-                                                    onClick={() => confirmDelete(avaluo)}
-                                                    disabled={deletingId === avaluo.id}
-                                                    className="p-1.5 text-[#7A8C85] hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
-                                                    title="Eliminar avalúo"
-                                                >
-                                                    {deletingId === avaluo.id ? (
-                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                    ) : (
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                    )}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <span className="text-[10px] text-[#7A8C85] flex items-center gap-1 mt-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {formatDate(avaluo.created_at)}
-                                        </span>
-                                    </CardHeader>
-
-                                    {/* Contenido principal - layout vertical */}
-                                    <CardContent className="pt-4 px-4 pb-4 flex-1 flex flex-col">
-                                        {/* Valor destacado arriba */}
-                                        <div className="text-center mb-4 pb-3 border-b border-[#F0F2F1]">
-                                            <p className="text-[10px] text-[#7A8C85] font-bold uppercase tracking-wider mb-1">Valor Estimado</p>
-                                            <p className="text-2xl font-bold text-[#2C3D37] font-outfit">
-                                                {formatCurrency(valorMostrar)}
-                                            </p>
-                                        </div>
-
-                                        {/* Info del inmueble - 2 columnas lado a lado */}
-                                        <div className="grid grid-cols-2 gap-3 flex-1">
-                                            <div className="flex items-start gap-2">
-                                                <div className="bg-[#F0F2F1] p-1.5 rounded-md shrink-0">
-                                                    <Home className="w-4 h-4 text-[#2C3D37]" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="font-semibold text-[#2C3D37] capitalize text-sm truncate">{toTitleCase(avaluo.tipo_inmueble)}</p>
-                                                    <p className="text-xs text-[#4F5B55] truncate">
-                                                        {(avaluo.tipo_inmueble || '').toLowerCase().includes('lote') ? (
-                                                            <>
-                                                                {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {toTitleCase(avaluo.uso_lote || avaluo.payload_json?.uso_lote || '—')}
-                                                            </>
+                                                <div className="flex items-center gap-1">
+                                                    <Badge className="bg-[#DEE8E9] text-[#2C3D37] hover:bg-[#d0ddde] text-xs">
+                                                        {avaluo.status || 'Completado'}
+                                                    </Badge>
+                                                    <button
+                                                        onClick={() => confirmDelete(avaluo)}
+                                                        disabled={deletingId === avaluo.id}
+                                                        className="p-1.5 text-[#7A8C85] hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                                                        title="Eliminar avalúo"
+                                                    >
+                                                        {deletingId === avaluo.id ? (
+                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                         ) : (
-                                                            <>
-                                                                {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {avaluo.habitaciones || avaluo.payload_json?.habitaciones || '—'} Hab • {avaluo.banos || avaluo.payload_json?.banos || '—'} Baños
-                                                            </>
+                                                            <Trash2 className="w-3.5 h-3.5" />
                                                         )}
-                                                    </p>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] text-[#7A8C85] flex items-center gap-1 mt-1">
+                                                <Calendar className="w-3 h-3" />
+                                                {formatDate(avaluo.created_at)}
+                                            </span>
+                                        </CardHeader>
+
+                                        {/* Contenido principal - layout vertical */}
+                                        <CardContent className="pt-4 px-4 pb-4 flex-1 flex flex-col">
+                                            {/* Valor destacado arriba */}
+                                            <div className="text-center mb-4 pb-3 border-b border-[#F0F2F1]">
+                                                <p className="text-[10px] text-[#7A8C85] font-bold uppercase tracking-wider mb-1">Valor Estimado</p>
+                                                <p className="text-2xl font-bold text-[#2C3D37] font-outfit">
+                                                    {formatCurrency(valorMostrar)}
+                                                </p>
+                                            </div>
+
+                                            {/* Info del inmueble - 2 columnas lado a lado */}
+                                            <div className="grid grid-cols-2 gap-3 flex-1">
+                                                <div className="flex items-start gap-2">
+                                                    <div className="bg-[#F0F2F1] p-1.5 rounded-md shrink-0">
+                                                        <Home className="w-4 h-4 text-[#2C3D37]" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-[#2C3D37] capitalize text-sm truncate">{toTitleCase(avaluo.tipo_inmueble)}</p>
+                                                        <p className="text-xs text-[#4F5B55] truncate">
+                                                            {(avaluo.tipo_inmueble || '').toLowerCase().includes('lote') ? (
+                                                                <>
+                                                                    {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {toTitleCase(avaluo.uso_lote || avaluo.payload_json?.uso_lote || '—')}
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    {avaluo.area_construida || avaluo.payload_json?.area_construida || '—'} m² • {avaluo.habitaciones || avaluo.payload_json?.habitaciones || '—'} Hab • {avaluo.banos || avaluo.payload_json?.banos || '—'} Baños
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start gap-2">
+                                                    <div className="bg-[#F0F2F1] p-1.5 rounded-md shrink-0">
+                                                        <MapPin className="w-4 h-4 text-[#2C3D37]" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-[#2C3D37] text-sm truncate">{toTitleCase(avaluo.barrio)}</p>
+                                                        <p className="text-xs text-[#4F5B55] truncate">{toTitleCase(avaluo.municipio || avaluo.ciudad)}</p>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-start gap-2">
-                                                <div className="bg-[#F0F2F1] p-1.5 rounded-md shrink-0">
-                                                    <MapPin className="w-4 h-4 text-[#2C3D37]" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="font-semibold text-[#2C3D37] text-sm truncate">{toTitleCase(avaluo.barrio)}</p>
-                                                    <p className="text-xs text-[#4F5B55] truncate">{toTitleCase(avaluo.municipio || avaluo.ciudad)}</p>
-                                                </div>
+                                            {/* Botones apilados verticalmente con mismo tamaño */}
+                                            <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-[#F0F2F1]">
+                                                <Button
+                                                    onClick={() => navigate(`/resultados/${avaluo.id}`)}
+                                                    className="bg-[#2C3D37] text-white hover:bg-[#1a2620] rounded-full py-5 w-full text-sm font-medium"
+                                                >
+                                                    <ArrowRight className="w-4 h-4 mr-2" />
+                                                    Ver Detalles
+                                                </Button>
+                                                <BotonPDF
+                                                    formData={formDataForPDF}
+                                                    confianzaInfo={construirTextoConfianza(compData, compData.comparables_totales_encontrados, compData.comparables_usados_en_calculo || compData.total_comparables)}
+                                                    className="bg-[#E8E4D0] text-[#2C3D37] hover:bg-[#DDD8C4] rounded-full py-5 w-full text-sm font-medium"
+                                                />
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleResendEmail(avaluo)}
+                                                    disabled={sendingEmailId === avaluo.id}
+                                                    className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-5 w-full text-sm font-medium"
+                                                >
+                                                    {sendingEmailId === avaluo.id ? (
+                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    ) : (
+                                                        <Mail className="w-4 h-4 mr-2" />
+                                                    )}
+                                                    Reenviar al Correo
+                                                </Button>
                                             </div>
-                                        </div>
-
-                                        {/* Botones apilados verticalmente con mismo tamaño */}
-                                        <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-[#F0F2F1]">
-                                            <Button
-                                                onClick={() => navigate(`/resultados/${avaluo.id}`)}
-                                                className="bg-[#2C3D37] text-white hover:bg-[#1a2620] rounded-full py-5 w-full text-sm font-medium"
-                                            >
-                                                <ArrowRight className="w-4 h-4 mr-2" />
-                                                Ver Detalles
-                                            </Button>
-                                            <BotonPDF
-                                                formData={formDataForPDF}
-                                                confianzaInfo={construirTextoConfianza(compData, compData.comparables_totales_encontrados, compData.comparables_usados_en_calculo || compData.total_comparables)}
-                                                className="bg-[#E8E4D0] text-[#2C3D37] hover:bg-[#DDD8C4] rounded-full py-5 w-full text-sm font-medium"
-                                            />
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => handleResendEmail(avaluo)}
-                                                disabled={sendingEmailId === avaluo.id}
-                                                className="border-[#B0BDB4] text-[#4F5B55] hover:text-[#2C3D37] hover:bg-[#F5F7F6] rounded-full py-5 w-full text-sm font-medium"
-                                            >
-                                                {sendingEmailId === avaluo.id ? (
-                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                ) : (
-                                                    <Mail className="w-4 h-4 mr-2" />
-                                                )}
-                                                Reenviar al Correo
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                    </div>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    </>
                 )}
             </div>
 

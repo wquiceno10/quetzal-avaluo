@@ -76,7 +76,6 @@ const AnalisisAI = ({ text }) => {
     let cleanText = text
         .replace(/^-{3,}\s*$/gm, '')
         // INJECT DEFAULT NOTES IF MISSING (Fallback)
-        // INJECT DEFAULT NOTES IF MISSING (Fallback)
         .replace(/(fuente_validacion:\s*(?:coincidencia|zona_extendida|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
             let note = "";
             let p = prefix.toLowerCase();
@@ -218,8 +217,9 @@ const AnalisisAI = ({ text }) => {
 
 
 
-    cleanText = cleanText.replace(/(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
-        let formattedNote = noteText.trim().replace(/\*+$/, '');
+    // PROCESAR NOTAS (Corregido para manejar paréntesis iniciales y finales)
+    cleanText = cleanText.replace(/(?:\()?\s*(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
+        let formattedNote = noteText.trim().replace(/\*+$/, '').replace(/\)\s*$/, '');
         const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
         const match1 = formattedNote.match(pattern1);
 
@@ -232,8 +232,8 @@ const AnalisisAI = ({ text }) => {
             formattedNote = `A ${distance} km de distancia, ${characteristics}`;
         }
         return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
-    }).replace(/(?:^|\n)\s*\*([^*]{10,})\*\s*(?:\n|$)/g, (match, noteText) => {
-        let formattedNote = noteText.trim();
+    }).replace(/(?:\()?\s*\*([^*]{10,})\*\s*(?:\))?(?:\n|$)/g, (match, noteText) => {
+        let formattedNote = noteText.trim().replace(/\)\s*$/, '');
         const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
         const match1 = formattedNote.match(pattern1);
         if (match1) {
@@ -246,96 +246,166 @@ const AnalisisAI = ({ text }) => {
     });
 
     cleanText = cleanText.replace(/\s*-{3,}\s*/g, '\n\n');
-    // Solo convertir en título si hay texto después del número (ej: "3. Título" o "3.3. Título")
-    // NO convertir números sueltos sin texto descriptivo
-    cleanText = cleanText.replace(/(?:^|\n)[ \t]*\**(\d+(?:\.\d+)?\.?\s+[A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑA-Za-z ]{5,100}[:]??)\**/g, '\n\n# $1\n');
+
+    // 1. Normalización de Títulos y LaTeX
+    cleanText = cleanText.replace(/\\\[([\s\S]{1,60}?)\\\]/g, ' $1 ');
     cleanText = cleanText.replace(/\\\[/g, '\n\n').replace(/\\\]/g, '\n\n');
-    cleanText = cleanText.replace(/([^\n])\n(\|)/g, '$1\n\n$2');
+    cleanText = cleanText.replace(/(?:^|\n)[ \t]*\**(\d+(?:\.\d+)?\.?\s+[A-ZÁÉÍÓÚÑ][^:\n]{5,150}[:]??)\**/g, '\n\n# $1\n\n');
 
-    // GENÉRICO: Detectar títulos en negrita que no estén en su propia línea y forzar salto
-    // Busca: Texto previo + espacio + **Texto en Mayúscula...**
-    const titleRegex = /([^\n])\s+(\*\*[A-ZÁÉÍÓÚÑ].+?\*\*)/g;
-    cleanText = cleanText.replace(titleRegex, '$1\n\n- $2');
+    // 2. Aislamiento y Reparación de Tablas
+    // Forzar aislamiento absoluto de tablas para evitar que se peguen a otros bloques
+    cleanText = cleanText.replace(/^(\s*\|.*)/gm, '\n\n$1\n\n');
+    // Limpiar filas de pipes vacías o basura
+    cleanText = cleanText.replace(/^\s*(\|[\s|]*)+\s*$/gm, '');
 
-    // Asegurar que si ya está en nueva línea, tenga guión (si parece un título de comparable)
-    cleanText = cleanText.replace(/\n(\*\*[A-ZÁÉÍÓÚÑ].+?\*\*)/g, '\n- $1');
-
-    // CRÍTICO: Unificar tablas rotas.
-    // Iteramos para asegurar que se unan todas las filas consecutivas separadas por saltos de línea excesivos.
-    // Patrón: Una línea que empieza con | (ignorando whitespace), salto(s) de línea, otra línea que empieza con |
-    let previousText = cleanText;
+    let previousText = "";
     do {
         previousText = cleanText;
-        cleanText = cleanText.replace(/(^\s*\|[^\n]*)\n{2,}(\s*\|)/gm, '$1\n$2');
+        // Unificar filas de una misma tabla separadas por saltos de línea basura
+        cleanText = cleanText.replace(/(^\s*\|[^\n]*)\n{1,4}(\s*\|)/gm, '$1\n$2');
     } while (cleanText !== previousText);
 
-    const blocks = cleanText.split('\n\n');
+    // 3. Atomización de Resto de Bloques (Viñetas y párrafos largos)
+    cleanText = cleanText.replace(/\n\s*([-*•])\s+/g, '\n\n$1 ');
+    cleanText = cleanText.replace(/\n\s*(\d+[.)]\s+[A-ZÁÉÍÓÚÑ])/g, '\n\n$1');
+    cleanText = cleanText.replace(/\n\s*([a-z]\)\s+[A-ZÁÉÍÓÚÑ])/g, '\n\n$1');
+    cleanText = cleanText.replace(/\n\s*(\*\*|<strong>)/g, '\n\n$1');
+    cleanText = cleanText.replace(/([^\n]{350,550})\.\s+([A-ZÁÉÍÓÚÑ])/g, '$1.\n\n$2');
+
+    const blocks = cleanText.split('\n\n').filter(b => b.trim());
+
+    // BALANCÉO PROFESIONAL (58/42) CON REGLA STICKY
+    const headingRegex = /^#|^\d+[.)]\s+[A-ZÁÉÍÓÚÑ]/;
+    const getBlockWeight = (block) => {
+        const lineCount = block.split('\n').length;
+        const isHeading = block.match(headingRegex);
+        return lineCount + (block.length / 500) + (isHeading ? 2 : 0);
+    };
+
+    const totalWeight = blocks.reduce((sum, b) => sum + getBlockWeight(b), 0);
+    const targetLeftWeight = totalWeight * 0.6;
+
+    let bestSplitIndex = 0;
+    let minDifference = Infinity;
+    let runningWeight = 0;
+
+    for (let i = 0; i < blocks.length; i++) {
+        runningWeight += getBlockWeight(blocks[i]);
+        const currentDiff = Math.abs(runningWeight - targetLeftWeight);
+        const bias = (runningWeight >= targetLeftWeight) ? -0.1 : 0;
+
+        if (currentDiff + bias < minDifference) {
+            minDifference = currentDiff + bias;
+            bestSplitIndex = i + 1;
+        }
+    }
+
+    // Corrección Sticky: No dejar títulos huérfanos al final de la izquierda
+    if (bestSplitIndex > 0 && bestSplitIndex < blocks.length) {
+        if (blocks[bestSplitIndex - 1].match(headingRegex)) {
+            bestSplitIndex--;
+        }
+    }
+
+    const leftBlocks = blocks.slice(0, Math.max(1, bestSplitIndex));
+    const rightBlocks = blocks.slice(Math.max(1, bestSplitIndex));
+
+    const renderBlock = (block, index) => {
+        const trimmed = block.trim();
+        if (!trimmed) return null;
+
+        if (trimmed.startsWith('#')) {
+            const lines = trimmed.split('\n');
+            const headerLine = lines[0];
+            const remainingText = lines.slice(1).join('\n').trim();
+            const title = toTitleCase(headerLine.replace(/^#+\s*/, ''));
+
+            return (
+                <React.Fragment key={index}>
+                    <h3 className="font-outfit font-medium text-lg text-[#2C3D37] mt-6 first:mt-0 mb-3 border-b border-[#C9C19D]/50 pb-1 break-inside-avoid">
+                        {title}
+                    </h3>
+                    {remainingText && (
+                        <p className="mb-4 text-sm leading-relaxed text-justify text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: remainingText.replace(/\n/g, '<br>') }} />
+                    )}
+                </React.Fragment>
+            );
+        }
+
+        // Detectar títulos numerados (ej: 2.1 o 2.) o letras descriptivas (ej: a) o C))
+        const numberedTitleMatch = trimmed.match(/^([a-z0-9]+[.)])\s+([^:\n]+)/i);
+        if (numberedTitleMatch && trimmed.split('\n')[0].length < 130) {
+            const titleText = numberedTitleMatch[2].split('\n')[0].trim();
+            const remainingContent = trimmed.split('\n').slice(1).join('\n').trim();
+
+            return (
+                <React.Fragment key={index}>
+                    <h4 className="font-outfit font-semibold text-base text-[#2C3D37] mt-5 mb-2 break-inside-avoid">
+                        {numberedTitleMatch[1]} {toTitleCase(titleText)}
+                    </h4>
+                    {remainingContent && (
+                        <p className="mb-4 text-sm leading-relaxed text-justify text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: remainingContent.replace(/\n/g, '<br>') }} />
+                    )}
+                </React.Fragment>
+            );
+        }
+
+        if (trimmed.startsWith('|')) {
+            return <MarkdownTable key={index} content={trimmed} />;
+        }
+
+        if (trimmed.match(/^[-*•]\s/) || (trimmed.match(/^\d+[\.\\)]\s/) && !trimmed.match(/^\d+\.\d+/))) {
+            const lines = trimmed.split('\n');
+            const items = [];
+            let currentItem = '';
+            for (const line of lines) {
+                if ((line.match(/^[-*•]\s/) || line.match(/^\d+[\.\\)]\s/)) && !line.match(/^\d+\.\d+/)) {
+                    if (currentItem) items.push(currentItem);
+                    currentItem = line.replace(/^(?:[-*•]|\d+[\.\\)])\s*/, '');
+                } else if (line.trim()) {
+                    currentItem += '\n' + line;
+                }
+            }
+            if (currentItem) items.push(currentItem);
+
+            return (
+                <ul key={index} className="list-none space-y-2 mb-4 break-inside-avoid">
+                    {items.map((item, i) => (
+                        <li key={i} className="flex gap-2 text-sm leading-relaxed text-[#4F5B55]">
+                            <span className="font-bold mt-0.5">•</span>
+                            <span dangerouslySetInnerHTML={{ __html: item.replace(/\n/g, '<br>') }} />
+                        </li>
+                    ))}
+                </ul>
+            );
+        }
+
+        const paragraphHtml = trimmed.replace(/\n/g, '<br>');
+        return (
+            <p key={index} className="mb-4 text-sm leading-relaxed text-justify text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: paragraphHtml }} />
+        );
+    };
 
     return (
-        <div className="text-[#4F5B55] font-raleway md:columns-2 gap-10 space-y-4">
-            {blocks.map((block, index) => {
-                const trimmed = block.trim();
-                if (!trimmed) return null;
-
-                if (trimmed.startsWith('#')) {
-                    const lines = trimmed.split('\n');
-                    const headerLine = lines[0];
-                    const remainingText = lines.slice(1).join('\n').trim();
-                    const title = toTitleCase(headerLine.replace(/^#+\s*/, ''));
-
-                    return (
-                        <React.Fragment key={index}>
-                            <h3 className="font-outfit font-medium text-lg text-[#2C3D37] mt-6 first:mt-0 mb-3 border-b border-[#C9C19D]/50 pb-1 break-inside-avoid">
-                                {title}
-                            </h3>
-                            {remainingText && (
-                                <p className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: remainingText.replace(/\n/g, '<br>') }} />
-                            )}
-                        </React.Fragment>
-                    );
-                }
-
-                if (trimmed.startsWith('|')) {
-                    return <MarkdownTable key={index} content={trimmed} />;
-                }
-
-                if (trimmed.match(/^[-*•]\s/) || (trimmed.match(/^\d+[\.\)]\s/) && !trimmed.match(/^\d+\.\d+/))) {
-                    const lines = trimmed.split('\n');
-                    const items = [];
-                    let currentItem = '';
-
-                    for (const line of lines) {
-                        if ((line.match(/^[-*•]\s/) || line.match(/^\d+[\.\)]\s/)) && !line.match(/^\d+\.\d+/)) {
-                            if (currentItem) items.push(currentItem);
-                            currentItem = line.replace(/^(?:[-*•]|\d+[\.\)])\s*/, '');
-                        } else if (line.trim()) {
-                            currentItem += '\n' + line;
-                        }
-                    }
-                    if (currentItem) items.push(currentItem);
-
-                    return (
-                        <ul key={index} className="list-none space-y-2 mb-4 break-inside-avoid">
-                            {items.map((item, i) => (
-                                <li key={i} className="flex gap-2 text-sm leading-relaxed text-[#4F5B55]">
-                                    <span className="font-bold mt-0.5">•</span>
-                                    <span dangerouslySetInnerHTML={{ __html: item.replace(/\n/g, '<br>') }} />
-                                </li>
-                            ))}
-                        </ul>
-                    );
-                }
-
-                const paragraphHtml = trimmed.replace(/\n/g, '<br>');
-                return (
-                    <p key={index} className="mb-4 text-sm leading-relaxed text-justify break-inside-avoid text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: paragraphHtml }} />
-                );
-            })}
+        <div className="text-[#4F5B55] font-raleway">
+            {/* Desktop: Grid 2 Columnas - Mismo ancho (50/50) pero izquierda MUCHO más larga */}
+            <div className="hidden md:grid md:grid-cols-2 md:gap-10 items-start">
+                <div className="space-y-4">
+                    {leftBlocks.map((block, i) => renderBlock(block, `l-${i}`))}
+                </div>
+                <div className="space-y-4">
+                    {rightBlocks.map((block, i) => renderBlock(block, `r-${i}`))}
+                </div>
+            </div>
+            {/* Mobile: 1 Columna */}
+            <div className="md:hidden space-y-4">
+                {blocks.map((block, i) => renderBlock(block, `m-${i}`))}
+            </div>
         </div>
     );
 };
 
-export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF, onEmailSent, actionButtonLabel = "Continuar / Guardar Avalúo", ActionButtonIcon = ArrowRight, actionButtonIconPosition = "right" }) {
+export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF, onEmailSent, actionButtonLabel = "Enviar a un Correo", ActionButtonIcon = Mail, actionButtonIconPosition = "left" }) {
     const [mostrarComparables, setMostrarComparables] = useState(false);
     const [hasAvaluos, setHasAvaluos] = useState(false);
     const [feedbackModal, setFeedbackModal] = useState({ open: false, title: '', description: '', type: 'success' }); // Nuevo state para feedback
@@ -660,7 +730,7 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                 </div>
                             </div>
                             <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                                <span className="text-[#D3DDD6] text-sm">Precio m² Ref.</span>
+                                <span className="text-[#D3DDD6] text-sm">Precio m² Sugerido</span>
                                 <span className="font-semibold font-outfit text-white">{formatCurrency(precioM2Usado)}/m²</span>
                             </div>
                             {totalComparables !== null && (

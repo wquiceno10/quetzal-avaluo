@@ -113,11 +113,10 @@ ${formData.informacion_complementaria ? `- NOTAS ADICIONALES: ${formData.informa
     `.trim();
 
     // Rango de área para filtros de búsqueda (calculado aquí, usado en instrucciones)
-    const rangoAreaMin = esLote ? Math.round(area * 0.5) : Math.round(area * 0.65);
-    const rangoAreaMax = esLote ? Math.round(area * 1.8) : Math.round(area * 1.35);
-    const rangoAreaTexto = esLote
-        ? `${rangoAreaMin} a ${rangoAreaMax} m² (-50% a +80%)`
-        : `${rangoAreaMin} a ${rangoAreaMax} m² (±35%)`;
+    // Coherencia con texto: -50% min, +80% max para ambos tipos
+    const rangoAreaMin = Math.round(area * 0.5);
+    const rangoAreaMax = Math.round(area * 1.8);
+    const rangoAreaTexto = `${rangoAreaMin} a ${rangoAreaMax} m² (-50% a +80%)`;
 
     const seccionBase = `
 Eres un analista inmobiliario especializado en avalúos técnicos del mercado colombiano.
@@ -256,52 +255,55 @@ INSTRUCCIONES ESPECIALES PARA LOTES
 
 **1. ESTRATEGIA DE BÚSQUEDA (META FLEXIBLE):**
 
-Busca al menos 15+ propiedades comparables REALES SOLO EN VENTA en ${formData.municipio} y municipios vecinos. El uso de la propiedad solo debes usarlo para el analisis y cálculo de los ajustes.
-Si ${formData.informacion_complementaria} dice que tiene construcciones, entonces busca casas campestres y fincas en ${formData.municipio}.
+Busca idealmente **entre 15 y 25 propiedades comparables REALES SOLO EN VENTA** relacionadas con el tipo de lote objeto en ${formData.municipio} y municipios vecinos.
 
-   **Aplica expansiones de zona y expansión automática ante escasez de resultados**
-   **OBLIGATORIO**: Buscar comparables en al menos 5+ portales inmobiliarios.
-   **PROHIBIDO:** Listar en un solo ítem un promedio, ejemplo: "Casas promedio Mosquera estrato 3". SIEMPRE lista propiedades individuales.
+🔍 **BÚSQUEDAS OBLIGATORIAS (hacer las 3):**
+  a) Busca en Municipios vecinos de ${formData.municipio} (Máximo 30km de distancia).  
+  b) Busca en Municipios del mismo departamento de ${formData.municipio} (Máximo 60km de distancia).  
+  c) **EXPANSIÓN AUTOMÁTICA (si menos de 15 comparables):** Ampliar el rango de área máximo a: ±100%.  
 
-   **EXCLUSIÓN AUTOMÁTICA POR PALABRAS CLAVE:**
-   ANTES de incluir cualquier comparable, verifica que el título/descripción 
-   NO contenga estas palabras (excluir inmediatamente si las tiene):
+  **VARIACIÓN DE BÚSQUEDA:** Si ${formData.informacion_complementaria} dice que ${formData.tipo_inmueble} **tiene CASAS CONSTRUIDAS**:
+    - Busca **fincas y casas campestres** en ${formData.municipio} y municipios vecinos (Máximo 30km de distancia).  
+    - Complementa con **fincas y casas campestres** en Municipios del mismo departamento de ${formData.municipio} (Máximo 60km de distancia). 
+    - **EXPANSIÓN AUTOMÁTICA (si menos de 15 comparables):** Ampliar el rango de área máximo a: ±100%.
+
+**REGLA DE ÁREA OBLIGATORIO:** Respeta el RANGO DE ÁREA ${rangoAreaTexto} especificado en los filtros de calidad.  
+
+**OBLIGATORIO (con flexibilidad razonable):**
+- Busca comparables en al menos **5 portales inmobiliarios** diferentes (por ejemplo: Fincaraíz, Metrocuadrado, Ciencuadras, MercadoLibre, Properati u otros similares).
+- Apunta a que el reporte incluya **al menos 10 propiedades** ubicadas en **municipios vecinos y Municipios del mismo departamento**.
+- En todos los casos, cada propiedad listada debe corresponder a un **anuncio individual real**, con **URL propia del anuncio o del listado filtrado donde aparece** y **precio publicado**; no uses listados agregados ni resultados de búsqueda generales.
+
+**PROHIBIDO:**
+- Listar en un solo ítem un promedio o un listado. Ejemplo: "Lotes/Fincas promedio Mosquera"; "Varios anuncios listados en buscadores", "Listado de casas campestres en venta"
+
+**EXCLUSIÓN AUTOMÁTICA POR PALABRAS CLAVE:**
+   - ANTES de incluir cualquier comparable, verifica que el título/descripción NO contenga estas palabras (excluir inmediatamente si las tiene):
    - "remate", "adjudicación", "subasta", "judicial"
    - "oportunidad única", "urgente", "por deuda", "embargo"
    - "permuta", "cesión de derechos"
-   
-   **REGLA DE TIPO:** Expande la busqueda segun PRIORIDAD 1, ZONA SECUNDARIA, EXPANSIÓN CONDICIONAL y ACTIVACIÓN RESIDUAL.
-   **REGLA DE ÁREA OBLIGATORIO:** Respeta el RANGO DE ÁREA TOTAL CONSTRUIDA ${rangoAreaTexto} especificado en los filtros de calidad. 
-   **FILTRO DE PRECIO OBLIGATORIO:** Excluir si precio/m² desvía >40% de la media.
 
-   a) **ZONA PRIMARIA:** Activa la busqueda en Municipios cercanos (Máximo 60km de distancia) del mismo departamento.
+🌐 **VERIFICACIÓN MULTI-PORTAL (OBLIGATORIA):**
 
-   b) **ZONA SECUNDARIA:** Activa la búsqueda en Lotes del mismo departamento con características similares.
-      
-   c) **EXPANSIÓN AUTOMATICA (si menos de 15 comparables):** Ampliar el rango máximo en: ±80%.
-   - NUNCA excedas estos límites de expansión.
+Busca en AL MENOS estos portales:
+1. ✅ Fincaraíz (fincaraiz.com.co)
+2. ✅ Metrocuadrado (metrocuadrado.com)
+3. ✅ Ciencuadras (ciencuadras.com)
+4. ✅ MercadoLibre (mercadolibre.com.co)
+5. ✅ Properati (properati.com.co)
 
-   🌐 **VERIFICACIÓN MULTI-PORTAL (OBLIGATORIA):**
+🏆 **BONUS POR MUESTRA ABUNDANTE:**
 
-   Busca en AL MENOS estos portales:
-   1. ✅ Fincaraíz (fincaraiz.com.co)
-   2. ✅ Metrocuadrado (metrocuadrado.com)
-   3. ✅ Ciencuadras (ciencuadras.com)
-   4. ✅ MercadoLibre (mercadolibre.com.co)
-   5. ✅ Properati (properati.com.co)
+Si logras encontrar 20+ comparables:
+- Aumenta la confianza del análisis explícitamente
+- Menciona en RESUMEN EJECUTIVO: "Análisis basado en muestra robusta de X comparables"
 
-   🏆 **BONUS POR MUESTRA ABUNDANTE:**
+📋 **REGISTRO DE COMPARABLES DESCARTADOS:**
 
-   Si logras encontrar 20+ comparables:
-   - Aumenta la confianza del análisis explícitamente
-   - Menciona en RESUMEN EJECUTIVO: "Análisis basado en muestra robusta de X comparables"
-
-   📋 **REGISTRO DE COMPARABLES DESCARTADOS:**
-
-   En la sección "LIMITACIONES", reporta:
-   - "Comparables encontrados: X"
-   - "Comparables descartados: Y (razones: Z por área fuera de rango, W por precio outlier, etc.)"
-   - "Comparables incluidos en análisis: X - Y = TOTAL"
+En la sección "LIMITACIONES", reporta:
+- "Comparables encontrados: X"
+- "Comparables descartados: Y (razones: Z por área fuera de rango, W por precio outlier, etc.)"
+- "Comparables incluidos en análisis: X - Y = TOTAL"
 
 **2. VALORACIÓN PROPORCIONAL - LENGUAJE SIMPLE (si aplica):**
    
@@ -350,7 +352,7 @@ FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Lote | Venta | $Precio
     Área: XX m² | Uso: [tipo de uso]
     Ciudad | Departamento
-    **[Portal](URL cruda)** etiqueta
+    **[Portal](URL cruda de la ficha o del listado donde aparece el anuncio)** etiqueta
     **Nota:** Distancia: X km. [Justificación breve]
 
     **EJEMPLO CORRECTO de coincidencia:**
@@ -358,7 +360,7 @@ FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Lote | Venta | $180.000.000
     Área: 2000 m² | Uso: Comercial
     Filandia | Quindío
-    **[Metrocuadrado](url cruda)** coincidencia
+    **[Metrocuadrado](url cruda de la ficha o del listado donde aparece el anuncio)** coincidencia
     **Nota:** Distancia: 1.2 km. Mismo municipio del lote objeto.
 
     **EJEMPLO CORRECTO de zona_similar:**
@@ -366,7 +368,7 @@ FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Lote | Venta | $150.000.000
     Área: 1800 m² | Uso: Residencial
     Salento | Quindío
-    **[Fincaraíz](url cruda)** zona_similar
+    **[Fincaraíz](url cruda de la ficha o del listado donde aparece el anuncio)** zona_similar
     **Nota:** Distancia: 18 km. Municipio vecino con vocación turística similar.
 
     **EJEMPLO CORRECTO de zona_extendida:**
@@ -374,17 +376,23 @@ FORMATO DE ENTREGA PARA LOTES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Lote | Venta | $200.000.000
     Área: 2200 m² | Uso: Comercial
     Armenia | Quindío
-    **[Ciencuadras](url cruda)** zona_extendida
+    **[Ciencuadras](url cruda de la ficha o del listado donde aparece el anuncio)** zona_extendida
     **Nota:** Distancia: 35 km. Capital del departamento con dinámica comercial comparable.
+
+    **REGLAS PARA LA URL (MUY IMPORTANTE):**
+
+    - Siempre que sea posible, usa la URL directa del anuncio individual (la página donde se ve solo esa propiedad).
+    - Si no puedes obtener la URL directa, puedes usar la URL del listado de resultados filtrado donde aparezca el anuncio, indicando en la Nota que el anuncio se ve en esa búsqueda.
+    - NO uses URLs genéricas como solo la home del portal (https://www.fincaraiz.com.co/, https://www.metrocuadrado.com/) ni rutas muy amplias sin filtros (por ejemplo solo /venta o /arriendo).
 
 ## 2. ANÁLISIS DEL VALOR
 
-**SELECCIÓN DE COMPARABLES PARA CÁLCULO:**
-De los comparables listados arriba, selecciona los **mejores matches** para realizar los cálculos. 
-Descarta explícitamente los comparables con características muy diferentes al lote objetivo.
-Escribe un párrafo indicando:
-- Cuántos comparables usas para el cálculo
-- Por qué descartaste los demás
+   **SELECCIÓN DE COMPARABLES PARA CÁLCULO:**
+   De los comparables listados arriba, selecciona los **mejores matches** para realizar los cálculos. 
+   Descarta explícitamente los comparables con características muy diferentes al lote objetivo.
+   Escribe un párrafo indicando:
+   - Cuántos comparables usas para el cálculo
+   - Por qué descartaste los demás
 
 ### 2.1. Método de Venta Directa (Precio por m²)
 
@@ -405,8 +413,16 @@ Escribe un párrafo indicando:
    - Si el lote tiene construcciones, valóralas por separado (ver sección 3. AJUSTES APLICADOS)
    - Suma el valor de cada construcción al valor base del lote
 
+   **USO DE MUNICIPIOS VECINOS TURÍSTICOS (zona_similar / zona_extendida):**
+
+   - Cuando uses **municipios vecinos turísticos** como comparables:
+     - Explica brevemente si su nivel de precios y proyección es **similar, superior o inferior** al de ${formData.municipio}.
+     - Ajusta y comenta si los precios/m² de esos municipios se están tomando **como referencia directa** o si se están **ajustando al contexto de ${formData.municipio}** (por ejemplo: “Salento tiene valores ligeramente inferiores/similares, por lo que se usa como referencia razonable para Filandia”).
+
+
 ## 3. AJUSTES APLICADOS
 
+   **OBLIGATORIO** Usar negritas para destacar información relevante del informe, subtitulos, palabras, datos, cifras, etc.
    **IMPORTANTE:** Solo si el lote tiene construcciones (mencionadas en NOTAS ADICIONALES), debes valorarlas por separado:
 
 ### 3.1. Valor Base del Lote (Sin Construcciones)
@@ -429,20 +445,28 @@ Para CADA construcción mencionada:
 3. Aplica depreciación (Excelente 1.0, Bueno 0.8, Regular 0.6, Requiere reformas 0.4)
 4. Calcula: Precio/m² × Área × Factor
 
-**IMPORTANTE - VALORACIÓN DE PARQUEADEROS (patio abierto o superficie)**
-
-   Área = número de carros × 15-20 m²/carro (15 rural, 20 urbano)
+**IMPORTANTE - VALORACIÓN DE PARQUEADEROS:**
    
-   **MÉTODO ÚNICO - Porcentaje del valor base del lote:**
-   | Zona | % del lote |
-   |------|------------|
-   | Turística alta demanda | 15-25% |
-   | Comercial urbana | 10-20% |
-   | Rural/Residencial | 5-15% |
+   **Si uso comercial/turístico (genera ingresos):**
+   - Busca tarifas de parqueaderos públicos en ${formData.municipio || formData.departamento} o en Colombia.
+   - Calcula: (Carros × Tarifa día × Ocupación × 30) / Yield mensual
+   - Presenta tabla con: Carros, Tarifa diaria, Ocupación, Ingreso mensual, Yield, Valor final
+   - Verifica si el valor del parqueadero supera el valor de las construcciones, haz un ajuste proporcional que equilibre los valores y explícalo.
    
-   **Formato:** "Parqueadero (XX m², ~XX carros): Valor lote × XX% = $XXX"
+   **Si uso residencial:**
+   - Busca costo de construcción de parqueaderos/exteriores en Camacol o DANE para ${formData.departamento}
+   - Calcula: Área (carros × 15-20 m²) × Costo/m²
+   - Presenta tabla con: Área, Costo/m², Valor final
+   
+   **Explicar al usuario:** "El valor del parqueadero se calcula por su capacidad de generar ingresos. Si es de uso privado o no hay datos de tarifas, se valora por costo de construcción. Usted puede ajustar estos valores según las tarifas reales de su zona."
 
    **AJUSTE TOTAL CONSTRUCCIONES: +$XXX.XXX**
+
+   **REGLAS DE CONSISTENCIA PARA CONSTRUCCIONES Y PARQUEADEROS:**
+
+   - Compara siempre el **valor total de construcciones + parqueaderos** contra el **valor del terreno (Valor Base Lote)**:
+     - Si el cálculo inicial de construcciones/parqueaderos supera el valor del terreno, revisa y ajusta los supuestos (precios/m², yields, ocupación) y explica el ajuste en el texto.
+
 
 ### 3.4. VALOR ESTIMADO TOTAL
 
@@ -494,47 +518,71 @@ INSTRUCCIONES PARA PROPIEDADES (Apartamentos/Casas)
 
 **1. BÚSQUEDA DE COMPARABLES:**
 
-   Busca 25+ propiedades comparables de ${formData.tipoInmueble} en ${formData.barrio}, ${formData.municipio}.
-   **Aplica siempre la expansión geográfica automática**
-   **OBLIGATORIO**: Buscar comparables en venta y arriendo en al menos 5+ portales inmobiliarios.
-   **OBLIGATORIO**: La lista debe contener 10+ propiedades en arriendo, así como propiedades en venta/arriendo en zona similar y extendida.
-   **PROHIBIDO:** Listar en un solo ítem un promedio, ejemplo: "Casas promedio Mosquera estrato 3". SIEMPRE lista propiedades individuales.
+   Busca 25+ propiedades comparables combinando venta, arriendo y otros barrios (ubicaciones):
 
-    **REGLA DE TIPO:** Busca SOLO **${formData.tipo_inmueble === 'casa' ? 'casas' : 'apartamentos'}**. NO mezcles tipos de inmueble.
-   ⚠️ **RESTRICCIÓN DE ÁREA OBLIGATORIA:** Solo incluir propiedades entre ${rangoAreaMin} y ${rangoAreaMax}
-   **FILTRO DE PRECIO:**- VENTAS: Excluir de la lista si precio/m² desvía >40% de la mediana de ventas
-   - ARRIENDOS: Excluir de la lista si canon/m² desvía >40% de la mediana de arriendos
+   Si no encuentras parqueadero, antigüedad, piso, estrato, niveles, baños o habitaciones, igual incluye el anuncio siempre que tenga precio y ubicación útiles para el análisis. En esos campos, escribe N/R en lugar de inventar datos.
 
-   EXCLUSIÓN AUTOMÁTICA POR PALABRAS CLAVE:**
+   **PROHIBIDO:**
+   - Listar en un solo ítem un promedio o un listado. Ejemplo: "Casas promedio Mosquera estrato 3"; "Varios anuncios listados en buscadores", "Listado de casas en venta"
+   - Arriendos "estimados", "típicos" o "basados en promedios de mercado"; ejemplo: "Canon mensual típico zona, basado en promedios"
+
+🔍 **BÚSQUEDAS OBLIGATORIAS (hacer las 6):**
+   1. "${formData.tipo_inmueble} venta ${formData.barrio} ${formData.municipio}" → coincidencia
+   2. "${formData.tipo_inmueble} arriendo ${formData.barrio} ${formData.municipio}" → coincidencia
+   3. "${formData.tipo_inmueble} venta ${formData.municipio}" → zona_similar (otros barrios)
+   4. "${formData.tipo_inmueble} arriendo ${formData.municipio}" → zona_similar (otros barrios)
+   5. "${formData.tipo_inmueble} venta" + municipios vecinos → zona_extendida
+   6. "${formData.tipo_inmueble} arriendo" + municipios vecinos → zona_extendida
+
+   **OBLIGATORIO (con flexibilidad razonable):**
+
+   - Busca comparables en al menos **5 portales inmobiliarios** diferentes (por ejemplo: Fincaraíz, Metrocuadrado, Ciencuadras, MercadoLibre, Properati u otros similares).
+   - El reporte debe incluir **como mínimo 5 propiedades en arriendo** (con canon publicado), sin importar si son de:
+     - coincidencia (mismo barrio/conjunto), zona_similar (otros barrios del mismo municipio) o zona_extendida (municipios vecinos).
+   - Además, el reporte debe incluir **al menos 10 propiedades adicionales** (venta o arriendo) ubicadas en **zona_similar o zona_extendida**, de forma que en total haya **por lo menos 15 propiedades** entre:
+     - arriendos de cualquier zona (coincidencia / similar / extendida),
+     - y ventas de zona_similar o zona_extendida.
+
+   - En todos los casos, cada propiedad listada debe corresponder a un **anuncio individual real**, con **URL propia del anuncio o del listado filtrado donde aparece** y **precio publicado**; no uses listados agregados ni resultados de búsqueda generales.
+
+   
+   **REGLA DE TIPO:** Busca SOLO **${formData.tipo_inmueble === 'casa' ? 'casas' : 'apartamentos'}**. NO mezcles tipos de inmueble.
+   
+   ⚠️ RESTRICCIÓN DE ÁREA (con expansión automática):
+   - Primero, intenta usar solo propiedades entre ${rangoAreaMin} y ${rangoAreaMax} m².
+   - Si después de aplicar todas las búsquedas y filtros tienes menos de 25 comparables, activa la EXPANSIÓN AUTOMÁTICA DE ÁREA:
+      - Propiedades <100 m²: permite hasta ±60 m² adicionales.
+      - Propiedades ≥100 m²: permite hasta ±100 m² adicionales.
+   - Siempre que incluyas propiedades fuera del rango inicial, indícalo brevemente en la nota del comparable.
+
+   **FILTRO DE PRECIO:**
+   - VENTAS: Si precio/m² desvía >40% de la mediana, NO LO LISTES
+   - ARRIENDOS: Si canon/m² desvía >40% de la mediana, NO LO LISTES
+
+   **EXCLUSIÓN AUTOMÁTICA POR PALABRAS CLAVE:**
    ANTES de incluir cualquier comparable, verifica que el título/descripción 
    NO contenga estas palabras (excluir inmediatamente si las tiene):
    - "remate", "adjudicación", "subasta", "judicial"
    - "oportunidad única", "urgente", "por deuda", "embargo"
    - "permuta", "cesión de derechos"
    - "VIS", "VIP", "interés social", "interés prioritario"
-  
-   **EXPANSIÓN GEOGRÁFICA AUTOMÁTICA**
-   1. **Barrios cercanos a ${formData.barrio} >3km y <=7km** → zona_similar
-   2. **Barrios aislados o Municipios vecinos >7km y <40km** → zona_extendida
    
-   📐 **EXPANSIÓN AUTOMÁTICA DE ÁREA (si menos de 25 comparables):**
-   - Propiedades <100m²: expande ±60% (máximo ±50m²)
-   - Propiedades ≥100m²: expande ±40% (máximo ±100m²)
-
    ⚠️ **REGLA DE DISTANCIA (CRÍTICA):**
    - Si la distancia es **<=3km** → SIEMPRE es **coincidencia**
    - Si la distancia es **>3km y <=7km** → es **zona_similar**
    - Si la distancia es **>7km pero <40km** → es **zona_extendida**
    - **NUNCA** etiquetes como zona_extendida algo que esté a <=7km
    
-   🌐 **VERIFICACIÓN MULTI-PORTAL (OBLIGATORIA):**
-   
-   Busca en AL MENOS estos portales:
-   1. ✅ Fincaraíz (fincaraiz.com.co)
-   2. ✅ Metrocuadrado (metrocuadrado.com)
-   3. ✅ Ciencuadras (ciencuadras.com)
-   4. ✅ MercadoLibre (mercadolibre.com.co)
-   5. ✅ Properati (properati.com.co)
+ 🌐 VERIFICACIÓN MULTI-PORTAL (OBLIGATORIA):
+   Busca comparables en múltiples portales inmobiliarios, incluyendo AL MENOS los siguientes siempre que tengan resultados útiles para el caso:
+
+   - ✅ Fincaraíz (fincaraiz.com.co)
+   - ✅ Metrocuadrado (metrocuadrado.com)
+   - ✅ Ciencuadras (ciencuadras.com)
+   - ✅ MercadoLibre (mercadolibre.com.co)
+   - ✅ Properati (properati.com.co)
+
+   Si alguno de estos portales no tiene anuncios relevantes para la zona o el tipo de inmueble, puedes usar otros portales inmobiliarios similares (con anuncios reales y precio publicado) y mencionarlos claramente como fuente.
 
    🏆 **BONUS POR MUESTRA ABUNDANTE:**
 
@@ -569,11 +617,9 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     
     🚫 **PROHIBIDO:**
     - NO uses numeración (1), 2), 3)...)
-    - NO uses listados agregados (múltiples propiedades en un enlace)
     - NO uses rangos de área "65-90 m²" - usa valor EXACTO
     - NO uses precios indefinidos "$?" - si no hay precio, NO incluyas el comparable
     - NO uses etiquetas mixtas "zona_similar / zona_extendida" - usa SOLO UNA
-    - CADA comparable debe tener URL REAL y COMPLETA
 
     **FORMATO DE LISTADO (COPIAR EXACTAMENTE):**
     
@@ -581,7 +627,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Tipo | Venta o Arriendo | $Precio
     Área: XX m² | X hab | X baños | X Niveles
     Barrio | Ciudad
-    **[Portal](URL cruda)** etiqueta
+    **[Portal](URL cruda de la ficha o del listado donde aparece el anuncio)** etiqueta
     **Nota:** Distancia: X km. [Justificación breve]
 
     **EJEMPLO CORRECTO de coincidencia:**
@@ -589,7 +635,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Casa | Venta | $320.000.000
     Área: 65 m² | 3 hab | 2 baños | 2 Niveles
     Las Villas | Mosquera
-    **[Fincaraíz](url cruda)** coincidencia
+    **[Fincaraíz](url cruda de la ficha o del listado donde aparece el anuncio)** coincidencia
     **Nota:** Distancia: 0.3 km. Mismo barrio del inmueble objeto.
 
     **EJEMPLO CORRECTO de zona_similar:**
@@ -597,7 +643,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Apartamento | Arriendo | $1.200.000
     Área: 60 m² | 2 hab | 2 baños | Piso 3
     Centro | Mosquera
-    **[Metrocuadrado](url cruda)** zona_similar
+    **[Metrocuadrado](url cruda de la ficha o del listado donde aparece el anuncio)** zona_similar
     **Nota:** Distancia: 5 km. Barrio del mismo municipio entre 3km y 7km.
 
     **EJEMPLO CORRECTO de zona_extendida:**
@@ -605,7 +651,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     Casa | Venta | $350.000.000
     Área: 70 m² | 3 hab | 2 baños | 2 Niveles
     Centro | Funza
-    **[Ciencuadras](url cruda)** zona_extendida
+    **[Ciencuadras](url cruda de la ficha o del listado donde aparece el anuncio)** zona_extendida
     **Nota:** Distancia: 8 km. Municipio vecino con condiciones socioeconómicas similares.
 
 ## 2. ANÁLISIS DEL VALOR
@@ -628,7 +674,7 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
 
 ## 3. AJUSTES APLICADOS
    
-   Explica cada ajuste aplicado, cómo se usó y por qué. Ten en cuenta que si la propiedad objeto está en conjunto cerrado y los comparables no lo están, el ajuste debe ser positivo. -> Propiedad objeto +X% de acuerdo a la zona, demanda y proyección de la zona. 
+   Explica cada ajuste aplicado, cómo se usó y por qué.
    Separa por lineas para que se lea mejor. 
 
    **EJEMPLO:**
@@ -640,12 +686,56 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
     - **Valor total ajustado:** $3.013.637/m² × 60 m² = $180.818.220. 
     - **Yield ajustado similar (-15%):** $170.003.400. 
 
+   **AJUSTE POR CONTEXTO (si aplica):**
+   Si el objeto está en barrio abierto y los comparables incluyen conjuntos cerrados:
+   - Investiga la diferencia de precio típica entre conjuntos y barrios abiertos en ${formData.municipio}
+   - Aplica ajuste NEGATIVO al valor (conjuntos suelen valer más que barrios abiertos)
+   
+   Si el objeto está en conjunto cerrado y los comparables incluyen barrios abiertos:
+   - Investiga la diferencia de precio típica entre conjuntos y barrios abiertos en ${formData.municipio}
+   - Aplica ajuste POSITIVO al valor
+
+   **OTROS AJUSTES (COMPARATIVOS):**
+
+   - Comparando propiedades con ÁREA TOTAL similar:
+     - MENOS niveles que los comparables → espacios más amplios por nivel → posible ajuste POSITIVO.
+     - MÁS niveles que los comparables → espacios más fragmentados por nivel → posible ajuste NEGATIVO.
+     Validar siempre con evidencia de mercado.
+
+   - En apartamentos:
+     - Piso superior al de los comparables → posible ajuste POSITIVO si el mercado valora altura, vista o menor ruido.
+     - Piso inferior al de los comparables → posible ajuste NEGATIVO si el mercado penaliza iluminación, ruido o seguridad.
+
+   - Validar siempre con evidencia de mercado.
+
+   **REGLAS ESPECIALES PARA EL YIELD AJUSTADO:**
+
+   - Siempre que menciones **“Yield ajustado”**, debes explicar claramente:
+     - cuál es el **valor de rentabilidad base** usado (por ejemplo, el valor obtenido al dividir el canon mensual estimado entre el yield del mercado),
+     - qué **factor o porcentaje de ajuste total** estás aplicando (por ejemplo, el mismo factor por ubicación, estado y antigüedad),
+     - y mostrar la **operación numérica completa** en una sola línea.
+     - Ejemplo de estilo (NO lo copies literal): “Yield ajustado: $XXX.XXX.XXX × 0,XX (mismo factor total de ajustes) = $XXX.XXX.XXX”.
+
+   - Evita frases como “Yield ajustado (-X%)” sin mostrar la fórmula ni explicar por qué se aplica ese porcentaje al valor de rentabilidad.
+
+
 ## 4. RESULTADOS FINALES
 
    - **Valor Recomendado de Venta:** $XXX.XXX.XXX
    - **Rango sugerido:** $XXX.XXX.XXX - $XXX.XXX.XXX
    - **Precio por m² final:** $XXX.XXX.XXX
    - **Posición en mercado:**
+
+   **REGLAS DE EXPLICACIÓN DE MÉTODOS:**
+
+   - Si combinas el resultado del **método de venta directa** con el **método de rentabilidad**:
+     - Explica con palabras cómo se hace la ponderación (por ejemplo: “se dio mayor peso al valor por venta directa y menor peso al valor por rentabilidad debido a la calidad de los comparables de venta”).
+     - Muestra también el **cálculo numérico final** indicando los porcentajes usados y los valores de cada método.
+     - Ejemplo de estilo (solo ilustrativo): “Valor ponderado = 0,60 × Valor venta + 0,40 × Valor rentabilidad = $XXX.XXX.XXX” (los porcentajes son solo ilustrativos).
+
+   - **No uses una fórmula fija de la forma** Valor ponderado = 0,7 × Valor venta + 0, 3 × Valor rentabilidad.
+   - Ajusta los porcentajes según el contexto del caso (calidad y cantidad de comparables de venta vs arriendo) y explícitalos en el texto cuando los uses.
+
 
 ## 5. LIMITACIONES
 
@@ -780,6 +870,54 @@ export default {
 
             perplexityContent = cleanLatexCommands(rawContent);
             perplexityContent = perplexityContent.replace(/\[\d+\]/g, '');
+
+            // --- REPARACIÓN DE URLS Y BADGES EN TEXTO CRUDO ---
+            const urlsGenericas = [
+                /fincaraiz\.com(?:\.co)?\/?$/i,
+                /metrocuadrado\.com\/?$/i,
+                /ciencuadras\.com\/?$/i,
+                /mercadolibre\.com(?:\.co)?\/?$/i,
+                /properati\.com(?:\.co)?\/?$/i,
+                /mitula\.com(?:\.co)?\/?$/i,
+                /\/casas\/?$/i,
+                /\/lotes\/?$/i,
+                /\/apartamentos\/?$/i,
+                /\/venta\/?$/i,
+                /\/arriendo\/?$/i,
+            ];
+
+            perplexityContent = perplexityContent.replace(/(\*\*)?\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)(\*\*)?\s*(verificado|coincidencia|zona_similar|zona_extendida)?/gi, (match, b1, portal, url, b2, tag) => {
+                try {
+                    const urlObj = new URL(url);
+                    const hasParams = urlObj.search.length > 1;
+                    const isGenericPath = urlsGenericas.some(regex => regex.test(urlObj.origin + urlObj.pathname));
+
+                    let hideLink = false;
+                    let removeVerificado = false;
+
+                    if (isGenericPath && !hasParams) {
+                        hideLink = true;
+                        removeVerificado = true;
+                    } else if (isGenericPath && hasParams) {
+                        hideLink = false;
+                        removeVerificado = true;
+                    } else if (urlObj.pathname.length < 5 && !hasParams) {
+                        hideLink = true;
+                        removeVerificado = true;
+                    }
+
+                    const linkMarkup = hideLink ? portal : `[${portal}](${url})`;
+                    let tagFinal = tag || '';
+                    if (removeVerificado && tagFinal.toLowerCase() === 'verificado') {
+                        tagFinal = '';
+                    }
+
+                    return `**${linkMarkup}**${tagFinal ? ' ' + tagFinal : ''}`;
+                } catch {
+                    return `**${portal}**${tag ? ' ' + tag : ''}`;
+                }
+            });
+
             citations = data.citations || [];
 
             t2 = Date.now();
@@ -818,7 +956,7 @@ INSTRUCCIONES DE EXTRACCIÓN:
    Apartamento | Venta | $450.000.000
    Área: 95 m² | 3 hab | 2 baños | Piso 5
    Las Acacias | Bogotá
-   **[Fincaraíz](url cruda)** coincidencia
+   **[Fincaraíz](url cruda de la ficha o del listado donde aparece el anuncio)** coincidencia
    **Nota:** Distancia: 0.5 km. Mismo barrio del inmueble objeto.
    
    EJEMPLO Lote:
@@ -826,7 +964,7 @@ INSTRUCCIONES DE EXTRACCIÓN:
    Lote | Venta | $180.000.000
    Área: 2000 m² | Uso: Residencial
    Filandia | Quindío
-   **[Metrocuadrado](url cruda)** zona_similar
+   **[Metrocuadrado](url cruda de la ficha o del listado donde aparece el anuncio)** zona_similar
    **Nota:** Distancia: 18 km. Municipio vecino con vocación turística similar.
    
    Extrae:
@@ -1036,28 +1174,52 @@ Devuelve SOLO JSON válido.
                     const tieneURL = c.url_fuente && typeof c.url_fuente === 'string' && c.url_fuente.startsWith('http');
 
                     let urlValida = false;
+                    let esVerificado = false;
+
                     if (tieneURL) {
-                        // URLs genéricas/rotas que NO deben contar como "verificado"
-                        const urlsInvalidas = [
-                            /fincaraiz\.com\/?$/i,           // fincaraiz.com (sin ID)
-                            /metrocuadrado\.com\/?$/i,       // metrocuadrado.com (sin ID)
-                            /ciencuadras\.com\/?$/i,         // ciencuadras.com (sin ID)
-                            /mercadolibre\.com\/?$/i,        // mercadolibre.com (sin ID)
-                            /mitula\.com\/?$/i,              // mitula.com (sin ID)
-                            /\/casas\/?$/i,                  // .../casas (genérico)
-                            /\/lotes\/?$/i,                  // .../lotes (genérico)
-                            /\/apartamentos\/?$/i,           // .../apartamentos (genérico)
-                            /\/venta\/?$/i,                  // .../venta (genérico)
-                            /\/arriendo\/?$/i,               // .../arriendo (genérico)
+                        // URLs genéricas/rotas
+                        const urlsGenericas = [
+                            /fincaraiz\.com(?:\.co)?\/?$/i,
+                            /metrocuadrado\.com\/?$/i,
+                            /ciencuadras\.com\/?$/i,
+                            /mercadolibre\.com(?:\.co)?\/?$/i,
+                            /properati\.com(?:\.co)?\/?$/i,
+                            /mitula\.com(?:\.co)?\/?$/i,
+                            /\/casas\/?$/i,
+                            /\/lotes\/?$/i,
+                            /\/apartamentos\/?$/i,
+                            /\/venta\/?$/i,
+                            /\/arriendo\/?$/i,
                         ];
 
-                        // Verificar que la URL NO sea genérica
-                        urlValida = !urlsInvalidas.some(regex => regex.test(c.url_fuente));
+                        const urlObj = new URL(c.url_fuente);
+                        const hasParams = urlObj.search.length > 1; // ?X...
+                        const isGenericPath = urlsGenericas.some(regex => regex.test(urlObj.origin + urlObj.pathname));
 
-                        if (urlValida) {
-                            badges.push('verificado');
+                        if (isGenericPath && !hasParams) {
+                            // Home o sección sin filtros -> Inútil
+                            urlValida = false;
+                            esVerificado = false;
+                        } else if (isGenericPath && hasParams) {
+                            // Listado con filtros -> Aceptable pero no verificado
+                            urlValida = true;
+                            esVerificado = false;
+                        } else if (urlObj.pathname.length < 5 && !hasParams) {
+                            // Path muy corto (home) -> Inútil
+                            urlValida = false;
+                            esVerificado = false;
                         } else {
-                            console.log(`⚠️ URL genérica/rota descartada: ${c.url_fuente}`);
+                            // URL profunda/específica -> Verificado
+                            urlValida = true;
+                            esVerificado = true;
+                        }
+
+                        if (esVerificado) {
+                            badges.push('verificado');
+                        }
+
+                        if (!urlValida) {
+                            console.log(`⚠️ URL inútil detectada: ${c.url_fuente}`);
                         }
                     }
 
@@ -1090,7 +1252,7 @@ Devuelve SOLO JSON válido.
                         fuente: c.fuente || null,
                         fuente_validacion: badges, // ✅ AHORA ES ARRAY
                         nota_adicional: c.nota_adicional || null,
-                        url_fuente: c.url_fuente || null
+                        url_fuente: urlValida ? (c.url_fuente || null) : null
                     };
 
                     return comparable;
