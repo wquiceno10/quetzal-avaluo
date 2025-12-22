@@ -486,7 +486,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
             disabled={!isValid}
             className="w-full bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full py-6 text-lg font-medium"
           >
-            Continuar al Análisis de Mercado
+            Empezar Análisis
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>
         </CardContent>
