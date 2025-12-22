@@ -23,26 +23,14 @@ export default function Layout({ children, currentPageName }) {
 
     // Detectar modo desarrollo ANTES de verificar auth
     const href = window.location.href;
-    const hostname = window.location.hostname;
     const isDevMode =
       href.includes('/editor/preview/') ||
       href.includes('/sandbox/preview-url') ||
       href.includes('server_url=') ||
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1';
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
 
-    console.log('isDevMode:', isDevMode, 'href:', href, 'hostname:', hostname);
-
-    // Solo requerir autenticación para avaluos.quetzalhabitats.com
-    // Otros subdominios (casamosquera, agendar, etc.) tienen acceso público
-    const requiresAuth = hostname === 'avaluos.quetzalhabitats.com';
-
-    if (!requiresAuth) {
-      console.log('Subdominio público detectado, saltando auth:', hostname);
-      setIsAuthenticated(true);
-      setCheckingAuth(false);
-      return;
-    }
+    console.log('isDevMode:', isDevMode, 'href:', href);
 
     // En modo desarrollo, permitir acceso sin autenticación
     if (isDevMode) {
