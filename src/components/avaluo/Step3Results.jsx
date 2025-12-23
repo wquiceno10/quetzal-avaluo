@@ -256,7 +256,13 @@ const AnalisisAI = ({ text }) => {
     // 1. Normalización de Títulos y LaTeX
     cleanText = cleanText.replace(/\\\[([\s\S]{1,60}?)\\\]/g, ' $1 ');
     cleanText = cleanText.replace(/\\\[/g, '\n\n').replace(/\\\]/g, '\n\n');
-    cleanText = cleanText.replace(/(?:^|\n)[ \t]*\**(\d+(?:\.\d+)?\.?\s+[A-ZÁÉÍÓÚÑ][^:\n]{5,150}[:]??)\**/g, '\n\n# $1\n\n');
+    cleanText = cleanText.replace(/(?:^|\n)[ \t]*\**(\d+\.(?!\d)\s+[A-ZÁÉÍÓÚÑ][^:\n]{5,150}[:]??)\**/g, '\n\n# $1\n\n');
+
+    // 1b. Separar subtítulos numerados (2.1, 2.2, 3.1, etc.) en bloques independientes
+    // Capturar subtítulos que empiezan con X.X (ej: 2.1, 3.2) seguido de mayúscula
+    // Insertar \n\n ANTES de cada subtítulo para crear un bloque separado
+    cleanText = cleanText.replace(/([^\n])(\n)(\d+\.\d+\.?\s+[A-ZÁÉÍÓÚÑ])/g, '$1\n\n$3');
+    cleanText = cleanText.replace(/^(\d+\.\d+\.?\s+[A-ZÁÉÍÓÚÑ])/gm, '\n\n$1');
 
     // 2. Aislamiento y Reparación de Tablas
     // Forzar aislamiento absoluto de tablas para evitar que se peguen a otros bloques
@@ -285,48 +291,6 @@ const AnalisisAI = ({ text }) => {
     });
 
     const blocks = cleanText.split('\n\n').filter(b => b.trim());
-
-    // BALANCÉO PROFESIONAL (58/42) CON REGLA STICKY
-    const headingRegex = /^#|^\d+[.)]\s+[A-ZÁÉÍÓÚÑ]/;
-    const getBlockWeight = (block) => {
-        const lineCount = block.split('\n').length;
-        const isHeading = block.match(headingRegex);
-        const charWeight = block.length / 500;
-        return lineCount + charWeight + (isHeading ? 2 : 0);
-    };
-
-    const totalWeight = blocks.reduce((sum, b) => sum + getBlockWeight(b), 0);
-    const targetLeftWeight = totalWeight * 0.6; // Unificado al 58% solicitado
-
-    let bestSplitIndex = 0;
-    let minDifference = Infinity;
-    let runningWeight = 0;
-
-    for (let i = 0; i < blocks.length; i++) {
-        runningWeight += getBlockWeight(blocks[i]);
-        const currentDiff = Math.abs(runningWeight - targetLeftWeight);
-
-        // Pequeño sesgo para preferir que la izquierda sea un poco más larga si la diferencia es igual
-        const bias = (runningWeight >= targetLeftWeight) ? -0.05 : 0;
-
-        if (currentDiff + bias < minDifference) {
-            minDifference = currentDiff + bias;
-            bestSplitIndex = i + 1;
-        }
-    }
-
-    // Corrección Sticky: No dejar títulos huérfanos al final de la izquierda
-    if (bestSplitIndex > 0 && bestSplitIndex < blocks.length) {
-        if (blocks[bestSplitIndex - 1].match(headingRegex)) {
-            bestSplitIndex--;
-        }
-    }
-
-    // Fallback mínimo
-    if (bestSplitIndex === 0 && blocks.length > 0) bestSplitIndex = Math.ceil(blocks.length * 0.58);
-
-    const leftBlocks = blocks.slice(0, Math.max(1, bestSplitIndex));
-    const rightBlocks = blocks.slice(Math.max(1, bestSplitIndex));
 
     const renderBlock = (block, index) => {
         const trimmed = block.trim();
@@ -409,14 +373,13 @@ const AnalisisAI = ({ text }) => {
 
     return (
         <div className="text-[#4F5B55] font-raleway">
-            {/* Desktop: Grid 2 Columnas - Mismo ancho (50/50) pero izquierda MUCHO más larga */}
-            <div className="hidden md:grid md:grid-cols-2 md:gap-10 items-start">
-                <div className="space-y-4">
-                    {leftBlocks.map((block, i) => renderBlock(block, `l-${i}`))}
-                </div>
-                <div className="space-y-4">
-                    {rightBlocks.map((block, i) => renderBlock(block, `r-${i}`))}
-                </div>
+            {/* Desktop: CSS Multi-Column - balanceo automático por altura */}
+            <div className="hidden md:block columns-2 gap-10" style={{ columnFill: 'balance' }}>
+                {blocks.map((block, i) => (
+                    <div key={`col-${i}`} className="break-inside-avoid mb-4">
+                        {renderBlock(block, `col-${i}`)}
+                    </div>
+                ))}
             </div>
             {/* Mobile: 1 Columna */}
             <div className="md:hidden space-y-4">

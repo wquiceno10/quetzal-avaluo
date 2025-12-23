@@ -351,9 +351,11 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                       <SelectValue placeholder="Selecciona" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="propio">Propio</SelectItem>
                       <SelectItem value="comunal">Comunal</SelectItem>
                       <SelectItem value="sin_parqueadero">Sin Parqueadero</SelectItem>
+                      <SelectItem value="privado_1">Privado 1</SelectItem>
+                      <SelectItem value="privado_2">Privado 2</SelectItem>
+                      <SelectItem value="privado_mas_2">Privado + 2</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
