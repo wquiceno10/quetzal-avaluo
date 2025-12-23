@@ -217,10 +217,10 @@ const AnalisisAI = ({ text }) => {
 
 
 
-    // PROCESAR NOTAS (Corregido para manejar paréntesis iniciales y finales)
-    cleanText = cleanText.replace(/(?:\()?\s*(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
+    // PROCESAR NOTAS (Captura hasta doble salto de línea o siguiente sección, luego une en una línea)
+    cleanText = cleanText.replace(/(?:\()?\s*(?:<strong>)?(?:\*\*)?Nota:(?:\*\*)?(?:<\/strong>)?\s*([^\n]+(?:\n(?!\n)[^\n]+)*)/gi, (match, noteText) => {
         let formattedNote = noteText.trim().replace(/\*+$/, '').replace(/\)\s*$/, '');
-        const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
+        const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/is;
         const match1 = formattedNote.match(pattern1);
 
         if (match1) {
@@ -231,8 +231,11 @@ const AnalisisAI = ({ text }) => {
                 .replace(/^condiciones\s+/i, 'tiene condiciones ');
             formattedNote = `A ${distance} km de distancia, ${characteristics}`;
         }
-        return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
-    }).replace(/(?:\()?\s*\*([^*]{10,})\*\s*(?:\))?(?:\n|$)/g, (match, noteText) => {
+        // Convertir saltos de línea simples a espacios y limpiar espacios múltiples
+        formattedNote = formattedNote.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+        return `\n<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px; line-height:1.2; text-align:left;"><strong>Nota:</strong> ${formattedNote}</span>`;
+    }).replace(/(?:\()?\s*\*([^*]{10,})\*\s*(?:\))?(?=\n+\*\*[A-ZÁÉÍÓÚÑ]|\n+#{1,3}\s|\n+\||\n+\d+\.\s+[A-ZÁÉÍÓÚÑ]|$)/g, (match, noteText) => {
         let formattedNote = noteText.trim().replace(/\)\s*$/, '');
         const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
         const match1 = formattedNote.match(pattern1);
@@ -242,7 +245,10 @@ const AnalisisAI = ({ text }) => {
             characteristics = characteristics.replace(/^con\s+/i, 'tiene ').replace(/^condiciones\s+/i, 'tiene condiciones ');
             formattedNote = `A ${distance} km de distancia, ${characteristics}`;
         }
-        return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:4px; line-height:1.3; text-align:left;"><strong>NOTA:</strong> ${formattedNote}</span>`;
+        // Convertir saltos de línea simples a espacios y limpiar espacios múltiples
+        formattedNote = formattedNote.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+
+        return `\n<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px; line-height:1.2; text-align:left;"><strong>Nota:</strong> ${formattedNote}</span>`;
     });
 
     cleanText = cleanText.replace(/\s*-{3,}\s*/g, '\n\n');
@@ -269,8 +275,14 @@ const AnalisisAI = ({ text }) => {
     cleanText = cleanText.replace(/\n\s*([-*•])\s+/g, '\n\n$1 ');
     cleanText = cleanText.replace(/\n\s*(\d+[.)]\s+[A-ZÁÉÍÓÚÑ])/g, '\n\n$1');
     cleanText = cleanText.replace(/\n\s*([a-z]\)\s+[A-ZÁÉÍÓÚÑ])/g, '\n\n$1');
-    cleanText = cleanText.replace(/\n\s*(\*\*|<strong>)/g, '\n\n$1');
-    cleanText = cleanText.replace(/([^\n]{350,550})\.\s+([A-ZÁÉÍÓÚÑ])/g, '$1.\n\n$2');
+    // NO convertir \n en \n\n cuando es una nota O cuando es un enlace de portal
+    cleanText = cleanText.replace(/\n\s*(<strong>)(?!Nota:|<a)/g, '\n\n$1');
+    cleanText = cleanText.replace(/\n\s*(\*\*)(?!Nota:|\[)/g, '\n\n$1');
+    // NO dividir dentro de líneas que contienen notas procesadas
+    cleanText = cleanText.replace(/([^\n]{350,550})\.\s+([A-ZÁÉÍÓÚÑ])/g, (match, before, after) => {
+        if (before.includes('<strong>Nota:</strong>')) return match;
+        return `${before}.\n\n${after}`;
+    });
 
     const blocks = cleanText.split('\n\n').filter(b => b.trim());
 
@@ -284,7 +296,7 @@ const AnalisisAI = ({ text }) => {
     };
 
     const totalWeight = blocks.reduce((sum, b) => sum + getBlockWeight(b), 0);
-    const targetLeftWeight = totalWeight * 0.58; // Unificado al 58% solicitado
+    const targetLeftWeight = totalWeight * 0.6; // Unificado al 58% solicitado
 
     let bestSplitIndex = 0;
     let minDifference = Infinity;
@@ -387,8 +399,11 @@ const AnalisisAI = ({ text }) => {
         }
 
         const paragraphHtml = trimmed.replace(/\n/g, '<br>');
+        // Reducir margen para párrafos que contienen enlaces de portales
+        const isPortalLink = trimmed.includes('<a href=');
+        const marginClass = isPortalLink ? 'mb-1' : 'mb-4';
         return (
-            <p key={index} className="mb-4 text-sm leading-relaxed text-justify text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: paragraphHtml }} />
+            <p key={index} className={`${marginClass} text-sm leading-relaxed text-justify text-[#4F5B55]`} dangerouslySetInnerHTML={{ __html: paragraphHtml }} />
         );
     };
 
