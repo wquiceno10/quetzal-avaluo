@@ -134,13 +134,13 @@ INSTRUCCIONES GENERALES
 
 **0. SIEMPRE RESPETA EL FORMATO DE ENTREGA OBLIGATORIO MENCIONADO CON SUS SUBSECCIONES**
      
-     ### 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES
-     ### 2. ANÁLISIS DEL VALOR
-     ### 3. AJUSTES APLICADOS
-     ### 4. RESULTADOS FINALES
-     ### 5. LIMITACIONES
-     ### 6. RESUMEN EJECUTIVO
-     ### 7. TRANSPARENCIA DE DATOS
+     ## 1. BÚSQUEDA Y SELECCIÓN DE COMPARABLES
+     ## 2. ANÁLISIS DEL VALOR
+     ## 3. AJUSTES APLICADOS
+     ## 4. RESULTADOS FINALES
+     ## 5. LIMITACIONES
+     ## 6. RESUMEN EJECUTIVO
+     ## 7. TRANSPARENCIA DE DATOS
 
 **1. PRINCIPIO: INTEGRIDAD DE DATOS (CRÍTICO)**
 
@@ -496,10 +496,11 @@ Menciona escasez de datos, dependencias de promedios o zonas similares.
 
 ## 7. TRANSPARENCIA DE DATOS
 
-   Crea un parrafo argumentativo respondiendo esto:
-   ¿TODOS LOS RESULTADOS QUE HAS ENVIADO SON REALES?
-   ¿Por qué algunos enlaces no muestran la propiedad que mencionas?
-   ¿Por que un resultado es diferente al anterior?
+   Crea un parrafo argumentativo que responda a las siguientes preguntas:
+   - ¿TODOS LOS RESULTADOS QUE HAS ENVIADO SON REALES?
+   - ¿Por qué algunos enlaces no muestran la propiedad que mencionas?
+   - ¿Por que un resultado es diferente al anterior?
+   - Algunos enlaces parecen rotos, ¿por qué sucede esto?
    **NO PREGUNTES NADA ADICIONAL, NI MENCIONES LAS PREGUNTAS.** Es un mensaje orientativo de la calidad de datos. 
 
 **RECORDATORIO CRÍTICO:**
@@ -747,10 +748,11 @@ FORMATO DE ENTREGA PARA PROPIEDADES **OBLIGATORIO SEGUIR FORMATO Y SECCIONES**
 
 ## 7. TRANSPARENCIA DE DATOS
 
-   Crea un parrafo argumentativo respondiendo esto:
-   ¿TODOS LOS RESULTADOS QUE HAS ENVIADO SON REALES?
-   ¿Por qué algunos enlaces no muestran la propiedad que mencionas?
-   ¿Por que un resultado es diferente al anterior?
+   Crea un parrafo argumentativo que responda a las siguientes preguntas:
+   - ¿TODOS LOS RESULTADOS QUE HAS ENVIADO SON REALES?
+   - ¿Por qué algunos enlaces no muestran la propiedad que mencionas?
+   - ¿Por que un resultado es diferente al anterior?
+   - Algunos enlaces parecen rotos, ¿por qué sucede esto?
    **NO PREGUNTES NADA ADICIONAL, NI MENCIONES LAS PREGUNTAS.** Es un mensaje orientativo de la calidad de datos. 
 
 **RECORDATORIO CRÍTICO:**
