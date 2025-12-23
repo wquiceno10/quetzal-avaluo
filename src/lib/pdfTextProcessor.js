@@ -89,8 +89,8 @@ export function procesarTextoParaPDF(text) {
     return `[${getBadgeText(tag)}]`;
   });
 
-  // --- PROCESAR NOTAS ---
-  cleanText = cleanText.replace(/(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
+  // --- PROCESAR NOTAS (Corregido para MULTILÍNEA con LÍNEAS EN BLANCO INTERNAS) ---
+  cleanText = cleanText.replace(/(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([\s\S]+?)(?=\n+\*\*[A-ZÁÉÍÓÚÑ]|\n+#{1,3}\s|\n+\||\n+\d+\.\s+[A-ZÁÉÍÓÚÑ]|$)/gi, (match, noteText) => {
     let formattedNote = noteText.trim().replace(/\*+$/, '');
 
     // Simplificar nota de distancia
@@ -105,6 +105,9 @@ export function procesarTextoParaPDF(text) {
         .replace(/^condiciones\s+/i, 'tiene condiciones ');
       formattedNote = `A ${distance} km de distancia, ${characteristics}`;
     }
+
+    // Proteger saltos de línea internos para evitar que el split('\n\n') rompa el bloque
+    formattedNote = formattedNote.replace(/\n+/g, '<br>');
 
     return `<em style="font-size: 11px; color: #666; display: block; margin-top: 4px;">NOTA: ${formattedNote}</em>`;
   });

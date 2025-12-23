@@ -159,6 +159,15 @@ export default function TablaComparables({ comparables, esLote = false }) {
                       // Limpiar citaciones numéricas [1][2][3] del frontend
                       let formattedNote = nota_adicional ? nota_adicional.trim().replace(/\[\d+\]/g, '') : '';
 
+                      // Normalizar: eliminar saltos de línea y espacios múltiples para mantener todo en una línea
+                      formattedNote = formattedNote
+                        .replace(/\r?\n/g, ' ')           // Convertir saltos de línea a espacios
+                        .replace(/\s+/g, ' ')             // Eliminar espacios múltiples
+                        .replace(/\*\*/g, '')             // Eliminar asteriscos de markdown (bold)
+                        .replace(/^(Nota:?\s*)+/i, '')    // Eliminar prefijos duplicados "Nota:" al inicio
+                        .replace(/^(Distancia:?\s*)/i, 'Distancia: ') // Normalizar "Distancia:"
+                        .trim();
+
                       // Fallbacks si no hay nota de Perplexity
                       if (!formattedNote) {
                         if (fuente_validacion === 'coincidencia') formattedNote = 'Ubicación exacta validada.';
@@ -186,8 +195,8 @@ export default function TablaComparables({ comparables, esLote = false }) {
                       }
 
                       return (
-                        <div className="text-[10px] text-left text-gray-600 mt-1.5 italic border-l-2 border-blue-300 pl-2 leading-snug">
-                          <strong>NOTA:</strong> {formattedNote}
+                        <div className="text-[11px] text-left text-gray-500 mt-1 italic leading-tight">
+                          <strong>Nota:</strong> {formattedNote}
                         </div>
                       );
                     })()}
