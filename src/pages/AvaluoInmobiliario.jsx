@@ -93,7 +93,7 @@ export default function AvaluoInmobiliario() {
   };
 
   const handleNext = async (incomingData) => {
-    const nextStep = Math.min(currentStep + 1, 4);
+    const nextStep = Math.min(currentStep + 1, 5);
 
     // Determine effective data (handle race condition from Step 2)
     // If incomingData is an Event (click), ignore it. If it's an object with data, use it.
@@ -267,7 +267,7 @@ export default function AvaluoInmobiliario() {
         <div className="bg-yellow-100 border-b border-yellow-300 py-2 mt-4">
           <div className="max-w-5xl mx-auto px-4 flex items-center justify-center gap-2 flex-wrap">
             <span className="text-yellow-800 text-sm font-medium mr-2">🛠️ Dev:</span>
-            {[1, 2, 3, 4].map((step) => (
+            {[1, 2, 3, 4, 5].map((step) => (
               <button
                 key={step}
                 onClick={() => setCurrentStep(step)}
@@ -319,6 +319,18 @@ export default function AvaluoInmobiliario() {
             onUpdate={handleUpdateData}
             onReset={handleReset}
             onBack={handleBack}
+          />
+        )}
+
+        {/* Step 5: Dev-only - Vista previa de página de éxito */}
+        {currentStep === 5 && (
+          <Step4Contact
+            formData={avaluoData}
+            onUpdate={handleUpdateData}
+            onReset={handleReset}
+            onBack={() => setCurrentStep(4)}
+            initialEnviado={true}
+            emailToShow="ejemplo@correo.com"
           />
         )}
       </div>

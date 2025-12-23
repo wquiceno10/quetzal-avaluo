@@ -217,19 +217,15 @@ export default function Step4Contact({ formData, onBack, onReset, initialEnviado
 
               <div className="bg-[#DEE8E9] rounded-lg p-6 max-w-2xl mx-auto flex flex-col items-center">
                 <h3 className="font-semibold text-[#2C3D37] mb-4 text-center">¿Necesitas más información?</h3>
-                <div className="flex flex-row justify-center gap-4 w-full">
-                  <div className="flex flex-col items-center w-auto mx-2">
-                    <a href="https://wa.me/573186383809" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 hover:underline">
-                      <Phone className="w-5 h-5 text-[#2C3D37]" />
-                      <p className="font-semibold text-[#2C3D37]" style={{ fontFamily: 'Outfit, sans-serif' }}>+57 318 638 3809</p>
-                    </a>
-                  </div>
-                  <div className="flex flex-col items-center w-auto mx-2">
-                    <a href="mailto:contacto@quetzalhabitats.com" className="flex items-center justify-center gap-2 hover:underline">
-                      <Mail className="w-5 h-5 text-[#2C3D37]" />
-                      <p className="font-semibold text-[#2C3D37]" style={{ fontFamily: 'Outfit, sans-serif' }}>contacto@quetzalhabitats.com</p>
-                    </a>
-                  </div>
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-4 w-full">
+                  <a href="https://wa.me/573186383809" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 hover:underline">
+                    <Phone className="w-5 h-5 text-[#2C3D37] flex-shrink-0" />
+                    <span className="font-semibold text-[#2C3D37] whitespace-nowrap" style={{ fontFamily: 'Outfit, sans-serif' }}>+57 318 638 3809</span>
+                  </a>
+                  <a href="mailto:contacto@quetzalhabitats.com" className="flex items-center justify-center gap-2 hover:underline">
+                    <Mail className="w-5 h-5 text-[#2C3D37] flex-shrink-0" />
+                    <span className="font-semibold text-[#2C3D37] text-sm sm:text-base break-all sm:break-normal" style={{ fontFamily: 'Outfit, sans-serif' }}>contacto@quetzalhabitats.com</span>
+                  </a>
                 </div>
               </div>
 

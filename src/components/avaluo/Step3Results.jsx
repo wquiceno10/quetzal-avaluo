@@ -761,7 +761,9 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                 className="text-sm text-[#4F5B55] text-center px-4 mt-1 border-b border-dashed border-[#E0E5E2] pb-3 mb-[20px]"
                                 dangerouslySetInnerHTML={{
                                     __html: esLote
-                                        ? 'Calculado a partir de la <strong>mediana de precio por m²</strong> de lotes comparables en la zona (sin incluir construcciones ni ajustes adicionales).'
+                                        ? (areaInmueble && areaInmueble > 0 && formData.area_construida && formData.area_construida > 0
+                                            ? 'Valor del terreno calculado por <strong>método comparativo de mercado</strong>, más valoración independiente de las construcciones existentes según su área, estado y uso.'
+                                            : 'Calculado a partir de la <strong>mediana de precio por m²</strong> de lotes comparables en la zona, ajustado por ubicación, topografía y servicios disponibles.')
                                         : 'Calculado a partir de la <strong>mediana de precio por m²</strong> de las propiedades comparables<br>(mediana de precio por m² × área del inmueble).'
                                 }}
                             />

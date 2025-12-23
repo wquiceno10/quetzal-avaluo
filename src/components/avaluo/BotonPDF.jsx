@@ -618,7 +618,9 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
                 </p>
                 <p style="font-size: 11px; margin-top: 8px;">
                   ${esLote
-          ? 'Calculado a partir de la mediana de precio por m² de lotes comparables y ajuste residual.'
+          ? (area && area > 0 && formData.area_construida && formData.area_construida > 0
+            ? 'Valor del terreno calculado por método comparativo de mercado, más valoración independiente de las construcciones existentes según su área, estado y uso.'
+            : 'Calculado a partir de la mediana de precio por m² de lotes comparables en la zona, ajustado por ubicación, topografía y servicios disponibles.')
           : 'Basado en mediana de precio por m² × área construida.'}
                 </p>
               </div>
