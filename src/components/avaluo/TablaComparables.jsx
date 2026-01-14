@@ -55,7 +55,7 @@ export default function TablaComparables({ comparables, esLote = false }) {
               </TableHead>
             )}
             <TableHead className="text-[#2C3D37] font-semibold text-sm text-center">
-              $/m²
+              Precio/m²
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -219,14 +219,16 @@ export default function TablaComparables({ comparables, esLote = false }) {
                 </Badge>
               </TableCell>
 
-              {/* Ubicación centrada (Villas / Mosquera) */}
+              {/* Ubicación centrada con fallback cascada geográfica */}
               <TableCell className="align-middle py-3 text-center">
                 <div className="flex flex-col items-center">
                   <span className="text-sm text-[#4F5B55] font-medium leading-tight">
-                    {item.barrio || item.fuente_zona || '—'}
+                    {/* Si no hay barrio, mostrar municipio; si no hay municipio, mostrar '—' */}
+                    {item.barrio || item.fuente_zona || item.municipio || '—'}
                   </span>
                   <span className="text-[10px] text-[#A3B2AA] mt-0.5">
-                    {item.municipio || 'Pereira'}
+                    {/* Si no hay barrio, mostrar departamento; si hay barrio, mostrar municipio */}
+                    {(item.barrio || item.fuente_zona) ? (item.municipio || '—') : (item.departamento || '—')}
                   </span>
                 </div>
               </TableCell>

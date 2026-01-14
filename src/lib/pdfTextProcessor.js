@@ -69,48 +69,49 @@ export function procesarTextoParaPDF(text) {
     // Limpiar etiquetas [1], [2], etc.
     .replace(/\[\d+\]/g, '');
 
-  // --- PROCESAR BADGES (fuente_validacion) ---
-  const getBadgeText = (validation) => {
+  // --- PROCESAR BADGES (fuente_validacion) - Convertir a HTML styled ---
+  const getStyledBadge = (validation) => {
     const val = validation.trim().toLowerCase();
-    if (val === 'coincidencia') return '✓ Coincidencia';
-    if (val === 'verificado') return '✓ Verificado';
-    if (val === 'zona_similar') return '→ Zona Similar';
-    if (val === 'zona_extendida') return '≈ Zona Extendida';
+    if (val === 'coincidencia' || val.includes('coincidencia')) {
+      return '<span style="background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500;">✓ Coincidencia</span>';
+    }
+    if (val === 'verificado' || val.includes('verificado')) {
+      return '<span style="background: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500;">✓ Verificado</span>';
+    }
+    if (val === 'zona_similar' || val.includes('zona_similar') || val.includes('zona similar')) {
+      return '<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500;">→ Zona Similar</span>';
+    }
+    if (val === 'zona_extendida' || val.includes('zona_extendida') || val.includes('zona extendida')) {
+      return '<span style="background: #ffedd5; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500;">≈ Zona Extendida</span>';
+    }
     return validation.trim();
   };
 
   // Formato: fuente_validacion: valor
   cleanText = cleanText.replace(/fuente_validacion:\s*([^\r\n<]+)/gi, (match, validation) => {
-    return `[${getBadgeText(validation)}]`;
+    return getStyledBadge(validation);
   });
 
   // Etiquetas sueltas (sin paréntesis)
-  cleanText = cleanText.replace(/(?<!\()\b(coincidencia|verificado|zona_extendida|zona_similar)\b/gi, (match, tag) => {
-    return `[${getBadgeText(tag)}]`;
+  cleanText = cleanText.replace(/(?<!\()(?:\[)?(?:I\s*)?(✓\s*Coincidencia[l]?|→\s*Zona\s*Similar|≈\s*Zona\s*Extendida|coincidencia|verificado|zona_extendida|zona_similar)(?:\])?/gi, (match, tag) => {
+    return getStyledBadge(tag);
   });
 
-  // --- PROCESAR NOTAS (Corregido para MULTILÍNEA con LÍNEAS EN BLANCO INTERNAS) ---
-  cleanText = cleanText.replace(/(?:<strong>)?(?:\*)?Nota:(?:\*)?(?:<\/strong>)?\s*([\s\S]+?)(?=\n+\*\*[A-ZÁÉÍÓÚÑ]|\n+#{1,3}\s|\n+\||\n+\d+\.\s+[A-ZÁÉÍÓÚÑ]|$)/gi, (match, noteText) => {
+
+  // --- PROCESAR NOTAS (Solo la línea de nota, no bloques enteros) ---
+  // El formato de nota es: **Nota:** texto hasta el final de línea o próxima viñeta
+  cleanText = cleanText.replace(/(?:<strong>)?(?:\*\*)?Nota:(?:\*\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
     let formattedNote = noteText.trim().replace(/\*+$/, '');
 
-    // Simplificar nota de distancia
-    const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
-    const match1 = formattedNote.match(pattern1);
+    // Procesar badges dentro de la nota: (I✓ Coincidencial) o similar
+    formattedNote = formattedNote
+      .replace(/\(I\s*✓\s*Coincidencia[l]?\)/gi, '<span style="background: #dcfce7; color: #15803d; padding: 1px 4px; border-radius: 3px; font-size: 9px;">✓ Coincidencia</span>')
+      .replace(/\(\s*→\s*Zona\s*Similar\s*\)/gi, '<span style="background: #dbeafe; color: #1d4ed8; padding: 1px 4px; border-radius: 3px; font-size: 9px;">→ Zona Similar</span>')
+      .replace(/\(\s*≈\s*Zona\s*Extendida\s*\)/gi, '<span style="background: #ffedd5; color: #c2410c; padding: 1px 4px; border-radius: 3px; font-size: 9px;">≈ Zona Extendida</span>');
 
-    if (match1) {
-      const distance = match1[2];
-      let characteristics = match1[3];
-      characteristics = characteristics
-        .replace(/^con\s+/i, 'tiene ')
-        .replace(/^condiciones\s+/i, 'tiene condiciones ');
-      formattedNote = `A ${distance} km de distancia, ${characteristics}`;
-    }
-
-    // Proteger saltos de línea internos para evitar que el split('\n\n') rompa el bloque
-    formattedNote = formattedNote.replace(/\n+/g, '<br>');
-
-    return `<em style="font-size: 11px; color: #666; display: block; margin-top: 4px;">NOTA: ${formattedNote}</em>`;
+    return `<em style="font-size: 10px; color: #666; display: block; margin-top: 2px;"><strong>Nota:</strong> ${formattedNote}</em>`;
   });
+
 
   // --- UNIFICAR TABLAS ROTAS ---
   // Eliminar \n\n entre líneas que empiezan por |
@@ -121,14 +122,21 @@ export function procesarTextoParaPDF(text) {
   } while (cleanText !== previousText);
 
   // --- SPLIT EN PÁRRAFOS Y PROCESAR BLOQUES ---
-  const blocks = cleanText.split('\n\n');
+  // Split por párrafos (doble salto de línea)
+  // Pero NO splitear si el siguiente párrafo empieza por viñeta o número para mantener listas agrupadas
+  const blocks = cleanText.split(/\n\n(?![a-z0-9]+[\.\)])/i).filter(b => b.trim());
   let htmlOutput = '';
+
+  // Contador global para listas numeradas (persiste entre bloques)
+  let numberedListCounter = 0;
+  let wasLastBlockNumberedItem = false;
 
   blocks.forEach(block => {
     const trimmed = block.trim();
     if (!trimmed) return;
 
     // Detectar títulos con markdown (#, ##, ###) - debe detectar al inicio del bloque
+
     // AHORA: si hay contenido adicional después del título, procesarlo también
     const hashMatch = trimmed.match(/^(#{1,3})\s+(.+)/);
     if (hashMatch) {
@@ -160,37 +168,48 @@ export function procesarTextoParaPDF(text) {
           // Procesar como lista
           const items = [];
           let currentItem = '';
+          const isNumberedList = remainingContent.match(/^\d+[\.\)]\s/);
 
           for (const line of remainingContent.split('\n')) {
             if (line.match(/^[-*•]\s/) || line.match(/^\d+[\.\)]\s/)) {
               if (currentItem) items.push(currentItem);
               currentItem = line.replace(/^(?:[-*•]|\d+[\.\)])\s*/, '');
             } else if (line.trim()) {
-              currentItem += ' ' + line.trim();
+              currentItem += '\n' + line.trim();
             }
           }
           if (currentItem) items.push(currentItem);
 
-          htmlOutput += '<ul style="margin: 4px 0; padding-left: 0; list-style: none;">\n';
-          items.forEach(item => {
-            htmlOutput += `  <li style="margin-bottom: 3px; line-height: 1.5;">• ${item}</li>\n`;
-          });
-          htmlOutput += '</ul>\n';
+          if (isNumberedList) {
+            htmlOutput += '<ol style="margin: 4px 0; padding-left: 20px;">\n';
+            items.forEach(item => {
+              htmlOutput += `  <li style="margin-bottom: 3px; line-height: 1.5;">${item}</li>\n`;
+            });
+            htmlOutput += '</ol>\n';
+          } else {
+            htmlOutput += '<ul style="margin: 4px 0; padding-left: 0; list-style: none;">\n';
+            items.forEach(item => {
+              htmlOutput += `  <li style="margin-bottom: 3px; line-height: 1.5;">• ${item}</li>\n`;
+            });
+            htmlOutput += '</ul>\n';
+          }
         } else {
           // Procesar como párrafo normal
           const paragraphHTML = remainingContent.replace(/\n/g, '<br>');
-          htmlOutput += `<p style="margin-bottom: 10px; line-height: 1.6; text-align: justify; font-size: 12px;">${paragraphHTML}</p>\n`;
+          htmlOutput += `<p style="margin-bottom: 10px; line-height: 1.6; text-align: left; font-size: 12px;">${paragraphHTML}</p>\n`;
         }
       }
       return;
     }
 
     // Detectar títulos (números seguidos de texto): "1. Título" o "2.1. Subtítulo"
-    // AHORA: Detectar en la primera línea y procesar contenido adicional
     const firstLine = trimmed.split('\n')[0];
-    const numberedTitleMatch = firstLine.match(/^(\d+(?:\.\d+)?\.?)\s+([^:\n]{3,120})/);
+    const numberedTitleMatch = firstLine.match(/^(\d+(?:\.\d+)?\.?)\s+([^:\n]{3,130})/);
 
-    if (numberedTitleMatch && firstLine.length < 120) {
+    // EXCLUIR: Items de lista con precios ($), flechas (→) o formato de comparables (ej: "1. Casa $")
+    const looksLikeListItem = firstLine.includes('$') || firstLine.includes('→') || /^\d+\.\s+\$/.test(firstLine) || /^\d+\.\s+Casa\s/i.test(firstLine);
+
+    if (numberedTitleMatch && firstLine.length < 130 && !looksLikeListItem) {
       const titleText = numberedTitleMatch[2].trim();
       const lines = trimmed.split('\n');
       const remainingContent = lines.slice(1).join('\n').trim();
@@ -209,26 +228,35 @@ export function procesarTextoParaPDF(text) {
           // Procesar como lista
           const items = [];
           let currentItem = '';
+          const isNumberedList = remainingContent.match(/^\d+[\.\)]\s/);
 
           for (const line of remainingContent.split('\n')) {
             if (line.match(/^[-*•]\s/) || line.match(/^\d+[\.\)]\s/)) {
               if (currentItem) items.push(currentItem);
               currentItem = line.replace(/^(?:[-*•]|\d+[\.\)])\s*/, '');
             } else if (line.trim()) {
-              currentItem += ' ' + line.trim();
+              currentItem += '\n' + line.trim();
             }
           }
           if (currentItem) items.push(currentItem);
 
-          htmlOutput += '<ul style="margin: 4px 0; padding-left: 0; list-style: none;">\n';
-          items.forEach(item => {
-            htmlOutput += `  <li style="margin-bottom: 3px; line-height: 1.5;">• ${item}</li>\n`;
-          });
-          htmlOutput += '</ul>\n';
+          if (isNumberedList) {
+            htmlOutput += '<ol style="margin: 4px 0; padding-left: 20px;">\n';
+            items.forEach(item => {
+              htmlOutput += `  <li style="margin-bottom: 3px; line-height: 1.5;">${item}</li>\n`;
+            });
+            htmlOutput += '</ol>\n';
+          } else {
+            htmlOutput += '<ul style="margin: 4px 0; padding-left: 0; list-style: none;">\n';
+            items.forEach(item => {
+              htmlOutput += `  <li style="margin-bottom: 3px; line-height: 1.5;">• ${item}</li>\n`;
+            });
+            htmlOutput += '</ul>\n';
+          }
         } else {
           // Procesar como párrafo normal
           const paragraphHTML = remainingContent.replace(/\n/g, '<br>');
-          htmlOutput += `<p style="margin-bottom: 10px; line-height: 1.6; text-align: justify; font-size: 12px;">${paragraphHTML}</p>\n`;
+          htmlOutput += `<p style="margin-bottom: 10px; line-height: 1.6; text-align: left; font-size: 12px;">${paragraphHTML}</p>\n`;
         }
       }
       return;
@@ -321,7 +349,7 @@ export function procesarTextoParaPDF(text) {
           if (item.isTotal) {
             tableHTML += `<div style="margin-top: 8px; padding: 8px; background-color: #F8F6EF; border-top: 1px solid #D4C8A8; text-align: center; font-weight: bold; color: #2C3D37; font-size: 13px;">${content}</div>\n`;
           } else {
-            tableHTML += `<p style="margin-bottom: 6px; text-align: justify; font-style: italic; color: #4F5B55; font-size: 11px; line-height: 1.4;">${content}</p>\n`;
+            tableHTML += `<p style="margin-bottom: 6px; text-align: left; font-style: italic; color: #4F5B55; font-size: 11px; line-height: 1.4;">${content}</p>\n`;
           }
         });
         tableHTML += '</div>\n';
@@ -331,40 +359,73 @@ export function procesarTextoParaPDF(text) {
       return;
     }
 
-    // Detectar listas (comienzan con -, *, • o números seguidos de texto corto)
-    // IMPORTANTE: Solo detectar como lista si tiene MÚLTIPLES líneas que empiezan con viñetas/números
-    const listLines = trimmed.split('\n').filter(line =>
-      line.match(/^[-*•]\s/) || (line.match(/^\d+[\.\)]\s[^:]{0,50}$/) && !line.match(/^\d+\.\d+/))
-    );
+    // Detectar si es un item numerado individual (ej: "1. " o "**1. ")
+    // --- DETECCIÓN DE LISTAS (Motor de alta fidelidad - Igual a Web) ---
+    const looksLikeList = trimmed.match(/^[-*•]\s/) || (trimmed.match(/^\d+[.\)]\s/) && !trimmed.match(/^\d+\.\d+/));
 
-    // Solo procesar como lista si hay 2+ ítems
-    if (listLines.length >= 2 && (trimmed.match(/^[-*•]\s/) || trimmed.match(/^\d+[\.\)]\s/))) {
+    if (looksLikeList) {
       const lines = trimmed.split('\n');
       const items = [];
       let currentItem = '';
+      const isNumbered = trimmed.match(/^\d+[.\)]\s/);
 
       for (const line of lines) {
-        if ((line.match(/^[-*•]\s/) || line.match(/^\d+[\.\)]\s/)) && !line.match(/^\d+\.\d+/)) {
+        if ((line.match(/^[-*•]\s/) || line.match(/^\d+[.\)]\s/)) && !line.match(/^\d+\.\d+/)) {
           if (currentItem) items.push(currentItem);
-          currentItem = line.replace(/^(?:[-*•]|\d+[\.\)])\s*/, '');
+          currentItem = line.replace(/^(?:[-*•]|\d+[.\)])\s*/, '');
         } else if (line.trim()) {
-          currentItem += ' ' + line.trim();
+          currentItem += '\n' + line;
         }
       }
       if (currentItem) items.push(currentItem);
 
-      htmlOutput += '<ul style="margin: 4px 0; padding-left: 0; list-style: none;">\n';
-      items.forEach(item => {
-        htmlOutput += `  <li style="margin-bottom: 3px; line-height: 1.5;">• ${item}</li>\n`;
-      });
-      htmlOutput += '</ul>\n';
+      if (isNumbered) {
+        if (!wasLastBlockNumberedItem) {
+          htmlOutput += '<ol style="margin: 4px 0; padding-left: 12px; text-align: left;">\n';
+        }
+        items.forEach(item => {
+          numberedListCounter++;
+          // SINCRO WEB: Simplemente convertir \n a <br>
+          const itemHtml = item.replace(/\n/g, '<br>');
+
+          htmlOutput += `  <li value="${numberedListCounter}" style="margin-bottom: 12px; line-height: 1.3; text-align: left; font-family: 'Raleway', sans-serif;">${itemHtml}</li>\n`;
+        });
+        wasLastBlockNumberedItem = true;
+      } else {
+        if (wasLastBlockNumberedItem) {
+          htmlOutput += '</ol>\n';
+          wasLastBlockNumberedItem = false;
+          numberedListCounter = 0;
+        }
+        htmlOutput += '<ul style="margin: 4px 0; padding-left: 0; list-style: none; text-align: left;">\n';
+        items.forEach(item => {
+          const itemHtml = item.replace(/\n/g, '<br>');
+
+          htmlOutput += `  <li style="margin-bottom: 8px; line-height: 1.3; text-align: left; font-family: 'Raleway', sans-serif;">• ${itemHtml}</li>\n`;
+        });
+        htmlOutput += '</ul>\n';
+      }
       return;
     }
 
+    // Si no es lista, resetear estado de lista numerada
+    if (wasLastBlockNumberedItem) {
+      htmlOutput += '</ol>\n';
+      wasLastBlockNumberedItem = false;
+      numberedListCounter = 0;
+    }
+
+
+
     // Párrafo normal
     const paragraphHTML = trimmed.replace(/\n/g, '<br>');
-    htmlOutput += `<p style="margin-bottom: 10px; line-height: 1.6; text-align: justify; font-size: 12px;">${paragraphHTML}</p>\n`;
+    htmlOutput += `<p style="margin-bottom: 10px; line-height: 1.6; text-align: left; font-size: 12px;">${paragraphHTML}</p>\n`;
   });
+
+  // Cerrar lista numerada pendiente al finalizar
+  if (wasLastBlockNumberedItem) {
+    htmlOutput += '</ol>\n';
+  }
 
   return htmlOutput;
 }

@@ -131,11 +131,40 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
     (localData.tipo_remodelacion !== 'premium' || localData.valor_remodelacion?.trim())
   );
 
-  const isValid = localData.tipo_inmueble && localData.municipio &&
-    localData.departamento && localData.area_construida &&
-    (isLote ? localData.uso_lote : (localData.barrio && localData.contexto_zona && localData.estado_inmueble && localData.antiguedad && localData.estrato)) &&
-    isRemodelacionValid &&
-    (isLote || localData.contexto_zona !== 'conjunto_cerrado' || (localData.nombre_conjunto && localData.nombre_conjunto.trim().length >= 3));
+  const isValid = (() => {
+    // Campos comunes
+    if (!localData.tipo_inmueble || !localData.municipio ||
+      !localData.departamento || !localData.area_construida) return false;
+
+    if (isLote) {
+      // Validaciones específicas para Lote
+      if (!localData.uso_lote || !localData.clasificacion_suelo || !localData.contexto_zona) return false;
+      // Nombre del conjunto y estrato son OPCIONALES para lotes (incluso en conjuntos)
+      return true;
+    } else {
+      // Validaciones para Casa/Apartamento
+      if (!localData.barrio || !localData.contexto_zona || !localData.estado_inmueble ||
+        !localData.antiguedad || !localData.estrato ||
+        !localData.habitaciones || !localData.banos || !localData.tipo_parqueadero) return false;
+
+      // Validaciones específicas Apartamento
+      if (localData.tipo_inmueble === 'apartamento') {
+        if (!localData.piso || !localData.ascensor) return false;
+      }
+
+      // Validaciones específicas Casa
+      if (localData.tipo_inmueble === 'casa') {
+        if (!localData.numeropisos) return false;
+      }
+
+      if (!isRemodelacionValid) return false;
+
+      if (localData.contexto_zona === 'conjunto_cerrado') {
+        if (!localData.nombre_conjunto || localData.nombre_conjunto.trim().length < 3) return false;
+      }
+    }
+    return true;
+  })();
 
   return (
     <div className="space-y-6">
@@ -175,25 +204,55 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                 <SelectContent>
                   <SelectItem value="casa">Casa</SelectItem>
                   <SelectItem value="apartamento">Apartamento</SelectItem>
-                  <SelectItem value="lote">Lote</SelectItem>
+                  {/* <SelectItem value="lote">Lote</SelectItem> */}
                 </SelectContent>
               </Select>
             </div>
 
+
             {isLote && (
-              <div className="space-y-2">
-                <Label className="text-[#2C3D37] font-medium">Uso del Lote *</Label>
-                <Select value={localData.uso_lote || ''} onValueChange={(value) => handleChange('uso_lote', value)}>
-                  <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
-                    <SelectValue placeholder="Selecciona" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="residencial">Residencial</SelectItem>
-                    <SelectItem value="comercial">Comercial</SelectItem>
-                    <SelectItem value="mixto">Mixto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium">Uso del Lote *</Label>
+                  <Select value={localData.uso_lote || ''} onValueChange={(value) => handleChange('uso_lote', value)}>
+                    <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="residencial">Residencial</SelectItem>
+                      <SelectItem value="comercial">Comercial</SelectItem>
+                      <SelectItem value="mixto">Mixto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium">Clasificación del Suelo *</Label>
+                  <Select value={localData.clasificacion_suelo || ''} onValueChange={(value) => handleChange('clasificacion_suelo', value)}>
+                    <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="urbano">Urbano</SelectItem>
+                      <SelectItem value="suburbano">Suburbano</SelectItem>
+                      <SelectItem value="rural">Rural</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[#2C3D37] font-medium">Ubicación del Terreno *</Label>
+                  <Select value={localData.contexto_zona || ''} onValueChange={(value) => handleChange('contexto_zona', value)}>
+                    <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                      <SelectValue placeholder="Selecciona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="barrio_abierto">Lote Abierto / Independiente</SelectItem>
+                      <SelectItem value="conjunto_cerrado">En Parcelación / Conjunto Cerrado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
 
             {!isLote && (
@@ -225,7 +284,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
 
             {localData.contexto_zona === 'conjunto_cerrado' && (
               <div className="space-y-2">
-                <Label className="text-[#2C3D37] font-medium">Nombre del Conjunto *</Label>
+                <Label className="text-[#2C3D37] font-medium">Nombre del Conjunto {isLote ? <span className="text-[#6B7280] font-normal">(Opcional)</span> : '*'}</Label>
                 <Input
                   value={localData.nombre_conjunto || ''}
                   onChange={(e) => handleChange('nombre_conjunto', e.target.value)}
@@ -276,7 +335,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
             {!isLote && (
               <>
                 <div className="space-y-2">
-                  <Label className="text-[#2C3D37] font-medium"># Habitaciones</Label>
+                  <Label className="text-[#2C3D37] font-medium"># Habitaciones *</Label>
                   <Input
                     type="number"
                     value={localData.habitaciones || ''}
@@ -287,7 +346,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[#2C3D37] font-medium"># Baños</Label>
+                  <Label className="text-[#2C3D37] font-medium"># Baños *</Label>
                   <Input
                     type="number"
                     value={localData.banos || ''}
@@ -300,7 +359,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                 {/* Número de Piso - Solo Apartamentos */}
                 {localData.tipo_inmueble === 'apartamento' && (
                   <div className="space-y-2">
-                    <Label className="text-[#2C3D37] font-medium">Número de Piso</Label>
+                    <Label className="text-[#2C3D37] font-medium">Número de Piso *</Label>
                     <Input
                       type="number"
                       value={localData.piso || ''}
@@ -314,7 +373,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                 {/* Ascensor - Solo Apartamentos */}
                 {localData.tipo_inmueble === 'apartamento' && (
                   <div className="space-y-2">
-                    <Label className="text-[#2C3D37] font-medium">¿Tiene Ascensor?</Label>
+                    <Label className="text-[#2C3D37] font-medium">¿Tiene Ascensor? *</Label>
                     <Select value={localData.ascensor || ''} onValueChange={(value) => handleChange('ascensor', value)}>
                       <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
                         <SelectValue placeholder="Selecciona" />
@@ -330,7 +389,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                 {/* Niveles de la Casa - Solo Casas */}
                 {localData.tipo_inmueble === 'casa' && (
                   <div className="space-y-2">
-                    <Label className="text-[#2C3D37] font-medium">Niveles de la Casa</Label>
+                    <Label className="text-[#2C3D37] font-medium">Niveles de la Casa *</Label>
                     <Select value={localData.numeropisos || ''} onValueChange={(value) => handleChange('numeropisos', value)}>
                       <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
                         <SelectValue placeholder="Selecciona" />
@@ -345,7 +404,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                 )}
 
                 <div className="space-y-2">
-                  <Label className="text-[#2C3D37] font-medium">Parqueadero</Label>
+                  <Label className="text-[#2C3D37] font-medium">Parqueadero *</Label>
                   <Select value={localData.tipo_parqueadero || ''} onValueChange={(value) => handleChange('tipo_parqueadero', value)}>
                     <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
                       <SelectValue placeholder="Selecciona" />
@@ -376,20 +435,24 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-[#2C3D37] font-medium">Estrato *</Label>
-                  <Select value={localData.estrato || ''} onValueChange={(value) => handleChange('estrato', value)}>
-                    <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
-                      <SelectValue placeholder="Selecciona" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6].map((est) => (
-                        <SelectItem key={est} value={est.toString()}>{est}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </>
+            )}
+
+            {/* Estrato - Para Propiedades (Obligatorio) o Lotes en Conjunto (Opcional) */}
+            {(!isLote || localData.contexto_zona === 'conjunto_cerrado') && (
+              <div className="space-y-2">
+                <Label className="text-[#2C3D37] font-medium">Estrato {isLote ? <span className="text-[#6B7280] font-normal">(Opcional)</span> : '*'}</Label>
+                <Select value={localData.estrato || ''} onValueChange={(value) => handleChange('estrato', value)}>
+                  <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
+                    <SelectValue placeholder="Selecciona" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6].map((est) => (
+                      <SelectItem key={est} value={est.toString()}>{est}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           </div>
 

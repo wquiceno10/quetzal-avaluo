@@ -300,7 +300,7 @@ const AnalisisAI = ({ text }) => {
             const lines = trimmed.split('\n');
             const headerLine = lines[0];
             const remainingText = lines.slice(1).join('\n').trim();
-            const title = toTitleCase(headerLine.replace(/^#+\s*/, ''));
+            const title = toTitleCase(headerLine.replace(/^#+\s*/, '').replace(/<\/?strong>/g, ''));
 
             return (
                 <React.Fragment key={index}>
@@ -317,7 +317,7 @@ const AnalisisAI = ({ text }) => {
         // Detectar títulos numerados (ej: 2.1 o 2.) o letras descriptivas (ej: a) o C))
         const numberedTitleMatch = trimmed.match(/^([a-z0-9]+[.)])\s+([^:\n]+)/i);
         if (numberedTitleMatch && trimmed.split('\n')[0].length < 130) {
-            const titleText = numberedTitleMatch[2].split('\n')[0].trim();
+            const titleText = numberedTitleMatch[2].split('\n')[0].trim().replace(/<\/?strong>/g, '');
             const remainingContent = trimmed.split('\n').slice(1).join('\n').trim();
 
             return (

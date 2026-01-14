@@ -287,12 +287,12 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               max-width: 90%; 
               font-weight: 300;
               font-family: 'Raleway', sans-serif;
-              text-align: justify;
+              text-align: left;
             }
             .analysis-content {
               font-size: 13px;
-              line-height: 1.2;
-              text-align: justify;
+              line-height: 1.5;
+              text-align: left;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
               /* Doble columna - igual que en la página web */
@@ -310,13 +310,25 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               page-break-inside: avoid;
             }
              .analysis-content li {
-              margin-left: 18px;
-              margin-bottom: 6px;
+              margin-left: 0;
+              margin-bottom: 12px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
               font-size: 14px;
+              line-height: 1.3;
               break-inside: avoid;
               page-break-inside: avoid;
+            }
+            .analysis-content ol {
+              margin: 8px 0;
+              padding-left: 12px;
+              margin-left: 0;
+            }
+            .analysis-content ol li {
+              break-inside: avoid;
+              page-break-inside: avoid;
+              margin-bottom: 15px;
+              line-height: 1.3;
             }
             .analysis-content p {
               margin-bottom: 12px;
@@ -469,11 +481,13 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               font-family: 'Raleway', sans-serif;
             }
             .analysis-content p {
-              margin-bottom: 10px;
-              font-size: 14px;
-              text-align: justify;
+              margin-bottom: 12px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
+              font-size: 14px;
+              text-align: left;
+              break-inside: avoid;
+              page-break-inside: avoid;
             }
             /* Calculation sections (after h5 subsections) use left-align */
             .analysis-content h5 ~ p {
@@ -487,6 +501,24 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               column-fill: balance;
             }
             
+            /* TABLAS: Contener dentro de su columna */
+            .analysis-content table {
+              break-inside: avoid;
+              page-break-inside: avoid;
+              width: 100%;
+              max-width: 100%;
+              table-layout: fixed;
+              font-size: 9px;
+              overflow: hidden;
+            }
+            
+            .analysis-content td,
+            .analysis-content th {
+              overflow: hidden;
+              text-overflow: ellipsis;
+              word-wrap: break-word;
+            }
+
             /* Centrar cajas de metodología y alertas */
             .analysis-content > div[style*="background"],
             .analysis-content div[style*="background"] {

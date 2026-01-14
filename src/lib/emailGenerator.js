@@ -169,7 +169,13 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
               </tr>
             </thead>
             <tbody>
-              ${(comparablesData.comparables || []).slice(0, 5).map(item => `
+              ${(comparablesData.comparables || [])
+      .filter(item => {
+        const precio = item.precio_cop || item.precio || item.precio_publicado || 0;
+        const area = item.area_m2 || item.area || 0;
+        return precio > 0 && area > 0;
+      }) // EMAIL ONLY: Filtrar sin precio/área válidos
+      .slice(0, 5).map(item => `
               <tr>
                 <td>
                   <strong style="color:#2C3D37;">${toTitleCase(item.titulo || 'Propiedad')}</strong><br>

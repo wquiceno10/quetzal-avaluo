@@ -25,12 +25,12 @@ export const MarkdownTable = ({ content }) => {
                     <tbody>
                         {rows.map((row, rIdx) => {
                             // Detectar si es footer (texto largo o total) PARA SALTARLO AQUI
-                            const cleanRow = row.trim().replace(/^\||\|$/g, '');
+                            const cleanRow = row.trim().replace(/^\|+|\|+$/g, '');
                             let cells = cleanRow.split('|');
                             const validCells = cells.filter(c => c.trim() !== '');
                             const pipeCount = (row.match(/\|/g) || []).length;
                             const headerPipeCount = (rows[0].match(/\|/g) || []).length;
-                            const numCols = rows[0].trim().replace(/^\||\|$/g, '').split('|').length;
+                            const numCols = rows[0].trim().replace(/^\|+|\|+$/g, '').split('|').length;
 
                             // Un footer debe tener pocos separadores O ser texto largo en una sola celda
                             const isFooterContent = (validCells.length === 1 && pipeCount < headerPipeCount && rIdx > 0) ||
@@ -48,13 +48,20 @@ export const MarkdownTable = ({ content }) => {
                             const isHeader = rIdx === 0;
 
                             return (
-                                <tr key={rIdx} className={isHeader ? "bg-[#F0ECD9] text-[#2C3D37] font-bold" : "text-[#4F5B55] hover:bg-[#fafaf8]"}>
+                                <tr key={rIdx} className={isHeader ? "bg-[#F0ECD9]" : ""}>
                                     {cells.map((cell, cIdx) => {
                                         const align = cIdx === 0 ? 'text-left' : 'text-center';
-                                        return (
+                                        return isHeader ? (
+                                            <th
+                                                key={cIdx}
+                                                className={`p-2 border border-[#ddd] ${align} align-middle whitespace-normal font-bold text-[#2C3D37]`}
+                                                style={{ fontSize: '11px', lineHeight: '1.4' }}
+                                                dangerouslySetInnerHTML={{ __html: cell.trim() }}
+                                            />
+                                        ) : (
                                             <td
                                                 key={cIdx}
-                                                className={`p-2 border-b ${isHeader ? 'border-[#ddd]' : 'border-[#f0f0f0]'} ${align} align-middle whitespace-normal`}
+                                                className={`p-2 border border-[#ddd] ${align} align-middle whitespace-normal text-[#4F5B55]`}
                                                 style={{ fontSize: '11px', lineHeight: '1.4' }}
                                                 dangerouslySetInnerHTML={{ __html: cell.trim() }}
                                             />
