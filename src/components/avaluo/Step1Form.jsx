@@ -125,10 +125,7 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
 
   const isLote = localData.tipo_inmueble === 'lote';
 
-  const isRemodelacionValid = localData.estado_inmueble !== 'remodelado' || (
-    localData.tipo_remodelacion &&
-    localData.descripcion_mejoras?.trim()
-  );
+  const isRemodelacionValid = localData.estado_inmueble !== 'remodelado' || localData.tipo_remodelacion;
 
   const isValid = (() => {
     // Campos comunes
@@ -468,10 +465,10 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                     <SelectItem value="nuevo">Nuevo</SelectItem>
                     <SelectItem value="remodelado">Remodelado</SelectItem>
                     <SelectItem value="buen_estado">Buen Estado</SelectItem>
-                    <SelectItem value="requiere_reformas_ligeras">Reformas Ligeras</SelectItem>
-                    <SelectItem value="requiere_reformas_moderadas">Reformas Moderadas</SelectItem>
-                    <SelectItem value="requiere_reformas_amplias">Reformas Amplias</SelectItem>
-                    <SelectItem value="requiere_reformas_superiores">Reformas Superiores</SelectItem>
+                    <SelectItem value="requiere_reformas_ligeras">Requiere Reformas Ligeras</SelectItem>
+                    <SelectItem value="requiere_reformas_moderadas">Requiere Reformas Moderadas</SelectItem>
+                    <SelectItem value="requiere_reformas_amplias">Requiere Reformas Amplias</SelectItem>
+                    <SelectItem value="requiere_reformas_superiores">Requiere Reformas Superiores</SelectItem>
                     <SelectItem value="obra_gris">Obra Gris</SelectItem>
                   </SelectContent>
                 </Select>
@@ -497,18 +494,6 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {localData.tipo_remodelacion && (
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="text-[#2C3D37] font-medium">Describe las mejoras *</Label>
-                      <Input
-                        value={localData.descripcion_mejoras || ''}
-                        onChange={(e) => handleChange('descripcion_mejoras', e.target.value)}
-                        placeholder="Ej: Cocina nueva, baños remodelados, pisos en porcelanato..."
-                        className="border-[#B0BDB4] focus:border-[#2C3D37]"
-                      />
-                    </div>
-                  )}
                 </>
               )}
             </div>

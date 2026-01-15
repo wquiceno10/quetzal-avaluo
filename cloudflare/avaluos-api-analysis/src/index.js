@@ -47,10 +47,10 @@ function mapearEstado(estado) {
         'nuevo': 'Nuevo',
         'remodelado': 'Remodelado',
         'buen_estado': 'Buen Estado',
-        'requiere_reformas_ligeras': 'Reformas Ligeras',
-        'requiere_reformas_moderadas': 'Reformas Moderadas',
-        'requiere_reformas_amplias': 'Reformas Amplias',
-        'requiere_reformas_superiores': 'Reformas Superiores',
+        'requiere_reformas_ligeras': 'Requiere Reformas Ligeras',
+        'requiere_reformas_moderadas': 'Requiere Reformas Moderadas',
+        'requiere_reformas_amplias': 'Requiere Reformas Amplias',
+        'requiere_reformas_superiores': 'Requiere Reformas Superiores',
         'obra_gris': 'Obra Gris'
     };
     return mapa[estado] || (estado ? estado.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No especificado');
@@ -177,77 +177,139 @@ Barrio | Ciudad
     Indica el valor por m² FINAL (ajustado).
     Calcula: Precio por m² final × ${area || 'área'} m².
 
-   ### 2.2. Método de Rentabilidad (Yield Mensual)
+### 2.2. Método de Rentabilidad (Yield Mensual)
+
    **CÁLCULO NORMALIZADO POR M²:**
-    Calcula canon/m² de CADA arriendo (canon ÷ área).
-    Calcula el promedio de canon/m².
-    Canon estimado = promedio canon/m² × ${area} m².
-    Investiga el Yield para ${formData.municipio} estrato ${formData.estrato}.
-    Valor rentabilidad = canon estimado ÷ yield.
-   
-   **NUNCA promedies cánones totales sin normalizar por área.**
+
+   1. Calcula el canon mensual por m² de CADA inmueble en arriendo  
+   (canon mensual ÷ área construida).
+
+   2. Evalúa la estabilidad de la muestra:
+   - Si los valores de canon/m² son homogéneos (sin valores atípicos relevantes),
+     se utiliza el **PROMEDIO** de canon/m².
+   - Si se detectan valores atípicos (canon/m² fuera de ±40% respecto a la mediana),
+     se utiliza la **MEDIANA** como medida representativa.
+
+   3. Canon mensual estimado = (promedio o mediana de canon/m²) × ${area} m².
+
+   4. Investiga el yield mensual observado para ${formData.municipio}, estrato ${formData.estrato},
+   con base en el comportamiento real del mercado de arriendos residenciales.
+
+   5. Valor por rentabilidad = canon mensual estimado ÷ yield mensual.
+
+   **Nota técnica:**  
+   Nunca se promedian cánones totales sin normalizar previamente por área.
 
 ## 3. AJUSTES APLICADOS
-   
+
    Explica cada ajuste aplicado, cómo se usó y por qué.
-   Separa por lineas para que se lea mejor. 
+   Presenta cada ajuste en líneas separadas para facilitar la lectura.
+   Nunca apliques ajustes sin justificación explícita basada en evidencia de mercado.
 
-   **EJEMPLO:**
-    **Ajuste por ubicación:** +x% zona de alta demanda
-    **Ajuste por estado:** +x% Requiere inversión en mejoras entre $X.XXX.XXX y $X.XXX.XXX, se estimó un valor intermedio de $X.XXX.XXX aplicando un ajuste de +x%
-    **Ajuste por antigüedad:** -x% (fuente: Camacol)
-    **Factor total:** 0.85 (equivalente a -x%). 
-    **Precio/m² ajustado venta:** $3.545.455 × 0.85 = $3.013.637. 
-    **Valor total ajustado:** $3.013.637/m² × 60 m² = $180.818.220. 
-    - **Yield ajustado similar (-15%):** $170.003.400. 
+   ### FORMATO OBLIGATORIO DE PRESENTACIÓN (EJEMPLO):
 
-**TABLA DE AJUSTE POR ESTADO (usa según tipo de inmueble):**
-| Estado | Casa | Apartamento |
-|--------|------|-------------|
-| Nuevo / Remodelado / Buen Estado | 0% | 0% |
-| Reformas Ligeras | -5% | -6% |
-| Reformas Moderadas | -10% | -12% |
-| Reformas Amplias | -18% | -20% |
-| Reformas Superiores | -25% | -28% |
-| Obra Gris | -30% | -35% |
+   **Ajuste por ubicación:** +X% (zona de alta demanda según comparables directos).
+   **Ajuste por estado:** -X% (requiere inversión estimada entre $X.XXX.XXX y $X.XXX.XXX; se aplicó un valor intermedio).
+   **Ajuste por antigüedad:** -X% (ajuste base según referencia de mercado / Camacol, escalado según remodelación).
+   **Factor total de ajustes:** 0.85 (equivalente a -15%).
+   **Precio/m² ajustado (venta):** $3.545.455 × 0.85 = $3.013.637.
+   **Valor total ajustado:** $3.013.637/m² × 60 m² = $180.818.220.
+   **Yield ajustado:** $200.003.400 × 0.85 = $170.003.400.
 
-- Aplica el % correspondiente al estado indicado en los DATOS DEL INMUEBLE.
-- Si aplicas otros ajustes (ubicación, antigüedad, contexto), explícalos por separado.
-- NO apliques ajustes positivos si los comparables ya reflejan esa prima.
-- Muestra siempre el porcentaje, el factor y el resultado en pesos.
+---
 
-   **AJUSTE POR CONTEXTO (si aplica):**
-   Si el objeto está en barrio abierto y los comparables incluyen conjuntos cerrados:
-   - Investiga la diferencia de precio típica entre conjuntos y barrios abiertos en ${formData.municipio}
-   - Aplica ajuste NEGATIVO al valor (conjuntos suelen valer más que barrios abiertos)
-   
-   Si el objeto está en conjunto cerrado y los comparables incluyen barrios abiertos:
-   - Investiga la diferencia de precio típica entre conjuntos y barrios abiertos en ${formData.municipio}
-   - Aplica ajuste POSITIVO al valor
+   ### TABLA DE AJUSTE POR ESTADO (usar según tipo de inmueble)
 
-   **OTROS AJUSTES (COMPARATIVOS):**
+   | Estado / Tipo de Intervención | Casa | Apartamento |
+   |-------------------------------|------|-------------|
+   | Nuevo / Remodelado / Buen estado | 0% | 0% |
+   | Reforma ligera | -5% | -6% |
+   | Reforma moderada | -10% | -12% |
+   | Remodelación amplia | -18% | -20% |
+   | Remodelación superior | -25% | -28% |
+   | Obra gris | -30% | -35% |
 
-   - Comparando propiedades con ÁREA TOTAL similar:
-     - MENOS niveles que los comparables → espacios más amplios por nivel → posible ajuste POSITIVO.
-     - MÁS niveles que los comparables → espacios más fragmentados por nivel → posible ajuste NEGATIVO.
-     Validar siempre con evidencia de mercado.
+   Aplica el porcentaje correspondiente **exclusivamente** según el estado indicado en los DATOS DEL INMUEBLE.
 
-   - En apartamentos:
-     - Piso superior al de los comparables → posible ajuste POSITIVO si el mercado valora altura, vista o menor ruido.
-     - Piso inferior al de los comparables → posible ajuste NEGATIVO si el mercado penaliza iluminación, ruido o seguridad.
+---
 
-   - Validar siempre con evidencia de mercado.
+   ### REGLA DE AJUSTE POR ANTIGÜEDAD SEGÚN REMODELACIÓN (OBLIGATORIA)
 
-   **REGLAS ESPECIALES PARA EL YIELD AJUSTADO:**
+   El ajuste por antigüedad mide la depreciación cronológica.
+   El ajuste por estado mide la condición funcional.
+   Ambos **NO deben penalizar el mismo factor dos veces**.
 
-   - Siempre que menciones **“Yield ajustado”**, debes explicar claramente:
-     - cuál es el **valor de rentabilidad base** usado (por ejemplo, el valor obtenido al dividir el canon mensual estimado entre el yield del mercado),
-     - qué **factor o porcentaje de ajuste total** estás aplicando (por ejemplo, el mismo factor por ubicación, estado y antigüedad),
-     - y mostrar la **operación numérica completa** en una sola línea.
-     - Ejemplo de estilo (NO lo copies literal): “Yield ajustado: $XXX.XXX.XXX × 0,XX (mismo factor total de ajustes) = $XXX.XXX.XXX”.
+   El ajuste por antigüedad debe escalarse según el tipo de remodelación indicado por el usuario, de la siguiente forma:
 
-   - Evita frases como “Yield ajustado (-X%)” sin mostrar la fórmula ni explicar por qué se aplica ese porcentaje al valor de rentabilidad.
+   - Remodelación superior → NO aplicar ajuste por antigüedad (0%).
+   - Remodelación amplia → aplicar solo el 25% del ajuste base por antigüedad.
+   - Reforma moderada → aplicar el 50% del ajuste base por antigüedad.
+   - Reforma ligera → aplicar el 75% del ajuste base por antigüedad.
+   - Sin remodelación → aplicar el 100% del ajuste base por antigüedad.
 
+   Explica siempre cómo se combinan ambos ajustes y evita castigos dobles.
+
+---
+
+   ### REGLAS GENERALES DE AJUSTE
+
+   - Si aplicas ajustes por ubicación, antigüedad o contexto, explícalos siempre por separado.
+   - NO apliques ajustes positivos si los comparables ya reflejan esa prima en precio.
+   - Muestra siempre:
+     - porcentaje aplicado,
+     - factor resultante,
+     - impacto en pesos.
+
+---
+
+   ### AJUSTE POR CONTEXTO (SI APLICA)
+
+   - Si el inmueble está en barrio abierto y los comparables están en conjuntos cerrados:
+     - Investiga la diferencia de precio típica entre conjuntos y barrios abiertos en ${formData.municipio}.
+     - Aplica ajuste NEGATIVO (los conjuntos suelen cotizar más).
+
+   - Si el inmueble está en conjunto cerrado y los comparables están en barrios abiertos:
+     - Investiga la diferencia de precio típica entre conjuntos y barrios abiertos en ${formData.municipio}.
+  - Aplica ajuste POSITIVO solo si el mercado lo respalda claramente.
+
+---
+
+   ### OTROS AJUSTES COMPARATIVOS (SOLO CON EVIDENCIA)
+
+   **En casas:**
+   - Menos niveles que los comparables → posible ajuste POSITIVO (mayor amplitud por nivel).
+   - Más niveles que los comparables → posible ajuste NEGATIVO (fragmentación del espacio).
+
+   **En apartamentos:**
+   - Piso superior al de los comparables → posible ajuste POSITIVO si el mercado valora altura, vista o menor ruido.
+   - Piso inferior al de los comparables → posible ajuste NEGATIVO si el mercado penaliza iluminación, ruido o seguridad.
+
+   Valida siempre con evidencia de mercado.
+
+---
+
+   ### REGLAS ESPECIALES PARA EL YIELD AJUSTADO
+
+   Siempre que menciones “Yield ajustado”, debes:
+
+   - Indicar claramente el valor de rentabilidad base utilizado.
+   - Explicar qué factor total de ajustes se está aplicando.
+   - Mostrar la operación numérica completa en una sola línea.
+
+   Ejemplo de estilo (NO copiar literal):
+   “Yield ajustado: $XXX.XXX.XXX × 0,XX (factor total de ajustes) = $XXX.XXX.XXX”.
+
+   Evita expresiones como “Yield ajustado (-X%)” sin fórmula ni explicación.
+
+   **Conclusión sobre ajustes aplicados**
+
+---
+
+   **JUSTIFICACION DE AJUSTES** - Explica de forma orientativa en uno o dos párrafos:
+   - Por qué y cómo se aplicaron los ajustes.
+   - cómo los ajustes aplicados (o no aplicados) influyeron en el valor final.
+   - Justifica tus decisiones según la calidad de los comparables, el estado del inmueble frente al mercado y la coherencia entre los métodos utilizados.
+   - Evita conclusiones absolutas y presenta el resultado como una referencia de mercado.
 
 ## 4. RESULTADOS FINALES
 
@@ -255,6 +317,12 @@ Barrio | Ciudad
    - **Rango sugerido:** [mínimo] - [máximo]
    - **Precio por m² final:** [valor calculado]
    - **Posición en mercado:** [análisis breve]
+
+   - Explica de forma clara y concisa la diferencia entre el valor obtenido por el enfoque de mercado y el enfoque de rentabilidad,
+     indicando cuál de los dos presenta mayor estabilidad según la cantidad, homogeneidad y dispersión de los comparables utilizados,
+     y por qué el valor final se considera el más representativo en este caso.
+
+   - Indica brevemente el nivel de confiabilidad del resultado y cómo debe interpretarse el rango sugerido.
 
    **REGLAS DE EXPLICACIÓN DE MÉTODOS:**
 
@@ -268,8 +336,12 @@ Barrio | Ciudad
 
 ## 5. RESUMEN EJECUTIVO
 
-   2-3 párrafos con valor recomendado (ponderando venta + rentabilidad), rango y estrategia.
-   INCLUYE: "Este reporte es una estimación de mercado de carácter orientativo y no tiene validez legal para fines hipotecarios, judiciales o transaccionales."
+   **FORMATO OBLIGATORIO DEL RESUMEN:**
+   - Escribe 2-3 párrafos orientativos con el valor recomendado, rango y estrategia de venta.
+   - Todos los valores monetarios DEBEN formatearse así: **$XXX.XXX.XXX** (negrita, con puntos como separadores de miles).
+   - Usa **negritas** para destacar: valor recomendado, rango mínimo, rango máximo, precio por m².
+   
+   - AL FINAL incluye el disclaimer: "Este reporte es una estimación de mercado de carácter orientativo y no tiene validez legal para fines hipotecarios, judiciales o transaccionales."
 
 ## 6. LIMITACIONES
 
@@ -595,7 +667,16 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - Elimina cualquier etiqueta HTML (como <br>) de los valores extraídos.
    - Si NO encuentras "fuente_validacion", asume "zona_extendida" por defecto.
 
-2. "resumen_mercado": Extrae un resumen conciso (máximo 2 párrafos) de la sección "RESUMEN EJECUTIVO". Prioriza la valoración y la rentabilidad.
+2. "resumen_mercado": Redacta un párrafo breve y orientativo con los datos del avalúo. Al final invita al usuario a presionar el botón "Ver comparables utilizados" para ver los inmuebles usados en el análisis. 
+   
+   El parrafo debe incluir los siguientes datos (con negritas en los valores):
+   - Valor recomendado: **$XXX.XXX.XXX**, Rango: entre **$XXX.XXX.XXX** y **$XXX.XXX.XXX**, Precio por m²: **$X.XXX.XXX/m²** 
+   - Menciona que es una estimación orientativa, basada en datos actuales del mercado, no valido para tramites legales.
+   
+   FORMATO:
+   - FORMATEA con puntos de miles (ej: 408240000 → **$408.240.000**)
+   - Usa **doble asterisco** para negritas en los valores
+   - El resultado debe ser un STRING de texto natural
 
 3. "yield_zona": Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.5%", devuelve 0.005).
 
@@ -1074,6 +1155,10 @@ Devuelve SOLO JSON válido.
                 finalPerplexityText = cleanLatexCommands(finalPerplexityText);
 
                 let resumenFinal = extractedData.resumen_mercado || 'Análisis de mercado realizado.';
+                // Protección: asegurar que resumenFinal sea string
+                if (typeof resumenFinal !== 'string') {
+                    resumenFinal = typeof resumenFinal === 'object' ? JSON.stringify(resumenFinal) : String(resumenFinal);
+                }
                 resumenFinal = resumenFinal.replace(/(presentan|listado de|encontraron|selección de)\s+(\d+)\s+(comparables|inmuebles|propiedades)/gi, `$1 ${totalReal} $3`);
 
                 // Protección: Si no hay comparables

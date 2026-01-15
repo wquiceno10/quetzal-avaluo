@@ -498,7 +498,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
             .analysis-content {
               column-count: 2;
               column-gap: 30px;
-              column-fill: balance;
+              column-fill: auto; /* Cambio de balance a auto para evitar espacios vacíos */
             }
             
             /* TABLAS: Contener dentro de su columna */

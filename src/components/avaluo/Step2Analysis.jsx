@@ -204,7 +204,7 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
               <p className="text-sm text-[#2C3D37]">
                 Recopilando información y ejecutando el modelo de valoración para obtener el precio estimado.
                 <br />
-                <strong>El cálculo tarda 3 a 5 minutos.</strong>
+                <strong>El cálculo toma aproximadamente 3 a 5 minutos.</strong>
               </p>
 
               <Button

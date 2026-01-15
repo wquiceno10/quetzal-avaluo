@@ -11,10 +11,10 @@ export function mapearEstado(estado) {
     'nuevo': 'Nuevo',
     'remodelado': 'Remodelado',
     'buen_estado': 'Buen Estado',
-    'requiere_reformas_ligeras': 'Reformas Ligeras',
-    'requiere_reformas_moderadas': 'Reformas Moderadas',
-    'requiere_reformas_amplias': 'Reformas Amplias',
-    'requiere_reformas_superiores': 'Reformas Superiores',
+    'requiere_reformas_ligeras': 'Requiere Reformas Ligeras',
+    'requiere_reformas_moderadas': 'Requiere Reformas Moderadas',
+    'requiere_reformas_amplias': 'Requiere Reformas Amplias',
+    'requiere_reformas_superiores': 'Requiere Reformas Superiores',
     'obra_gris': 'Obra Gris'
   };
   if (!estado) return 'No especificado';
