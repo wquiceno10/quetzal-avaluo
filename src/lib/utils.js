@@ -5,24 +5,8 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs))
 }
 
-// Mapear estado_inmueble con rangos de precio (para prompt de Perplexity)
-export function mapearEstadoConPrecio(estado) {
-  const mapa = {
-    'nuevo': 'Nuevo',
-    'remodelado': 'Remodelado',
-    'buen_estado': 'Buen Estado',
-    'requiere_reformas_ligeras': 'Requiere Reformas Ligeras (≤ $5.000.000)',
-    'requiere_reformas_moderadas': 'Requiere Reformas Moderadas ($5.000.000 - $15.000.000)',
-    'requiere_reformas_amplias': 'Requiere Reformas Amplias ($15.000.000 - $25.000.000)',
-    'requiere_reformas_superiores': 'Requiere Reformas Superiores (>$25.000.000)',
-    'obra_gris': 'Obra Gris'
-  };
-  if (!estado) return 'No especificado';
-  return mapa[estado] || estado.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-// Mapear estado_inmueble SIN precio (para UI, PDF, Email)
-export function mapearEstadoSinPrecio(estado) {
+// Mapear estado_inmueble a etiqueta legible (unificado)
+export function mapearEstado(estado) {
   const mapa = {
     'nuevo': 'Nuevo',
     'remodelado': 'Remodelado',
@@ -35,4 +19,7 @@ export function mapearEstadoSinPrecio(estado) {
   };
   if (!estado) return 'No especificado';
   return mapa[estado] || estado.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-} 
+}
+
+// Alias para compatibilidad (deprecated, usar mapearEstado)
+export const mapearEstadoSinPrecio = mapearEstado;

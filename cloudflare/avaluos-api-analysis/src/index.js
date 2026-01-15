@@ -7,36 +7,6 @@
  * - Base: V13 (Dynamic Area Filters, Confidence V2, IQR Filter)
  */
 
-// --- HELPER: Similitud de Texto (Levenshtein simplificado -> Ratio) ---
-function getSimilarity(s1, s2) {
-    if (!s1 || !s2) return 0;
-    const str1 = s1.toLowerCase().trim();
-    const str2 = s2.toLowerCase().trim();
-    if (str1 === str2) return 1;
-    if (str1.length === 0 || str2.length === 0) return 0;
-
-    const len1 = str1.length;
-    const len2 = str2.length;
-    const matrix = Array.from({ length: len1 + 1 }, () => Array(len2 + 1).fill(0));
-
-    for (let i = 0; i <= len1; i++) matrix[i][0] = i;
-    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
-
-    for (let i = 1; i <= len1; i++) {
-        for (let j = 1; j <= len2; j++) {
-            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-            matrix[i][j] = Math.min(
-                matrix[i - 1][j] + 1,
-                matrix[i][j - 1] + 1,
-                matrix[i - 1][j - 1] + cost
-            );
-        }
-    }
-
-    const distance = matrix[len1][len2];
-    const maxLen = Math.max(len1, len2);
-    return maxLen > 0 ? 1 - distance / maxLen : 1;
-}
 
 // --- HELPER: Clean LaTeX Commands from Text ---
 function cleanLatexCommands(text) {
@@ -71,16 +41,16 @@ function cleanLatexCommands(text) {
     return cleanedText.trim();
 }
 
-// --- HELPER: Mapear estado_inmueble con rangos de precio ---
-function mapearEstadoConPrecio(estado) {
+// --- HELPER: Mapear estado_inmueble a etiqueta legible ---
+function mapearEstado(estado) {
     const mapa = {
         'nuevo': 'Nuevo',
         'remodelado': 'Remodelado',
         'buen_estado': 'Buen Estado',
-        'requiere_reformas_ligeras': 'Requiere Reformas Ligeras (≤ $5.000.000)',
-        'requiere_reformas_moderadas': 'Requiere Reformas Moderadas ($5.000.000 - $15.000.000)',
-        'requiere_reformas_amplias': 'Requiere Reformas Amplias ($15.000.000 - $25.000.000)',
-        'requiere_reformas_superiores': 'Requiere Reformas Superiores (>$25.000.000)',
+        'requiere_reformas_ligeras': 'Reformas Ligeras',
+        'requiere_reformas_moderadas': 'Reformas Moderadas',
+        'requiere_reformas_amplias': 'Reformas Amplias',
+        'requiere_reformas_superiores': 'Reformas Superiores',
         'obra_gris': 'Obra Gris'
     };
     return mapa[estado] || (estado ? estado.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No especificado');
@@ -90,13 +60,14 @@ function mapearEstadoConPrecio(estado) {
 const jobs = new Map();
 
 // --- HELPER: Construcción Dinámica de Prompt para Análisis ---
-function construirPromptAnalisis(formData, area, ubicacion, agentContext = '') {
+function construirPromptAnalisis(formData, area, agentContext = '') {
     // --- INFORMACIÓN DEL INMUEBLE ---
     const infoInmueble = `
 - Tipo: ${formData.tipo_inmueble || 'inmueble'}
-- Ubicación: ${ubicacion}
+- Barrio: ${formData.barrio || 'No indicado'}
+- Municipio: ${formData.municipio || 'No indicado'}
 ${formData.departamento ? `- Departamento: ${formData.departamento}` : ''}
-${formData.contexto_zona ? `- Tipo de zona: ${formData.contexto_zona === 'conjunto_cerrado' ? 'Conjunto Cerrado' : 'Barrio Abierto'}` : ''}
+- Tipo de Urbanización: ${formData.contexto_zona === 'conjunto_cerrado' ? 'Conjunto Cerrado' : 'No es Conjunto Cerrado'}
 ${formData.nombre_conjunto ? `- Conjunto/Edificio: ${formData.nombre_conjunto}` : ''}
 - Habitaciones: ${formData.habitaciones || 'N/A'}
 - Baños: ${formData.banos || 'N/A'}
@@ -106,8 +77,8 @@ ${formData.tipo_inmueble === 'casa' && formData.numeropisos ? `- Niveles de la c
 - Parqueadero: ${formData.tipo_parqueadero || 'No indicado'}
 - Antigüedad: ${formData.antiguedad || 'No indicada'}
 ${formData.estrato ? `- Estrato: ${formData.estrato}` : ''}
-- Estado: ${mapearEstadoConPrecio(formData.estado_inmueble)}
-${formData.tipo_remodelacion ? `- Remodelación: ${formData.tipo_remodelacion.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} (${formData.valor_remodelacion || 'Valor no indicado'})` : ''}
+- Estado: ${mapearEstado(formData.estado_inmueble)}
+${formData.tipo_remodelacion ? `- Remodelación: ${formData.tipo_remodelacion.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}` : ''}
 ${formData.descripcion_mejoras ? `- Mejoras: ${formData.descripcion_mejoras}` : ''}
 ${formData.informacion_complementaria ? `- NOTAS ADICIONALES: ${formData.informacion_complementaria}` : ''}
 - ÁREA CONSTRUIDA: ${area || '?'} m²
@@ -117,17 +88,7 @@ ${formData.informacion_complementaria ? `- NOTAS ADICIONALES: ${formData.informa
     const rangoAreaMin = Math.round(area * 0.70);  // Estándar Agente: 70%
     const rangoAreaMax = Math.round(area * 1.30);  // Estándar Agente: 130%
     const rangoExtendidoMin = Math.round(area * 0.50); // Fallback Agente: 50%
-    const rangoExtendidoMax = Math.round(area * 1.50); // Fallback Agente: 180%
-
-    const agentInsights = `
-═══════════════════════════════════════════════════════════
-INFORMACIÓN DE MERCADO (DE AGENTE EXPERTO)
-═══════════════════════════════════════════════════════════
-El buscador experto ha recolectado y analizado la web para encontrar los siguientes comparables y datos de mercado. 
-ANALIZA esta información tal cual se presenta (incluyendo tablas y resúmenes) para realizar tu avalúo:
-
-${agentContext}
-`;
+    const rangoExtendidoMax = Math.round(area * 1.50); // Fallback Agente: 150%
 
     const seccionBase = `
 Eres un analista inmobiliario especializado en avalúos técnicos del mercado colombiano.
@@ -143,51 +104,59 @@ DATOS DEL INMUEBLE
 ═══════════════════════════════════════════════════════════
 ${infoInmueble}
 
-${agentInsights}
+═══════════════════════════════════════════════════════════
+INFORMACIÓN DE MERCADO (DE AGENTE EXPERTO)
+═══════════════════════════════════════════════════════════
+El buscador experto ha recolectado y analizado la web para encontrar los siguientes comparables y datos de mercado. 
+ANALIZA esta información tal cual se presenta (incluyendo tablas y resúmenes) para realizar tu avalúo:
+
+${agentContext}
 
 ═══════════════════════════════════════════════════════════
 INSTRUCCIONES CRÍTICAS (NO VIOLABLES)
 ═══════════════════════════════════════════════════════════
 
 **ETIQUETAS DE UBICACIÓN (ANÁLISIS DE PROXIMIDAD)**
-Es TU RESPONSABILIDAD verificar y asignar o corregir la etiqueta de ubicación a cada comparable basándote en el Barrio y Ciudad proporcionados, comparándolos con la ubicación del inmueble objetivo:
+Es TU RESPONSABILIDAD verificar, asignar o corregir la etiqueta de ubicación a cada comparable basándote en el Barrio y Ciudad proporcionados, comparándolos con la ubicación del inmueble objetivo:
 
 ✓ **coincidencia**: mismo barrio o sector inmediatamente adyacente (≤2 km)
 → **zona_similar**: barrios cercanos con características socioeconómicas similares o mismo municipio (2–5 km)
 ≈ **zona_extendida**: mismo municipio o departamento, pero con dinámica de mercado diferente (5–12 km)
 
-Prioriza **coincidencia** para los cálculos principales.
-
 **CONTEXTO Y AJUSTES (NOTAS DEL INMUEBLE)**
 Utiliza MANDATORIAMENTE la información del campo **NOTAS / Información Complementaria**.
 Si se mencionan remodelaciones, acabados, vistas, problemas o condiciones especiales, DEBEN reflejarse en el análisis y en los ajustes.
 
-**FILTROS DE CALIDAD Y DESCARTES (OBLIGATORIO)**
+**FILTROS DE CALIDAD (OBLIGATORIO)**
 - Rango preferencial de área: ${rangoAreaMin} m² – ${rangoAreaMax} m²
 - Rango extendido aceptable: ${rangoExtendidoMin} m² – ${rangoExtendidoMax} m²
 - Las propiedades fuera del rango extendido NO deben listarse.
 
+**OBLIGATORIO:**
+- USA negritas para destacar datos importantes: cifras, palabras, etc.
+- 
+
 ═══════════════════════════════════════════════════════════
-**FORMATO DE ENTREGA OBLIGATORIO**
+**FORMATO DE SALIDA OBLIGATORIO**
 ═══════════════════════════════════════════════════════════
+
+   **SELECCIÓN DE COMPARABLES PARA CÁLCULO:**
+   - Lista todos los comparables que cumplan con los filtros de calidad.
+   - NUNCA incluyas comparables sin precio o área.
+   - NUNCA incluyas comparables duplicados. Si tienen mismo precio, area, barrio, entonces son el mismo comparable. Así tengan diferente URL.
+
 
 **1 PRESENTACIÓN DE COMPARABLES**
 Describe brevemente la propiedad objetivo y luego presenta los comparables.
 
-🔴 **REGLA CRÍTICA Y NO NEGOCIABLE – ELIMINACIÓN DE DUPLICADOS**
-DEBES eliminar comparables duplicados. Se considera **EL MISMO INMUEBLE** cuando coinciden: **área, precio, número de habitaciones, número de baños, tipo de inmueble y conjunto/ubicación**.
-**ESPECÍFICO PARA ARRIENDOS:** Si existen múltiples anuncios de arriendo con la misma área, mismo conjunto y misma condición económica, TRÁTALOS COMO UNO SOLO.
-**DECLARACIÓN:** Debes mencionar explícitamente cuántos comparables (venta o arriendo) fueron eliminados por duplicación al inicio de tu análisis.
-
 **LISTADO DE COMPARABLES (FORMATO OBLIGATORIO)**
-- NUNCA incluyas comparables sin precio.
 - Crea tu propia numeración secuencial (1, 2, 3…).
-- CONVIERTE LA INFORMACIÓN DEL BUSCADOR (que viene en tabla) al formato de salida solicitado abajo.
-- Asigna tú mismo la etiqueta de ubicación al final.
-- No incluyas propiedades fuera del rango de área.
-- Si hay menos de 5 comparables, realiza el avalúo igualmente y declara la limitación.
+- Idealmente debes tener al menos 5 comparables en arriendo y 5 en venta para el cálculo.
 
 **FORMATO OBLIGATORIO POR COMPARABLE:**
+
+NO USES VIÑETAS O GUIONES, USALO TAL CUAL SE PRESENTA:
+
 **Título exacto del anuncio del portal**
 Tipo | Venta o Arriendo | $Precio
 Área: XX m² | X hab | X baños | X niveles
@@ -195,56 +164,131 @@ Barrio | Ciudad
 **[Portal](URL cruda)** ETIQUETA (coincidencia / zona_similar / zona_extendida)
 **Nota:** Distancia aproximada y justificación breve
 
-**2. ANÁLISIS DEL VALOR**
+## 2. ANÁLISIS DEL VALOR
 
-   **SELECCIÓN DE COMPARABLES PARA CÁLCULO**
-   - USA PROPIEDADES EN VENTA Y ARRIENDO.
-   - Indica cuántos comparables listaste, cuántos usas para cálculo y cuáles descartas y por qué.
-   - **MÍNIMO OBLIGATORIO:** ≥3 de venta, ≥3 de arriendo (si existen).
+   - **Selecciona los mejores comparables para el cálculo.** Justifica tu decisión. Básate en metodologías comprobadas.
+   - Deduplicar por (área ±1% + precio ±1% + barrio). Contar solo 1 entrada en cálculo.
+   Escribe un párrafo indicando:
+   - Cuántos comparables usas para el cálculo (separados por venta y arriendo)
+   - Por qué descartaste los demás
 
-   **REGLAS CRÍTICAS DE CÁLCULO:**
-   - **DISPERSIÓN (VENTAS):** Si el $/m² máximo supera en >40% al mínimo, excluye el atípico o justifica su inclusión en una línea. Si quedan <3 comparables tras excluir, usa todos y decláralo.
-   - **ARRIENDOS:** Tras deduplicar, usa TODOS los arriendos válidos para el canon promedio. Si hay <3, declara "muestra limitada" y reduce su peso en el resultado final.
-   - **MEDIANA:** La mediana debe reflejar el mercado dominante, no un cálculo ciego. Declara cuántos comparables usaste y si excluiste alguno.
+   ### 2.1. Método de Venta Directa (Precio por m²)
+    Calcula la **MEDIANA** del precio por m² de los comparables de venta seleccionados.
+    Indica el valor por m² FINAL (ajustado).
+    Calcula: Precio por m² final × ${area || 'área'} m².
 
-   **2.1 MÉTODO DE VENTA DIRECTA**
-   - Calcula el precio por m² de cada comparable de venta.
-   - Ordena los valores y calcula la **MEDIANA**.
-   - Presenta: "Mediana $/m²: $X.XXX.XXX/m²"
-   - Valor mercado = mediana × ${area} m²
-   - NO apliques ajustes aquí (los ajustes van en la Sección 3).
+   ### 2.2. Método de Rentabilidad (Yield Mensual)
+   **CÁLCULO NORMALIZADO POR M²:**
+    Calcula canon/m² de CADA arriendo (canon ÷ área).
+    Calcula el promedio de canon/m².
+    Canon estimado = promedio canon/m² × ${area} m².
+    Investiga el Yield para ${formData.municipio} estrato ${formData.estrato}.
+    Valor rentabilidad = canon estimado ÷ yield.
+   
+   **NUNCA promedies cánones totales sin normalizar por área.**
 
-   **2.2 MÉTODO DE RENTABILIDAD**
-   - Calcula el canon promedio con TODOS los arriendos válidos listados en Sección 1.
-   - Investiga el Yield promedio para ${formData.municipio} estrato ${formData.estrato}. Si usas yield municipal como fallback, decláralo.
-   - Calcula: **Valor rentabilidad = canon promedio ÷ yield**
+## 3. AJUSTES APLICADOS
+   
+   Explica cada ajuste aplicado, cómo se usó y por qué.
+   Separa por lineas para que se lea mejor. 
 
-**3. AJUSTES APLICADOS**
-- Parte de los valores mercado base de la Sección 2.1.
-- Explica cada ajuste aplicado (ubicación, estado, antigüedad, contexto) basándote en las NOTAS.
+   **EJEMPLO:**
+    **Ajuste por ubicación:** +x% zona de alta demanda
+    **Ajuste por estado:** +x% Requiere inversión en mejoras entre $X.XXX.XXX y $X.XXX.XXX, se estimó un valor intermedio de $X.XXX.XXX aplicando un ajuste de +x%
+    **Ajuste por antigüedad:** -x% (fuente: Camacol)
+    **Factor total:** 0.85 (equivalente a -x%). 
+    **Precio/m² ajustado venta:** $3.545.455 × 0.85 = $3.013.637. 
+    **Valor total ajustado:** $3.013.637/m² × 60 m² = $180.818.220. 
+    - **Yield ajustado similar (-15%):** $170.003.400. 
+
+**TABLA DE AJUSTE POR ESTADO (usa según tipo de inmueble):**
+| Estado | Casa | Apartamento |
+|--------|------|-------------|
+| Nuevo / Remodelado / Buen Estado | 0% | 0% |
+| Reformas Ligeras | -5% | -6% |
+| Reformas Moderadas | -10% | -12% |
+| Reformas Amplias | -18% | -20% |
+| Reformas Superiores | -25% | -28% |
+| Obra Gris | -30% | -35% |
+
+- Aplica el % correspondiente al estado indicado en los DATOS DEL INMUEBLE.
+- Si aplicas otros ajustes (ubicación, antigüedad, contexto), explícalos por separado.
 - NO apliques ajustes positivos si los comparables ya reflejan esa prima.
 - Muestra siempre el porcentaje, el factor y el resultado en pesos.
 
-**4. RESULTADOS FINALES**
-- Decide pesos entre métodos según calidad de datos y muestra la fórmula completa.
-- **REGLA DE PESO POR MUESTRA:** Si el método de rentabilidad se basa en menos de 3 arriendos (n < 3), debe considerarse como MÉTODO SECUNDARIO y tener un peso significativamente menor en el cálculo del valor final.
-- Presenta: **Valor Recomendado, Rango sugerido, Precio por m² y Posición en mercado**.
+   **AJUSTE POR CONTEXTO (si aplica):**
+   Si el objeto está en barrio abierto y los comparables incluyen conjuntos cerrados:
+   - Investiga la diferencia de precio típica entre conjuntos y barrios abiertos en ${formData.municipio}
+   - Aplica ajuste NEGATIVO al valor (conjuntos suelen valer más que barrios abiertos)
+   
+   Si el objeto está en conjunto cerrado y los comparables incluyen barrios abiertos:
+   - Investiga la diferencia de precio típica entre conjuntos y barrios abiertos en ${formData.municipio}
+   - Aplica ajuste POSITIVO al valor
 
-**5. RESUMEN EJECUTIVO**
-2-3 párrafos claros con valor, rango y estrategia.
-INCLUYE: "Este reporte es una estimación de mercado de carácter orientativo y no tiene validez legal para fines hipotecarios, judiciales o transaccionales."
+   **OTROS AJUSTES (COMPARATIVOS):**
 
-**6. LIMITACIONES**
-Explica brevemente escasez de datos, rangos extendidos o dependencia de listados.
+   - Comparando propiedades con ÁREA TOTAL similar:
+     - MENOS niveles que los comparables → espacios más amplios por nivel → posible ajuste POSITIVO.
+     - MÁS niveles que los comparables → espacios más fragmentados por nivel → posible ajuste NEGATIVO.
+     Validar siempre con evidencia de mercado.
 
-**7. TRANSPARENCIA DE DATOS**
-Redacta un párrafo explicando por qué los datos son reales, por qué algunos enlaces son listados y por qué los resultados pueden variar. 
-NO formules preguntas ni pidas información adicional.
+   - En apartamentos:
+     - Piso superior al de los comparables → posible ajuste POSITIVO si el mercado valora altura, vista o menor ruido.
+     - Piso inferior al de los comparables → posible ajuste NEGATIVO si el mercado penaliza iluminación, ruido o seguridad.
 
-**RECORDATORIOS FINALES (CRÍTICOS):**
+   - Validar siempre con evidencia de mercado.
+
+   **REGLAS ESPECIALES PARA EL YIELD AJUSTADO:**
+
+   - Siempre que menciones **“Yield ajustado”**, debes explicar claramente:
+     - cuál es el **valor de rentabilidad base** usado (por ejemplo, el valor obtenido al dividir el canon mensual estimado entre el yield del mercado),
+     - qué **factor o porcentaje de ajuste total** estás aplicando (por ejemplo, el mismo factor por ubicación, estado y antigüedad),
+     - y mostrar la **operación numérica completa** en una sola línea.
+     - Ejemplo de estilo (NO lo copies literal): “Yield ajustado: $XXX.XXX.XXX × 0,XX (mismo factor total de ajustes) = $XXX.XXX.XXX”.
+
+   - Evita frases como “Yield ajustado (-X%)” sin mostrar la fórmula ni explicar por qué se aplica ese porcentaje al valor de rentabilidad.
+
+
+## 4. RESULTADOS FINALES
+
+   - **Valor Recomendado de Venta:** [valor calculado]
+   - **Rango sugerido:** [mínimo] - [máximo]
+   - **Precio por m² final:** [valor calculado]
+   - **Posición en mercado:** [análisis breve]
+
+   **REGLAS DE EXPLICACIÓN DE MÉTODOS:**
+
+   - Si combinas el resultado del **método de venta directa** con el **método de rentabilidad**:
+     - Explica con palabras cómo se hace la ponderación (por ejemplo: “se dio mayor peso al valor por venta directa y menor peso al valor por rentabilidad debido a la calidad de los comparables de venta”).
+     - Muestra también el **cálculo numérico final** indicando los porcentajes usados y los valores de cada método.
+     - Ejemplo de estilo (solo ilustrativo): “Valor ponderado = 0,60 × Valor venta + 0,40 × Valor rentabilidad = $XXX.XXX.XXX” (los porcentajes son solo ilustrativos).
+
+   - **No uses una fórmula fija de la forma** Valor ponderado = 0,7 × Valor venta + 0, 3 × Valor rentabilidad.
+   - Ajusta los porcentajes según el contexto del caso (calidad y cantidad de comparables de venta vs arriendo) y explícitalos en el texto cuando los uses.
+
+## 5. RESUMEN EJECUTIVO
+
+   2-3 párrafos con valor recomendado (ponderando venta + rentabilidad), rango y estrategia.
+   INCLUYE: "Este reporte es una estimación de mercado de carácter orientativo y no tiene validez legal para fines hipotecarios, judiciales o transaccionales."
+
+## 6. LIMITACIONES
+
+   Menciona escasez de datos o dependencias.
+
+## 7. TRANSPARENCIA DE DATOS
+
+   Crea un parrafo argumentativo que responda a las siguientes preguntas:
+   - ¿TODOS LOS RESULTADOS QUE HAS ENVIADO SON REALES?
+   - ¿Por qué algunos enlaces no muestran la propiedad que mencionas?
+   - ¿Por que un resultado es diferente al anterior?
+   - Algunos enlaces parecen rotos, ¿por qué sucede esto?
+   **NO PREGUNTES NADA ADICIONAL, NI MENCIONES LAS PREGUNTAS.** Es un mensaje orientativo de la calidad de datos. 
+
+**RECORDATORIO CRÍTICO:**
 - Este es un REPORTE FINAL, no una conversación.
-- NO ofrezcas ampliaciones ni actualizaciones. NO solicites más datos.
-- Entrega SOLO el análisis final.
+- NO ofrezcas actualizaciones, ampliaciones ni solicites más datos.
+- NO uses frases como "Si desea, puedo...", "Puedo actualizar...", "Obtener medición exacta..."
+- Entrega SOLO el análisis completo basado en los datos disponibles.
 
 `;
 
@@ -405,7 +449,7 @@ export default {
             }
 
             // --- 2. ANALISTA AI (CONEXIÓN DIRECTA) ---
-            const promptFinal = construirPromptAnalisis(formData, area, ubicacion, responseText);
+            const promptFinal = construirPromptAnalisis(formData, area, responseText);
             console.log('Iniciando Análisis GPT-4o...');
             let perplexityContent = '';
             let citations = [];
@@ -747,34 +791,41 @@ Devuelve SOLO JSON válido.
                                 /\/arriendo\/?$/i,
                             ];
 
-                            const urlObj = new URL(c.url_fuente);
-                            const hasParams = urlObj.search.length > 1; // ?X...
-                            const isGenericPath = urlsGenericas.some(regex => regex.test(urlObj.origin + urlObj.pathname));
+                            try {
+                                const urlObj = new URL(c.url_fuente);
+                                const hasParams = urlObj.search.length > 1; // ?X...
+                                const isGenericPath = urlsGenericas.some(regex => regex.test(urlObj.origin + urlObj.pathname));
 
-                            if (isGenericPath && !hasParams) {
-                                // Home o sección sin filtros -> Inútil
+                                if (isGenericPath && !hasParams) {
+                                    // Home o sección sin filtros -> Inútil
+                                    urlValida = false;
+                                    esVerificado = false;
+                                } else if (isGenericPath && hasParams) {
+                                    // Listado con filtros -> Aceptable pero no verificado
+                                    urlValida = true;
+                                    esVerificado = false;
+                                } else if (urlObj.pathname.length < 5 && !hasParams) {
+                                    // Path muy corto (home) -> Inútil
+                                    urlValida = false;
+                                    esVerificado = false;
+                                } else {
+                                    // URL profunda/específica -> Verificado
+                                    urlValida = true;
+                                    esVerificado = true;
+                                }
+
+                                if (esVerificado) {
+                                    badges.push('verificado');
+                                }
+
+                                if (!urlValida) {
+                                    console.log(`⚠️ URL inútil detectada: ${c.url_fuente}`);
+                                }
+                            } catch (urlError) {
+                                // URL malformada - tratar como no verificada pero continuar
+                                console.log(`⚠️ URL inválida/malformada: ${c.url_fuente}`);
                                 urlValida = false;
                                 esVerificado = false;
-                            } else if (isGenericPath && hasParams) {
-                                // Listado con filtros -> Aceptable pero no verificado
-                                urlValida = true;
-                                esVerificado = false;
-                            } else if (urlObj.pathname.length < 5 && !hasParams) {
-                                // Path muy corto (home) -> Inútil
-                                urlValida = false;
-                                esVerificado = false;
-                            } else {
-                                // URL profunda/específica -> Verificado
-                                urlValida = true;
-                                esVerificado = true;
-                            }
-
-                            if (esVerificado) {
-                                badges.push('verificado');
-                            }
-
-                            if (!urlValida) {
-                                console.log(`⚠️ URL inútil detectada: ${c.url_fuente}`);
                             }
                         }
 

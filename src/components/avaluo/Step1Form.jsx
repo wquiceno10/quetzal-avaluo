@@ -125,10 +125,9 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
 
   const isLote = localData.tipo_inmueble === 'lote';
 
-  const isRemodelacionValid = isLote || localData.estado_inmueble !== 'remodelado' || (
+  const isRemodelacionValid = localData.estado_inmueble !== 'remodelado' || (
     localData.tipo_remodelacion &&
-    localData.descripcion_mejoras?.trim() &&
-    (localData.tipo_remodelacion !== 'premium' || localData.valor_remodelacion?.trim())
+    localData.descripcion_mejoras?.trim()
   );
 
   const isValid = (() => {
@@ -469,10 +468,10 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                     <SelectItem value="nuevo">Nuevo</SelectItem>
                     <SelectItem value="remodelado">Remodelado</SelectItem>
                     <SelectItem value="buen_estado">Buen Estado</SelectItem>
-                    <SelectItem value="requiere_reformas_ligeras">Requiere Reformas Ligeras (≤ $5.000.000)</SelectItem>
-                    <SelectItem value="requiere_reformas_moderadas">Requiere Reformas Moderadas ($5.000.000 - $15.000.000)</SelectItem>
-                    <SelectItem value="requiere_reformas_amplias">Requiere Reformas Amplias ($15.000.000 - $25.000.000)</SelectItem>
-                    <SelectItem value="requiere_reformas_superiores">Requiere Reformas Superiores (&gt;$25.000.000)</SelectItem>
+                    <SelectItem value="requiere_reformas_ligeras">Reformas Ligeras</SelectItem>
+                    <SelectItem value="requiere_reformas_moderadas">Reformas Moderadas</SelectItem>
+                    <SelectItem value="requiere_reformas_amplias">Reformas Amplias</SelectItem>
+                    <SelectItem value="requiere_reformas_superiores">Reformas Superiores</SelectItem>
                     <SelectItem value="obra_gris">Obra Gris</SelectItem>
                   </SelectContent>
                 </Select>
@@ -491,26 +490,13 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                         <SelectValue placeholder="Selecciona" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ligera">Reforma Ligera (≤ $5'000.000)</SelectItem>
-                        <SelectItem value="moderada">Reforma Moderada ($5'000.000 - $15'000.000)</SelectItem>
-                        <SelectItem value="amplia">Remodelación Amplia ($15'000.000 - $25'000.000)</SelectItem>
-                        <SelectItem value="premium">Remodelación Superior (&gt;$25'000.000)</SelectItem>
+                        <SelectItem value="ligera">Reforma Ligera</SelectItem>
+                        <SelectItem value="moderada">Reforma Moderada</SelectItem>
+                        <SelectItem value="amplia">Remodelación Amplia</SelectItem>
+                        <SelectItem value="premium">Remodelación Superior</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {localData.tipo_remodelacion && localData.tipo_remodelacion === 'premium' && (
-                    <div className="space-y-2">
-                      <Label className="text-[#2C3D37] font-medium">Valor estimado de la remodelación *</Label>
-                      <Input
-                        type="text"
-                        value={localData.valor_remodelacion || ''}
-                        onChange={(e) => handleChange('valor_remodelacion', e.target.value)}
-                        placeholder="Ej: $15.000.000"
-                        className="border-[#B0BDB4] focus:border-[#2C3D37]"
-                      />
-                    </div>
-                  )}
 
                   {localData.tipo_remodelacion && (
                     <div className="space-y-2 md:col-span-2">
