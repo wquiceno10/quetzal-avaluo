@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "build": "echo \"No build needed for Cloudflare Workers\""
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0"
   }
