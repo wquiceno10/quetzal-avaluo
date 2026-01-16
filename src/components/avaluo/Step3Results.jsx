@@ -28,7 +28,11 @@ import {
     Send,
     CheckCircle2,
     XCircle,
-    RefreshCw
+    RefreshCw,
+    Share2,
+    Copy,
+    Check,
+    AlertTriangle
 } from 'lucide-react';
 import TablaComparables from './TablaComparables';
 import BotonPDF from './BotonPDF';
@@ -73,19 +77,20 @@ const validarNumero = (val) => {
 const AnalisisAI = ({ text }) => {
     if (!text) return null;
 
-    let cleanText = text
-        .replace(/^-{3,}\s*$/gm, '')
-        // INJECT DEFAULT NOTES IF MISSING (Fallback)
-        .replace(/(fuente_validacion:\s*(?:coincidencia|zona_extendida|zona_similar))(?!\s*[\r\n]+\s*(?:(?:\*+)?NOTA:(?:\*+)?|(?:\*+)?Nota:(?:\*+)?|\*(?!\s)))/gi, (match, prefix) => {
-            let note = "";
-            let p = prefix.toLowerCase();
-            if (p.includes("zona_extendida")) note = "Similitud socioeconómica en otra zona.";
-            else if (p.includes("coincidencia")) note = "Anuncio de listado en la misma zona.";
-            else if (p.includes("zona_similar")) note = "Ubicación cercana con mercado comparable.";
+    // 1. FILTRAR PREÁMBULO TÉCNICO (Root)
+    let filteredContent = text;
+    const startMarkerIndex = text.search(/(?:\n|^)\s*(?:#{1,3}\s*|\*\*?\s*)1[.\s]/i);
+    if (startMarkerIndex !== -1) {
+        filteredContent = text.substring(startMarkerIndex).trim();
+    } else {
+        const fallbackIdx = text.search(/(?:\n|^)\s*1[.\s]\s*DESCR/i);
+        if (fallbackIdx !== -1) {
+            filteredContent = text.substring(fallbackIdx).trim();
+        }
+    }
 
-            return `${prefix}\n**NOTA:** ${note}`;
-        })
-        // LaTeX spacing commands
+    // 2. LIMPIEZA INICIAL (LaTeX, HTML, Notación científica)
+    let cleanText = filteredContent
         .replace(/\\quad/g, '<br>')
         .replace(/\\qquad/g, '<br>')
         .replace(/\\,/g, ' ')
@@ -109,44 +114,30 @@ const AnalisisAI = ({ text }) => {
         .replace(/\^2/g, '²')
         .replace(/\s+COP\/m²/g, ' COP/m²')
         .replace(/Promedio precio por m²\s*=\s*(?:\\frac\{[^{}]+\}\{[^{}]+\}|[^\n≈]+)\s*≈\s*([\d\.\,]+)\s*COP\/m²/gi, 'Promedio precio por m² ≈ $1 COP/m²')
-        // 1. URLs Markdown: **[Portal](URL)** o [Portal](URL) -> <a href...>
-        .replace(/(?:\*\*)?\[([^\]]+)\]\(([^)]+)\)(?:\*\*)?/g, (match, text, url) => {
-            return `<strong><a href="${url}" target="_blank" rel="noopener noreferrer" class="text-[#2C3D37] hover:text-[#C9C19D] hover:underline font-bold" style="color: #2C3D37;">${text}</a></strong>`;
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
+            const num = parseFloat(coefficient.replace(',', '.'));
+            const power = parseInt(exponent);
+            const result = num * Math.pow(10, power);
+            return Math.round(result).toLocaleString('es-CO');
         })
-        // Limpiar símbolos extraños y SEPARADORES antes de etiquetas (═══, --)
         .replace(/[═]+/g, '')
         .replace(/\s+--\s+/g, ' ')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\[\d+\]/g, '');
 
-    cleanText = cleanText
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
-
-    cleanText = cleanText.replace(/(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^(\d+)/gi, (match, coefficient, exponent) => {
-        const num = parseFloat(coefficient.replace(',', '.'));
-        const power = parseInt(exponent);
-        const result = num * Math.pow(10, power);
-        return Math.round(result).toLocaleString('es-CO');
-    });
-
+    // 3. BADGES Y NOTAS
     const getBadgeHtml = (validation, includeNote = false) => {
         const val = validation.trim().toLowerCase();
         let badgeClass = '';
         let badgeText = validation.trim();
-        let note = '';
-
         if (val === 'coincidencia') {
             badgeClass = 'bg-green-100 text-green-700 border-green-300';
             badgeText = '✓ Coincidencia';
-            if (includeNote) note = '<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px;">Ubicación exacta validada.</span>';
-        } else if (val === 'verificado') {
-            badgeClass = 'bg-emerald-100 text-emerald-700 border-emerald-300';
-            badgeText = '✓ Verificado'; // Keep legacy variable, update badge text
-            if (includeNote) note = '<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px;">Enlace verificado y activo.</span>';
         } else if (val === 'zona_similar') {
             badgeClass = 'bg-blue-100 text-blue-700 border-blue-300';
             badgeText = '→ Zona Similar';
@@ -156,234 +147,112 @@ const AnalisisAI = ({ text }) => {
         } else {
             badgeClass = 'bg-gray-100 text-gray-600 border-gray-300';
         }
-
-        const badge = `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium border ${badgeClass} align-middle ml-1">${badgeText}</span>`;
-        return note ? `${badge}${note}` : badge;
+        return `<span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium border ${badgeClass} align-middle ml-1">${badgeText}</span>`;
     };
 
     cleanText = cleanText
-        .replace(/&lt;strong&gt;/g, '<strong>')
-        .replace(/&lt;\/strong&gt;/g, '</strong>');
-
-    cleanText = cleanText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-    const keyPhrasePatterns = [
-        /\b(Promedio de precios de venta de \d+ comparables):/gi,
-        /\b(Precio por m² promedio):/gi,
-        /\b(Precio\/m² ajustado):/gi,
-        /\b(Canon mensual estimado):/gi,
-        /\b(Yield promedio mercado):/gi,
-        /\b(Valor total):/gi,
-        /\b(Valor estimado):/gi,
-        /\b(Factor total):/gi,
-        /^(Justificación):/gim,
-        /^(Porcentaje aplicado):/gim,
-        /\b(Ajuste por antigüedad):/gi,
-        /\b(Ajuste por estado):/gi,
-        /\b(Ajuste por ubicación):/gi,
-        /\b(Ajuste por reformas):/gi,
-        /\b(PASO \d+):/gi,
-        /\b(Valor Recomendado de Venta):/gi,
-        /\b(Rango sugerido):/gi,
-        /\b(Precio m² final):/gi,
-    ];
-
-    keyPhrasePatterns.forEach(pattern => {
-        cleanText = cleanText.replace(pattern, (match, group1) => {
-            if (cleanText.includes(`<strong>${group1}</strong>`)) return match;
-            return `<strong>${group1}</strong>:`;
+        .replace(/(?:(?:<strong>)?\s*(?:#{1,3}|\*\*)\s*)?fuente_validacion:\s*([^\r\n<]+)/gi, (m, v) => getBadgeHtml(v))
+        .replace(/(?:\()?\b(coincidencia|zona_extendida|zona_similar)\b(?!\s*<\/span>)/gi, (m, tag) => getBadgeHtml(tag))
+        .replace(/(?:<strong>)?(?:\*\*)?Nota:(?:\*\*)?(?:<\/strong>)?\s*([^\n]+)/gi, (match, noteText) => {
+            return `<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px;"><strong>Nota:</strong> ${noteText}</span>`;
         });
-    });
 
-    // PROCESAR BADGES - MÚLTIPLES FORMATOS
-    // 1. Formato con fuente_validacion: prefijo
-    cleanText = cleanText.replace(/(<\/strong>|<\/a>)\s*fuente_validacion:\s*([^\r\n<]+)/gi, (match, tagEnd, validation) => {
-        return `${tagEnd} ${getBadgeHtml(validation.trim(), true)}`;
-    });
+    // 4. PROCESAR BLOQUES (Split por doble salto)
+    const blocks = cleanText.split(/\n\n/).filter(b => b.trim());
+    const renderedBlocks = [];
 
-    // 2. Formato legacy: fuente_validacion: al inicio de línea
-    cleanText = cleanText.replace(/^fuente_validacion:\s*([^\r\n<]+)/gim, (match, validation) => {
-        return getBadgeHtml(validation.trim(), true);
-    });
-
-    // 3. CRÍTICO: Etiquetas sueltas (sin fuente_validacion:) 
-    // FIX: EVITAR DUPLICADOS SI ESTÁ ENTRE PARÉNTESIS (ej. "(zona_similar, ...)")
-    // Usamos una función de reemplazo que verifica el contexto
-    cleanText = cleanText.replace(/(\()?\b(coincidencia|verificado|zona_extendida|zona_similar)\b/gi, (match, parenthesis, tag) => {
-        // Si hay un paréntesis antes, NO convertir (retorna el match original)
-        if (parenthesis) return match;
-        return getBadgeHtml(tag.trim(), false);
-    });
-
-
-
-    // PROCESAR NOTAS (Captura hasta doble salto de línea o siguiente sección, luego une en una línea)
-    cleanText = cleanText.replace(/(?:\()?\s*(?:<strong>)?(?:\*\*)?Nota:(?:\*\*)?(?:<\/strong>)?\s*([^\n]+(?:\n(?!\n)[^\n]+)*)/gi, (match, noteText) => {
-        let formattedNote = noteText.trim().replace(/\*+$/, '').replace(/\)\s*$/, '');
-        const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/is;
-        const match1 = formattedNote.match(pattern1);
-
-        if (match1) {
-            const distance = match1[2];
-            let characteristics = match1[3];
-            characteristics = characteristics
-                .replace(/^con\s+/i, 'tiene ')
-                .replace(/^condiciones\s+/i, 'tiene condiciones ');
-            formattedNote = `A ${distance} km de distancia, ${characteristics}`;
-        }
-        // Convertir saltos de línea simples a espacios y limpiar espacios múltiples
-        formattedNote = formattedNote.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-
-        return `\n<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px; line-height:1.2; text-align:left;"><strong>Nota:</strong> ${formattedNote}</span>`;
-    }).replace(/(?:\()?\s*\*([^*]{10,})\*\s*(?:\))?(?=\n+\*\*[A-ZÁÉÍÓÚÑ]|\n+#{1,3}\s|\n+\||\n+\d+\.\s+[A-ZÁÉÍÓÚÑ]|$)/g, (match, noteText) => {
-        let formattedNote = noteText.trim().replace(/\)\s*$/, '');
-        const pattern1 = /(.+?)\s+está\s+a\s+(\d+)\s*km\s+de\s+[^,]+,?\s*(.+)/i;
-        const match1 = formattedNote.match(pattern1);
-        if (match1) {
-            const distance = match1[2];
-            let characteristics = match1[3];
-            characteristics = characteristics.replace(/^con\s+/i, 'tiene ').replace(/^condiciones\s+/i, 'tiene condiciones ');
-            formattedNote = `A ${distance} km de distancia, ${characteristics}`;
-        }
-        // Convertir saltos de línea simples a espacios y limpiar espacios múltiples
-        formattedNote = formattedNote.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-
-        return `\n<span style="display:block; font-size:11px; color:#6B7280; font-style:italic; margin-top:2px; line-height:1.2; text-align:left;"><strong>Nota:</strong> ${formattedNote}</span>`;
-    });
-
-    cleanText = cleanText.replace(/\s*-{3,}\s*/g, '\n\n');
-
-    // 1. Normalización de Títulos y LaTeX
-    cleanText = cleanText.replace(/\\\[([\s\S]{1,60}?)\\\]/g, ' $1 ');
-    cleanText = cleanText.replace(/\\\[/g, '\n\n').replace(/\\\]/g, '\n\n');
-    cleanText = cleanText.replace(/(?:^|\n)[ \t]*\**(\d+\.(?!\d)\s+[A-ZÁÉÍÓÚÑ][^:\n]{5,150}[:]??)\**/g, '\n\n# $1\n\n');
-
-    // 1b. Separar subtítulos numerados (2.1, 2.2, 3.1, etc.) en bloques independientes
-    // Capturar subtítulos que empiezan con X.X (ej: 2.1, 3.2) seguido de mayúscula
-    // Insertar \n\n ANTES de cada subtítulo para crear un bloque separado
-    cleanText = cleanText.replace(/([^\n])(\n)(\d+\.\d+\.?\s+[A-ZÁÉÍÓÚÑ])/g, '$1\n\n$3');
-    cleanText = cleanText.replace(/^(\d+\.\d+\.?\s+[A-ZÁÉÍÓÚÑ])/gm, '\n\n$1');
-
-    // 2. Aislamiento y Reparación de Tablas
-    // Forzar aislamiento absoluto de tablas para evitar que se peguen a otros bloques
-    cleanText = cleanText.replace(/^(\s*\|.*)/gm, '\n\n$1\n\n');
-    // Limpiar filas de pipes vacías o basura
-    cleanText = cleanText.replace(/^\s*(\|[\s|]*)+\s*$/gm, '');
-
-    let previousText = "";
-    do {
-        previousText = cleanText;
-        // Unificar filas de una misma tabla separadas por saltos de línea basura
-        cleanText = cleanText.replace(/(^\s*\|[^\n]*)\n{1,4}(\s*\|)/gm, '$1\n$2');
-    } while (cleanText !== previousText);
-
-    // 3. Atomización de Resto de Bloques (Viñetas y párrafos largos)
-    cleanText = cleanText.replace(/\n\s*([-*•])\s+/g, '\n\n$1 ');
-    cleanText = cleanText.replace(/\n\s*(\d+[.)]\s+[A-ZÁÉÍÓÚÑ])/g, '\n\n$1');
-    cleanText = cleanText.replace(/\n\s*([a-z]\)\s+[A-ZÁÉÍÓÚÑ])/g, '\n\n$1');
-    // NO convertir \n en \n\n cuando es una nota O cuando es un enlace de portal
-    cleanText = cleanText.replace(/\n\s*(<strong>)(?!Nota:|<a)/g, '\n\n$1');
-    cleanText = cleanText.replace(/\n\s*(\*\*)(?!Nota:|\[)/g, '\n\n$1');
-    // NO dividir dentro de líneas que contienen notas procesadas
-    cleanText = cleanText.replace(/([^\n]{350,550})\.\s+([A-ZÁÉÍÓÚÑ])/g, (match, before, after) => {
-        if (before.includes('<strong>Nota:</strong>')) return match;
-        return `${before}.\n\n${after}`;
-    });
-
-    const blocks = cleanText.split('\n\n').filter(b => b.trim());
-
-    const renderBlock = (block, index) => {
+    blocks.forEach((block, index) => {
         const trimmed = block.trim();
-        if (!trimmed) return null;
+        if (!trimmed) return;
 
-        if (trimmed.startsWith('#')) {
-            const lines = trimmed.split('\n');
-            const headerLine = lines[0];
-            const remainingText = lines.slice(1).join('\n').trim();
-            const title = toTitleCase(headerLine.replace(/^#+\s*/, '').replace(/<\/?strong>/g, ''));
-
-            return (
-                <React.Fragment key={index}>
-                    <h3 className="font-outfit font-medium text-lg text-[#2C3D37] mt-6 first:mt-0 mb-3 border-b border-[#C9C19D]/50 pb-1 break-inside-avoid">
-                        {title}
-                    </h3>
-                    {remainingText && (
-                        <p className="mb-4 text-sm leading-relaxed text-justify text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: remainingText.replace(/\n/g, '<br>') }} />
-                    )}
-                </React.Fragment>
+        // A. Títulos con Markdown (## o #)
+        const hashMatch = trimmed.match(/^(#{1,3})\s+(.+)/);
+        if (hashMatch) {
+            const level = hashMatch[1].length;
+            const titleText = hashMatch[2].replace(/<[^>]+>/g, '').trim();
+            renderedBlocks.push(
+                <h3 key={`h-${index}`} className={`font-outfit font-medium ${level === 1 ? 'text-xl' : 'text-lg'} text-[#2C3D37] ${renderedBlocks.length === 0 ? 'mt-0' : 'mt-8'} mb-3 border-b border-[#C9C19D]/50 pb-1`}>
+                    {toTitleCase(titleText)}
+                </h3>
             );
+            return;
         }
 
-        // Detectar títulos numerados (ej: 2.1 o 2.) o letras descriptivas (ej: a) o C))
-        const numberedTitleMatch = trimmed.match(/^([a-z0-9]+[.)])\s+([^:\n]+)/i);
-        if (numberedTitleMatch && trimmed.split('\n')[0].length < 130) {
-            const titleText = numberedTitleMatch[2].split('\n')[0].trim().replace(/<\/?strong>/g, '');
-            const remainingContent = trimmed.split('\n').slice(1).join('\n').trim();
+        // B. Títulos Numerados (X.X o X.) - Solo si no parecen ítems de datos ($) y tienen texto largo
+        const firstLine = trimmed.split('\n')[0];
+        const subTitleMatch = firstLine.match(/^(\d+(?:\.\d+)?\.?)\s+([^:\n]{10,130})$/);
+        const isDataLine = firstLine.includes('$') || firstLine.includes('→') || firstLine.includes('×');
 
-            return (
-                <React.Fragment key={index}>
-                    <h4 className="font-outfit font-semibold text-base text-[#2C3D37] mt-5 mb-2 break-inside-avoid">
-                        {numberedTitleMatch[1]} {toTitleCase(titleText)}
-                    </h4>
-                    {remainingContent && (
-                        <p className="mb-4 text-sm leading-relaxed text-justify text-[#4F5B55]" dangerouslySetInnerHTML={{ __html: remainingContent.replace(/\n/g, '<br>') }} />
-                    )}
-                </React.Fragment>
+        if (subTitleMatch && !isDataLine) {
+            const titleText = subTitleMatch[2].replace(/<[^>]+>/g, '').trim();
+            renderedBlocks.push(
+                <h4 key={`sh-${index}`} className={`font-outfit font-semibold text-base text-[#2C3D37] ${renderedBlocks.length === 0 ? 'mt-0' : 'mt-6'} mb-2`}>
+                    {subTitleMatch[1]} {toTitleCase(titleText)}
+                </h4>
             );
+            const remaining = trimmed.split('\n').slice(1).join('\n').trim();
+            if (remaining) renderedBlocks.push(<p key={`p-${index}-r`} className="mb-4 text-sm text-[#4F5B55] text-justify" dangerouslySetInnerHTML={{ __html: remaining.replace(/\n/g, '<br>') }} />);
+            return;
         }
 
+        // C. Tablas
         if (trimmed.startsWith('|')) {
-            return <MarkdownTable key={index} content={trimmed} />;
+            renderedBlocks.push(<MarkdownTable key={`tbl-${index}`} content={trimmed} />);
+            return;
         }
 
-        if (trimmed.match(/^[-*•]\s/) || (trimmed.match(/^\d+[\.\\)]\s/) && !trimmed.match(/^\d+\.\d+/))) {
+        // D. Listas (Numeradas o con Viñetas - Preservando el marcador original)
+        const isList = trimmed.match(/^[-*•]\s/) || trimmed.match(/^\d+[.)]\s/);
+        if (isList) {
             const lines = trimmed.split('\n');
-            const items = [];
-            let currentItem = '';
+            const listItems = [];
+            let current = '';
+
             for (const line of lines) {
-                if ((line.match(/^[-*•]\s/) || line.match(/^\d+[\.\\)]\s/)) && !line.match(/^\d+\.\d+/)) {
-                    if (currentItem) items.push(currentItem);
-                    currentItem = line.replace(/^(?:[-*•]|\d+[\.\\)])\s*/, '');
-                } else if (line.trim()) {
-                    currentItem += '\n' + line;
+                const lineTrimmed = line.trim();
+                // Detección de marcador: - , * , • o número X.
+                if (lineTrimmed.match(/^[-*•]\s/) || lineTrimmed.match(/^\d+[.)]\s/)) {
+                    if (current) listItems.push(current);
+                    current = lineTrimmed;
+                } else if (lineTrimmed) {
+                    current += '\n' + lineTrimmed;
                 }
             }
-            if (currentItem) items.push(currentItem);
+            if (current) listItems.push(current);
 
-            return (
-                <ul key={index} className="list-none space-y-2 mb-4 break-inside-avoid">
-                    {items.map((item, i) => (
-                        <li key={i} className="flex gap-2 text-sm leading-relaxed text-[#4F5B55]">
-                            <span className="font-bold mt-0.5">•</span>
-                            <span dangerouslySetInnerHTML={{ __html: item.replace(/\n/g, '<br>') }} />
-                        </li>
-                    ))}
+            renderedBlocks.push(
+                <ul key={`list-${index}`} className="list-none space-y-2 mb-4">
+                    {listItems.map((item, i) => {
+                        // Extraer el marcador real (ej: "1.", "-", "*")
+                        const markerMatch = item.match(/^([-*•]|\d+[.)])\s*/);
+                        const marker = markerMatch ? markerMatch[1] : '•';
+                        const content = item.replace(/^([-*•]|\d+[.)])\s*/, '').replace(/\n/g, '<br>');
+
+                        return (
+                            <li key={i} className="flex gap-2 text-sm text-[#4F5B55] text-left">
+                                <span className="font-bold min-w-[20px]">{marker}</span>
+                                <span dangerouslySetInnerHTML={{ __html: content }} />
+                            </li>
+                        );
+                    })}
                 </ul>
             );
+            return;
         }
 
-        const paragraphHtml = trimmed.replace(/\n/g, '<br>');
-        // Reducir margen para párrafos que contienen enlaces de portales
-        const isPortalLink = trimmed.includes('<a href=');
-        const marginClass = isPortalLink ? 'mb-1' : 'mb-4';
-        return (
-            <p key={index} className={`${marginClass} text-sm leading-relaxed text-justify text-[#4F5B55]`} dangerouslySetInnerHTML={{ __html: paragraphHtml }} />
+        // E. Párrafo normal
+        renderedBlocks.push(
+            <p key={`p-${index}`} className="mb-4 text-sm text-[#4F5B55] leading-relaxed text-justify" dangerouslySetInnerHTML={{ __html: trimmed.replace(/\n/g, '<br>') }} />
         );
-    };
+    });
 
     return (
         <div className="text-[#4F5B55] font-raleway">
-            {/* Desktop: CSS Multi-Column - balanceo automático por altura */}
             <div className="hidden md:block columns-2 gap-10" style={{ columnFill: 'balance' }}>
-                {blocks.map((block, i) => (
-                    <div key={`col-${i}`} className="break-inside-avoid mb-4">
-                        {renderBlock(block, `col-${i}`)}
-                    </div>
-                ))}
+                {renderedBlocks}
             </div>
-            {/* Mobile: 1 Columna */}
-            <div className="md:hidden space-y-4">
-                {blocks.map((block, i) => renderBlock(block, `m-${i}`))}
+            <div className="md:hidden space-y-2">
+                {renderedBlocks}
             </div>
         </div>
     );
@@ -391,10 +260,57 @@ const AnalisisAI = ({ text }) => {
 
 export default function Step3Results({ formData, onUpdate, onNext, onBack, onReset, autoDownloadPDF, onEmailSent, actionButtonLabel = "Enviar a un Correo", ActionButtonIcon = Mail, actionButtonIconPosition = "left" }) {
     const [mostrarComparables, setMostrarComparables] = useState(false);
+    const [mostrarCostos, setMostrarCostos] = useState(false);
     const [hasAvaluos, setHasAvaluos] = useState(false);
-    const [feedbackModal, setFeedbackModal] = useState({ open: false, title: '', description: '', type: 'success' }); // Nuevo state para feedback
+    const [feedbackModal, setFeedbackModal] = useState({ open: false, title: '', description: '', type: 'success' });
+    const [linkCopied, setLinkCopied] = useState(false);
     const pdfButtonRef = useRef(null);
     const navigate = useNavigate();
+
+    // Función para compartir/copiar enlace
+    const handleShareLink = async () => {
+        const avaluoId = formData.id;
+        if (!avaluoId) {
+            setFeedbackModal({
+                open: true,
+                title: 'No disponible',
+                description: 'Este avalúo aún no ha sido guardado. Completa el proceso para poder compartirlo.',
+                type: 'error'
+            });
+            return;
+        }
+
+        const shareUrl = `${window.location.origin}/resultados/${avaluoId}`;
+
+        // Intentar usar Web Share API (móvil)
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Avalúo Comercial - Quetzal Hábitats',
+                    text: `Mira mi avalúo: ${formData.tipo_inmueble} en ${formData.barrio || formData.municipio}`,
+                    url: shareUrl
+                });
+                return;
+            } catch (err) {
+                // Si el usuario cancela, seguimos con copiar al portapapeles
+                if (err.name !== 'AbortError') console.log('Share failed, falling back to clipboard');
+            }
+        }
+
+        // Fallback: copiar al portapapeles
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+        } catch (err) {
+            setFeedbackModal({
+                open: true,
+                title: 'Error',
+                description: 'No se pudo copiar el enlace. Intenta de nuevo.',
+                type: 'error'
+            });
+        }
+    };
 
     useEffect(() => {
         const checkAvaluos = async () => {
@@ -462,11 +378,14 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                 confianzaInfo: construirTextoConfianza(data, validarNumero(data.comparables_totales_encontrados), validarNumero(data.comparables_usados_en_calculo) || validarNumero(data.total_comparables))
             });
 
+            const recipient = formData.email || formData.contacto_email;
+            console.log("📧 [Mutation] Intentando enviar email a:", recipient);
+
             const response = await fetch(`${import.meta.env.VITE_WORKER_EMAIL_URL}/send-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    to: formData.email || formData.contacto_email, // Priorizar datos guardados en BD
+                    to: recipient,
                     subject: `Reporte de Avalúo: ${data.tipo_inmueble} en ${data.barrio}`,
                     htmlBody: emailHtml
                 }),
@@ -474,8 +393,10 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
 
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error("📧 [Mutation] Error del Worker:", errorData);
                 throw new Error(errorData.error || 'Error al enviar el correo');
             }
+            console.log("📧 [Mutation] ¡Correo enviado con éxito!");
             return true;
         },
         onSuccess: () => {
@@ -522,6 +443,25 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
         </div>
     );
 
+    // --- ENVÍO AUTOMÁTICO DE CORREO ---
+    useEffect(() => {
+        const emailRecipient = formData.email || formData.contacto_email;
+        const emailSentKey = `email_sent_${formData.id || 'current'}`;
+        const alreadySent = sessionStorage.getItem(emailSentKey);
+
+        console.log("📧 [Check Email Auto-Send]:", {
+            id: formData.id,
+            recipient: emailRecipient,
+            alreadySent
+        });
+
+        if (!alreadySent && formData.id && emailRecipient) {
+            console.log("📧 Iniciando envío automático de reporte...");
+            sendEmailMutation.mutate();
+            sessionStorage.setItem(emailSentKey, 'true');
+        }
+    }, [formData.id, formData.email, formData.contacto_email]);
+
     if (!formData) return renderErrorState('Datos del formulario no disponibles', onBack);
 
     const data = formData.comparables_data || formData;
@@ -550,6 +490,50 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
     const areaInmueble = validarNumero(formData.area_construida || formData.area_total || data.area_construida || data.area_total);
     const esLote = (formData.tipo_inmueble || '').toLowerCase().includes('lote');
     const usoLote = formData.uso_lote || data.uso_lote;
+
+    // Calcular costos de venta (Colombia 2025) - Frontend Only
+    const calcularCostosVenta = (valor) => {
+        if (!valor || valor <= 0) return null;
+
+        // 1. Retención en la fuente: 1% fijo sobre el valor de venta
+        // (Estatuto Tributario Art. 398 - Corrección: es tasa fija del 1%, no progresiva)
+        const retencionFuente = valor * 0.01;
+
+        // 2. Gastos Notariales: ~0.54% total, vendedor paga 50%
+        // (Resolución de tarifas notariales vigente)
+        const gastosNotarialesVendedor = valor * 0.0027; // 0.27%
+
+        // 3. Comisión Inmobiliaria: 3% + IVA (19% sobre la comisión)
+        const comisionBase = valor * 0.03;
+        const ivaComision = comisionBase * 0.19;
+        const comisionTotal = comisionBase + ivaComision;
+
+        // Total descuentos vendedor
+        const totalDescuentos = retencionFuente + gastosNotarialesVendedor + comisionTotal;
+        const netoRecibir = valor - totalDescuentos;
+
+        // Costos comprador (informativo)
+        const gastosNotarialesComprador = valor * 0.0027; // 0.27%
+        const beneficenciaRegistro = valor * 0.0167; // ~1.67% (1% Beneficencia + ~0.6-0.7% Registro)
+        const totalGastosComprador = gastosNotarialesComprador + beneficenciaRegistro;
+
+        return {
+            seller: {
+                retencion: retencionFuente,
+                notariales: gastosNotarialesVendedor,
+                comision: comisionTotal,
+                totalDescuentos,
+                netoRecibir
+            },
+            buyer: {
+                notariales: gastosNotarialesComprador,
+                registro: beneficenciaRegistro,
+                totalGastos: totalGastosComprador
+            }
+        };
+    };
+
+    const costosVenta = calcularCostosVenta(valorPrincipal);
 
     const formatCurrency = (value) => {
         const num = validarNumero(value);
@@ -614,6 +598,24 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                         >
                             <ArrowRight className="w-4 h-4" />
                             Nuevo Avalúo
+                        </button>
+                    )}
+                    {formData.id && (
+                        <button
+                            onClick={handleShareLink}
+                            className="text-[#7A8C85] hover:text-[#2C3D37] transition-colors flex items-center gap-1.5 font-medium"
+                        >
+                            {linkCopied ? (
+                                <>
+                                    <Check className="w-4 h-4 text-green-600" />
+                                    <span className="text-green-600">¡Copiado!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Share2 className="w-4 h-4" />
+                                    Compartir
+                                </>
+                            )}
                         </button>
                     )}
                     <button
@@ -705,23 +707,36 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                                 )}
                             </div>
                         </div>
-                        <div className="bg-[#FFFFFF]/10 backdrop-blur-sm border border-[#FFFFFF]/10 rounded-xl p-4 w-full lg:w-auto min-w-[280px] space-y-3">
+                        <div className="bg-[#FFFFFF]/10 backdrop-blur-sm border border-[#FFFFFF]/10 rounded-xl p-4 w-full lg:w-auto min-w-[320px] space-y-3">
                             <div className="flex justify-between items-start border-b border-white/10 pb-2">
                                 <span className="text-[#D3DDD6] text-sm self-center">Rango Sugerido</span>
                                 <div className="text-right">
-                                    <div className="font-semibold font-outfit text-white">{rangoMin ? formatCurrency(rangoMin) : '—'}</div>
-                                    <div className="font-semibold font-outfit text-white">{rangoMax ? formatCurrency(rangoMax) : '—'}</div>
+                                    <div className="font-semibold font-outfit text-white text-sm">{rangoMin ? formatCurrency(rangoMin) : '—'}</div>
+                                    <div className="font-semibold font-outfit text-white text-sm">{rangoMax ? formatCurrency(rangoMax) : '—'}</div>
                                 </div>
                             </div>
                             <div className="flex justify-between items-center border-b border-white/10 pb-2">
                                 <span className="text-[#D3DDD6] text-sm">Precio m² Sugerido</span>
-                                <span className="font-semibold font-outfit text-white">{formatCurrency(precioM2Usado)}/m²</span>
+                                <span className="font-semibold font-outfit text-white text-sm whitespace-nowrap">{formatCurrency(precioM2Usado)}/m²</span>
                             </div>
+                            {!esLote && data.yield_mensual_mercado && rangoMin && rangoMax && (
+                                <div className="flex justify-between items-start border-b border-white/10 pb-2">
+                                    <span className="text-[#D3DDD6] text-sm self-center">Rango Arriendo Sug.</span>
+                                    <div className="text-right">
+                                        <div className="font-semibold font-outfit text-white text-sm whitespace-nowrap">
+                                            {formatCurrency(Math.round(rangoMin * data.yield_mensual_mercado))}/mes
+                                        </div>
+                                        <div className="font-semibold font-outfit text-white text-sm whitespace-nowrap">
+                                            {formatCurrency(Math.round(rangoMax * data.yield_mensual_mercado))}/mes
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             {totalComparables !== null && (
                                 <div className="flex justify-between items-center">
                                     <span className="text-[#D3DDD6] text-sm">Muestra</span>
                                     <div className="text-right">
-                                        <span className="font-semibold block">{totalComparables} inmuebles</span>
+                                        <span className="font-semibold text-sm block">{totalComparables} inmuebles</span>
                                         {totalEncontrados && totalEncontrados > totalComparables ? (
                                             <span className="text-[10px] text-[#A3B2AA] block">(de {totalEncontrados} encontrados)</span>
                                         ) : (
@@ -741,6 +756,135 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                     </p>
                 </div>
             </Card>
+
+            {/* SECCIÓN DE COSTOS DE VENTA (NUEVA - Movida después del Hero) */}
+            {costosVenta && (
+                <div
+                    className="animate-in fade-in slide-in-from-top-4 duration-500"
+                >
+                    <Card
+                        className={`border-[#C9C19D] overflow-hidden shadow-sm transition-all duration-300 hover:bg-[#F0F2F1] bg-[#F8F6EF] cursor-pointer`}
+                        onClick={() => setMostrarCostos(!mostrarCostos)}
+                    >
+                        <CardHeader className={`${mostrarCostos ? 'bg-[#F0F2F1]' : 'bg-transparent'} border-b border-[#E0E5E2] py-3`}>
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-base text-[#2C3D37] flex items-center gap-2 font-outfit">
+                                    <DollarSign className="w-4 h-4 text-[#C9C19D]" />
+                                    {mostrarCostos
+                                        ? "¿Cuánto recibes al vender?"
+                                        : "¿Cuánto recibes al vender? (Ver Costos)"
+                                    }
+                                </CardTitle>
+                                {mostrarCostos ? (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setMostrarCostos(false);
+                                        }}
+                                        className="text-[#7A8C85] hover:text-[#2C3D37] h-8 px-2"
+                                    >
+                                        <ChevronUp className="w-4 h-4 ml-1" /> Ocultar
+                                    </Button>
+                                ) : (
+                                    <ChevronDown className="w-4 h-4 text-[#7A8C85] mr-2" />
+                                )}
+                            </div>
+                        </CardHeader>
+                        {mostrarCostos && (
+                            <CardContent className="pt-6 pb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* VENDEDOR */}
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 mb-4 border-b border-[#C9C19D]/30 pb-2">
+                                            <div className="p-1.5 bg-[#8C9A90] rounded-md text-white">
+                                                <span className="text-xs font-bold">VENDEDOR</span>
+                                            </div>
+                                            <span className="text-sm font-medium text-[#4F5B55]">Gastos de venta</span>
+                                        </div>
+
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between text-[#4F5B55]">
+                                                <span>Retención en la fuente (1%):</span>
+                                                <span className="font-medium">{formatCurrency(costosVenta.seller.retencion)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[#4F5B55]">
+                                                <span>Gastos Notariales (~0.27%):</span>
+                                                <span className="font-medium">{formatCurrency(costosVenta.seller.notariales)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[#4F5B55]">
+                                                <span>Comisión (3% + IVA):</span>
+                                                <span className="font-medium">{formatCurrency(costosVenta.seller.comision)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 pt-3 border-t border-[#C9C19D]/50">
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-sm font-semibold text-[#2C3D37]">Neto estimado a recibir:</span>
+                                                <span className="text-xl font-bold text-[#2C3D37] font-outfit">
+                                                    {formatCurrency(costosVenta.seller.netoRecibir)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* COMPRADOR */}
+                                    <div className="space-y-4 relative">
+                                        {/* Separador vertical en desktop */}
+                                        <div className="hidden md:block absolute left-0 top-0 bottom-0 w-px bg-[#E0E5E2] -ml-4"></div>
+
+                                        <div className="flex items-center gap-2 mb-4 border-b border-[#C9C19D]/30 pb-2">
+                                            <div className="p-1.5 bg-[#2C3D37] rounded-md text-white">
+                                                <span className="text-xs font-bold">COMPRADOR</span>
+                                            </div>
+                                            <span className="text-sm font-medium text-[#4F5B55]">Gastos de compra</span>
+                                        </div>
+
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex justify-between text-[#4F5B55]">
+                                                <span>Beneficencia + Registro (~1.67%):</span>
+                                                <span className="font-medium">{formatCurrency(costosVenta.buyer.registro)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-[#4F5B55]">
+                                                <span>Gastos Notariales (~0.27%):</span>
+                                                <span className="font-medium">{formatCurrency(costosVenta.buyer.notariales)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 pt-3 border-t border-[#C9C19D]/50">
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-sm font-semibold text-[#2C3D37]">Total gastos adicionales:</span>
+                                                <span className="text-lg font-bold text-[#4F5B55] font-outfit">
+                                                    {formatCurrency(costosVenta.buyer.totalGastos)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Otros gastos y Disclaimer */}
+                                <div className="mt-6 pt-4 border-t border-dashed border-[#E0E5E2] w-full grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+                                    <div className="text-[10px] text-[#4F5B55] text-left leading-relaxed">
+                                        <p className="font-semibold mb-1 uppercase tracking-wider text-[#2C4A3E]">Otros gastos que podrían aplicar (no incluidos):</p>
+                                        <p>
+                                            Impuesto de ganancia ocasional (15% al 39%) | Estudio de títulos (0.12%) | Avalúo bancario (0.1%) | Cancelación de hipoteca (~0.5%) | Certificados adicionales (~$120.000)
+                                        </p>
+                                    </div>
+
+                                    <div className="text-[10px] text-[#7A8C85] italic text-left md:text-right leading-tight flex items-center">
+                                        <p>
+                                            * Los valores mostrados son <strong>estimaciones orientativas</strong> basadas en prácticas habituales del mercado colombiano.
+                                            La Retención en la Fuente es del 1% (Art. 398 E.T.). Los gastos de registro y notariales son aproximados y pueden variar según el municipio y la notaría.
+                                            No constituye asesoría legal, notarial ni tributaria.
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        )}
+                    </Card>
+                </div>
+            )}
 
             <div className={valorRentabilidad ? "grid grid-cols-1 md:grid-cols-2 gap-6" : "flex justify-center"}>
                 <Card className="border-[#e6e0c7] shadow-sm hover:shadow-md transition-shadow duration-200 w-full max-w-lg bg-[#F8F6EF]">
@@ -836,9 +980,15 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                         <strong className="text-base text-[#2C3D37]">Resumen de Avalúo</strong>
 
                         {tieneResumen ? (
-                            <p className="text-sm text-[#4F5B55] leading-relaxed text-justify">
-                                {data.resumen_busqueda}
-                            </p>
+                            <p
+                                className="text-sm text-[#4F5B55] leading-relaxed text-justify"
+                                dangerouslySetInnerHTML={{
+                                    __html: data.resumen_busqueda
+                                        .replace(/``([^`]+)``/g, '$1')
+                                        .replace(/`([^`]+)`/g, '$1')
+                                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                                }}
+                            />
                         ) : (
                             <p className="text-sm text-[#7A8C85] italic">
                                 No hay un resumen de búsqueda disponible.
@@ -924,6 +1074,48 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                         );
                     })()}
                 </div>
+
+                {/* Aviso de Dispersión (Mercado Heterogéneo) */}
+                {data.nivel_confianza_detalle?.dispersion_nivel && data.nivel_confianza_detalle.dispersion_nivel !== 'bajo' && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-500">
+                        {(() => {
+                            const nivel = data.nivel_confianza_detalle.dispersion_nivel;
+                            let bgColor = "bg-green-50 border-green-200 text-green-900";
+                            let iconColor = "text-green-600";
+                            let label = "Dispersión media";
+                            let icon = <CheckCircle2 className={`h-4 w-4 ${iconColor}`} />;
+
+                            if (nivel === 'muy_alto') {
+                                bgColor = "bg-red-50 border-red-200 text-red-900";
+                                iconColor = "text-red-600";
+                                label = "Dispersión muy alta";
+                                icon = <AlertCircle className={`h-4 w-4 ${iconColor}`} />;
+                            } else if (nivel === 'alto') {
+                                bgColor = "bg-amber-50 border-amber-200 text-amber-900";
+                                iconColor = "text-amber-600";
+                                label = "Dispersión alta";
+                                icon = <AlertTriangle className={`h-4 w-4 ${iconColor}`} />;
+                            } else if (nivel === 'medio') {
+                                bgColor = "bg-blue-50 border-blue-200 text-blue-900";
+                                iconColor = "text-blue-600";
+                                label = "Dispersión media";
+                                icon = <Info className={`h-4 w-4 ${iconColor}`} />;
+                            }
+
+                            return (
+                                <Alert className={`${bgColor} border`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        {icon}
+                                        <strong className="text-sm">{label}</strong>
+                                    </div>
+                                    <AlertDescription className="text-xs leading-relaxed opacity-90">
+                                        {data.nivel_confianza_detalle.dispersion_narrativa}
+                                    </AlertDescription>
+                                </Alert>
+                            );
+                        })()}
+                    </div>
+                )}
             </div>
 
 
@@ -1027,6 +1219,26 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Floating Share Button */}
+            {formData.id && (
+                <button
+                    onClick={handleShareLink}
+                    className="fixed bottom-6 right-6 z-50 bg-[#2C3D37] hover:bg-[#1a2620] text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
+                    title="Compartir avalúo"
+                >
+                    {linkCopied ? (
+                        <Check className="w-6 h-6" />
+                    ) : (
+                        <Share2 className="w-6 h-6" />
+                    )}
+                    {linkCopied && (
+                        <span className="absolute -top-10 right-0 bg-green-600 text-white px-3 py-1 rounded-full text-sm whitespace-nowrap shadow-md">
+                            ¡Enlace copiado!
+                        </span>
+                    )}
+                </button>
+            )}
         </div >
     );
 }

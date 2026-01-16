@@ -6,7 +6,22 @@
 export function procesarTextoParaPDF(text) {
   if (!text) return '';
 
-  let cleanText = text
+  // --- FILTRAR PREÁMBULO TÉCNICO ---
+  // Empezamos el reporte desde el primer título de sección real (## 1 o **1. o 1. DESCRIPCIÓN)
+  // Se busca un 1 precedido por marcadores de título (# o **) para evitar falsos positivos con listas de comparables.
+  let filteredContent = text;
+  const startMarkerIndex = text.search(/(?:\n|^)\s*(?:#{1,3}\s*|\*\*?\s*)1[.\s]/i);
+  if (startMarkerIndex !== -1) {
+    filteredContent = text.substring(startMarkerIndex).trim();
+  } else {
+    // Fallback: Buscar "1" seguido de "DESCR" en caso de que no tenga marcadores de título
+    const fallbackIdx = text.search(/(?:\n|^)\s*1[.\s]\s*DESCR/i);
+    if (fallbackIdx !== -1) {
+      filteredContent = text.substring(fallbackIdx).trim();
+    }
+  }
+
+  let cleanText = filteredContent
     // --- LIMPIEZA DE LATEX ---
     .replace(/\\quad/g, '\n')
     .replace(/\\qquad/g, '\n')
@@ -75,9 +90,7 @@ export function procesarTextoParaPDF(text) {
     if (val === 'coincidencia' || val.includes('coincidencia')) {
       return '<span style="background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500;">✓ Coincidencia</span>';
     }
-    if (val === 'verificado' || val.includes('verificado')) {
-      return '<span style="background: #d1fae5; color: #047857; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500;">✓ Verificado</span>';
-    }
+
     if (val === 'zona_similar' || val.includes('zona_similar') || val.includes('zona similar')) {
       return '<span style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 500;">→ Zona Similar</span>';
     }
@@ -93,7 +106,7 @@ export function procesarTextoParaPDF(text) {
   });
 
   // Etiquetas sueltas (sin paréntesis)
-  cleanText = cleanText.replace(/(?<!\()(?:\[)?(?:I\s*)?(✓\s*Coincidencia[l]?|→\s*Zona\s*Similar|≈\s*Zona\s*Extendida|coincidencia|verificado|zona_extendida|zona_similar)(?:\])?/gi, (match, tag) => {
+  cleanText = cleanText.replace(/(?<!\()(?:\[)?(?:I\s*)?(✓\s*Coincidencia[l]?|→\s*Zona\s*Similar|≈\s*Zona\s*Extendida|coincidencia|zona_extendida|zona_similar)(?:\])?/gi, (match, tag) => {
     return getStyledBadge(tag);
   });
 
@@ -381,14 +394,51 @@ export function procesarTextoParaPDF(text) {
 
       if (isNumbered) {
         if (!wasLastBlockNumberedItem) {
-          htmlOutput += '<ol style="margin: 4px 0; padding-left: 12px; text-align: left;">\n';
+          htmlOutput += '<ol style="margin: 4px 0; padding-left: 12px; text-align: left; list-style: none; break-inside: auto; page-break-inside: auto;">\n';
         }
         items.forEach(item => {
           numberedListCounter++;
-          // SINCRO WEB: Simplemente convertir \n a <br>
-          const itemHtml = item.replace(/\n/g, '<br>');
 
-          htmlOutput += `  <li value="${numberedListCounter}" style="margin-bottom: 12px; line-height: 1.3; text-align: left; font-family: 'Raleway', sans-serif;">${itemHtml}</li>\n`;
+          // Detectar si es un item de comparable (contiene $ y características de propiedad)
+          const isComparableItem = item.includes('$') &&
+            (item.toLowerCase().includes('apartamento') ||
+              item.toLowerCase().includes('casa') ||
+              item.toLowerCase().includes('venta') ||
+              item.toLowerCase().includes('arriendo') ||
+              item.toLowerCase().includes('área'));
+
+          if (isComparableItem) {
+            // Formatear como tarjeta de comparable
+            const itemLines = item.split('\n').map(l => l.trim()).filter(l => l);
+            let formattedHtml = '';
+
+            // Primera línea: título del comparable
+            if (itemLines[0]) {
+              // Extraer título (antes de "Apartamento" o primer separador)
+              const titulo = itemLines[0].split(/(?:Apartamento|Casa|Venta|Arriendo)/i)[0].trim() || itemLines[0];
+              formattedHtml += `<strong style="font-size: 13px; color: #2C3D37; display: block; margin-bottom: 4px;">${numberedListCounter}. ${titulo}</strong>`;
+            }
+
+            // Resto de líneas como detalles
+            itemLines.forEach((line, idx) => {
+              if (idx === 0) return; // Ya procesamos el título
+
+              // Detectar si es Nota:
+              if (line.toLowerCase().startsWith('nota:')) {
+                formattedHtml += `<em style="font-size: 10px; color: #888; display: block; margin-top: 4px;">${line}</em>`;
+              } else {
+                formattedHtml += `<span style="font-size: 11px; color: #4F5B55; display: block; line-height: 1.4;">${line}</span>`;
+              }
+            });
+
+            // Envolver todo el item - sin break-inside inline para permitir CSS controlar
+            const itemHtml = formattedHtml || item.replace(/\n/g, '<br>');
+            htmlOutput += `  <li style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; font-family: 'Raleway', sans-serif;">${itemHtml}</li>\n`;
+          } else {
+            // Item normal - convertir \n a <br>
+            const itemHtml = item.replace(/\n/g, '<br>');
+            htmlOutput += `  <li style="margin-bottom: 12px; line-height: 1.3; text-align: left; font-family: 'Raleway', sans-serif;"><span style="font-weight: 600;">${numberedListCounter}.</span> ${itemHtml}</li>\n`;
+          }
         });
         wasLastBlockNumberedItem = true;
       } else {

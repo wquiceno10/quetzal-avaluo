@@ -1,12 +1,22 @@
 import React, { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle, Mail } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import loaderGif from '@/assets/loader.gif';
 
 export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
+
+  // Estado para el modal informativo
+  const [showEmailModal, setShowEmailModal] = React.useState(true);
 
   // Detectar si es móvil para mostrar advertencia
   const [isMobile, setIsMobile] = React.useState(false);
@@ -18,6 +28,17 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
   useEffect(() => {
     const checkMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     setIsMobile(checkMobile);
+  }, []);
+
+  // Cleanup: cancelar polling cuando el componente se desmonta
+  useEffect(() => {
+    return () => {
+      console.log('🛑 Step2Analysis unmounted - cancelando polling');
+      cancelledRef.current = true;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   // Función para cancelar el análisis y volver atrás
@@ -76,14 +97,15 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
           throw new Error('Análisis cancelado por el usuario');
         }
 
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Esperar 3 segundos
-        attempts++;
-
-        // Verificar nuevamente después de esperar
-        if (cancelledRef.current) {
-          console.log('🛑 Polling cancelado por el usuario');
-          throw new Error('Análisis cancelado por el usuario');
+        // Delay interruptible - verifica cancelación cada 100ms
+        for (let i = 0; i < 30; i++) { // 30 * 100ms = 3000ms
+          if (cancelledRef.current) {
+            console.log('🛑 Polling cancelado por el usuario');
+            throw new Error('Análisis cancelado por el usuario');
+          }
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
+        attempts++;
 
         try {
           console.log(`🔍 Polling intento ${attempts} para Job: ${jobId}`);
@@ -135,8 +157,18 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
     }
   });
 
-  // Ejecutar búsqueda al montar
+  // Ejecutar búsqueda al montar - SOLO si hay datos válidos
   useEffect(() => {
+    // Validar que hay datos mínimos requeridos para evitar gastar créditos
+    const hasRequiredData = formData &&
+      formData.tipo_inmueble &&
+      (formData.municipio || formData.ciudad);
+
+    if (!hasRequiredData) {
+      console.warn('⚠️ formData incompleto, no se inicia análisis:', formData);
+      return;
+    }
+
     if (!searchMutation.isPending && !searchMutation.isSuccess) {
       searchMutation.mutate(formData);
     }
@@ -184,6 +216,32 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+
+      {/* MODAL: Aviso de notificación por email */}
+      <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+        <DialogContent className="sm:max-w-md border-0 shadow-2xl">
+          <DialogHeader className="text-center pb-2">
+            <div className="mx-auto w-16 h-16 bg-[#F0ECD9] rounded-full flex items-center justify-center mb-4">
+              <Mail className="w-8 h-8 text-[#C9C19D]" />
+            </div>
+            <DialogTitle className="text-xl text-[#2C3D37] text-center">
+              ¡Estamos trabajando en tu avalúo!
+            </DialogTitle>
+            <DialogDescription className="text-center text-[#4a5d54] mt-3 text-base leading-relaxed">
+              No te preocupes si cambias de ventana o abres otra app. <strong className="text-[#2C3D37] text-base font-semibold">Te avisaremos por correo cuando tu reporte esté listo.</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center pt-4">
+            <Button
+              onClick={() => setShowEmailModal(false)}
+              className="bg-[#2C3D37] hover:bg-[#1a2620] text-white rounded-full px-10 py-2 text-base font-medium"
+            >
+              ¡Vale!
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Card className="border-[#B0BDB4]">
         <CardHeader>
           <CardTitle className="text-2xl text-[#2C3D37] flex items-center gap-2">

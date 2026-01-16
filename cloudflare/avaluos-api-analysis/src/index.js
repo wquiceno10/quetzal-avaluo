@@ -8,6 +8,19 @@
  */
 
 
+// --- HELPER: Statistical Calculations ---
+function calculateMean(values) {
+    if (!values || values.length === 0) return 0;
+    return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+function calculateStdDev(values, mean) {
+    if (!values || values.length < 2) return 0;
+    const squareDiffs = values.map(v => Math.pow(v - mean, 2));
+    const avgSquareDiff = calculateMean(squareDiffs);
+    return Math.sqrt(avgSquareDiff);
+}
+
 // --- HELPER: Clean LaTeX Commands from Text ---
 function cleanLatexCommands(text) {
     if (!text) return '';
@@ -140,33 +153,35 @@ Si se mencionan remodelaciones, acabados, vistas, problemas o condiciones especi
 **FORMATO DE SALIDA OBLIGATORIO**
 ═══════════════════════════════════════════════════════════
 
+## 0. **PRESENTACION DE COMPARABLES**
+   Presenta aqui el listado de comparables.
+
    **SELECCIÓN DE COMPARABLES PARA CÁLCULO:**
    - Lista todos los comparables que cumplan con los filtros de calidad.
    - NUNCA incluyas comparables sin precio o área.
    - NUNCA incluyas comparables duplicados. Si tienen mismo precio, area, barrio, entonces son el mismo comparable. Así tengan diferente URL.
 
+   **LISTADO DE COMPARABLES (FORMATO OBLIGATORIO)**
+   - Crea tu propia numeración secuencial (1, 2, 3…).
+   - Idealmente debes tener al menos 5 comparables en arriendo y 5 en venta para el cálculo.
 
-**1 PRESENTACIÓN DE COMPARABLES**
-Describe brevemente la propiedad objetivo y luego presenta los comparables.
+   **FORMATO OBLIGATORIO POR COMPARABLE:**
 
-**LISTADO DE COMPARABLES (FORMATO OBLIGATORIO)**
-- Crea tu propia numeración secuencial (1, 2, 3…).
-- Idealmente debes tener al menos 5 comparables en arriendo y 5 en venta para el cálculo.
+   NO USES VIÑETAS O GUIONES, USALO TAL CUAL SE PRESENTA:
 
-**FORMATO OBLIGATORIO POR COMPARABLE:**
+   **Título exacto del anuncio del portal**
+   Tipo | Venta o Arriendo | $Precio
+   Área: XX m² | X hab | X baños | X niveles
+   Barrio | Ciudad
+   **[Portal](URL cruda)** ETIQUETA (coincidencia / zona_similar / zona_extendida)
+   **Nota:** Distancia aproximada y justificación breve
 
-NO USES VIÑETAS O GUIONES, USALO TAL CUAL SE PRESENTA:
-
-**Título exacto del anuncio del portal**
-Tipo | Venta o Arriendo | $Precio
-Área: XX m² | X hab | X baños | X niveles
-Barrio | Ciudad
-**[Portal](URL cruda)** ETIQUETA (coincidencia / zona_similar / zona_extendida)
-**Nota:** Distancia aproximada y justificación breve
+## 1 DESCRIPCION DE LA PROPIEDAD
+Describe brevemente la propiedad objetivo, menciona cuantos comparables hay en la lista.
 
 ## 2. ANÁLISIS DEL VALOR
 
-   - **Selecciona los mejores comparables para el cálculo.** Justifica tu decisión. Básate en metodologías comprobadas.
+   - **Selecciona los mejores comparables de la lista anterior para el cálculo.** Justifica tu decisión. Básate en metodologías comprobadas.
    - Deduplicar por (área ±1% + precio ±1% + barrio). Contar solo 1 entrada en cálculo.
    Escribe un párrafo indicando:
    - Cuántos comparables usas para el cálculo (separados por venta y arriendo)
@@ -181,21 +196,22 @@ Barrio | Ciudad
 
    **CÁLCULO NORMALIZADO POR M²:**
 
-   1. Calcula el canon mensual por m² de CADA inmueble en arriendo  
+   - Calcula el canon mensual por m² de CADA inmueble en arriendo  
    (canon mensual ÷ área construida).
 
-   2. Evalúa la estabilidad de la muestra:
-   - Si los valores de canon/m² son homogéneos (sin valores atípicos relevantes),
-     se utiliza el **PROMEDIO** de canon/m².
-   - Si se detectan valores atípicos (canon/m² fuera de ±40% respecto a la mediana),
-     se utiliza la **MEDIANA** como medida representativa.
+   - Evalúa la estabilidad de la muestra:
+     - Si los valores de canon/m² son homogéneos (sin valores atípicos relevantes),
+       se utiliza el **PROMEDIO** de canon/m².
+     - Si se detectan valores atípicos (canon/m² fuera de ±40% respecto a la mediana),
+       se utiliza la **MEDIANA** como medida representativa.
 
-   3. Canon mensual estimado = (promedio o mediana de canon/m²) × ${area} m².
+   - Canon mensual estimado = (promedio o mediana de canon/m²) × ${area} m².
 
-   4. Investiga el yield mensual observado para ${formData.municipio}, estrato ${formData.estrato},
+   - Investiga el yield mensual observado para ${formData.municipio}, estrato ${formData.estrato},
    con base en el comportamiento real del mercado de arriendos residenciales.
+   Escribe la frase exacta: "**Yield promedio mercado: X.XX%**" 
 
-   5. Valor por rentabilidad = canon mensual estimado ÷ yield mensual.
+   - Valor por rentabilidad = canon mensual estimado ÷ yield mensual.
 
    **Nota técnica:**  
    Nunca se promedian cánones totales sin normalizar previamente por área.
@@ -205,6 +221,8 @@ Barrio | Ciudad
    Explica cada ajuste aplicado, cómo se usó y por qué.
    Presenta cada ajuste en líneas separadas para facilitar la lectura.
    Nunca apliques ajustes sin justificación explícita basada en evidencia de mercado.
+   Al final de la seccion debes verificar que hayas completado "## JUSTIFICACION DE AJUSTES - OBLIGATORIO"
+
 
    ### FORMATO OBLIGATORIO DE PRESENTACIÓN (EJEMPLO):
 
@@ -301,11 +319,11 @@ Barrio | Ciudad
 
    Evita expresiones como “Yield ajustado (-X%)” sin fórmula ni explicación.
 
-   **Conclusión sobre ajustes aplicados**
-
 ---
 
-   **JUSTIFICACION DE AJUSTES** - Explica de forma orientativa en uno o dos párrafos:
+   **JUSTIFICACION DE AJUSTES - OBLIGATORIO** NO USES ESTE COMO TITULO. ESCRIBE EL PARRAFO INMEDIATAMENTE DESPUES DE LOS AJUSTES APLICADOS.
+
+   Explica de forma orientativa en uno o dos párrafos:
    - Por qué y cómo se aplicaron los ajustes.
    - cómo los ajustes aplicados (o no aplicados) influyeron en el valor final.
    - Justifica tus decisiones según la calidad de los comparables, el estado del inmueble frente al mercado y la coherencia entre los métodos utilizados.
@@ -318,7 +336,7 @@ Barrio | Ciudad
    - **Precio por m² final:** [valor calculado]
    - **Posición en mercado:** [análisis breve]
 
-   - Explica de forma clara y concisa la diferencia entre el valor obtenido por el enfoque de mercado y el enfoque de rentabilidad,
+   - Explica de forma clara y orientativa, para un usuario no experto, la diferencia entre el valor obtenido por el enfoque de mercado y el enfoque de rentabilidad,
      indicando cuál de los dos presenta mayor estabilidad según la cantidad, homogeneidad y dispersión de los comparables utilizados,
      y por qué el valor final se considera el más representativo en este caso.
 
@@ -667,9 +685,10 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - Elimina cualquier etiqueta HTML (como <br>) de los valores extraídos.
    - Si NO encuentras "fuente_validacion", asume "zona_extendida" por defecto.
 
-2. "resumen_mercado": Redacta un párrafo breve y orientativo con los datos del avalúo. Al final invita al usuario a presionar el botón "Ver comparables utilizados" para ver los inmuebles usados en el análisis. 
+2. "resumen_mercado": Redacta un párrafo orientativo que contenga los datos del avalúo y el análisis realizado. Al final invita al usuario a presionar el botón "Ver comparables utilizados" para desplegar la tabla de los comparables usados en el análisis. 
    
    El parrafo debe incluir los siguientes datos (con negritas en los valores):
+   - Usa negrita para palabras clave como "Valor recomendado", "Rango", "Precio por m²", etc.
    - Valor recomendado: **$XXX.XXX.XXX**, Rango: entre **$XXX.XXX.XXX** y **$XXX.XXX.XXX**, Precio por m²: **$X.XXX.XXX/m²** 
    - Menciona que es una estimación orientativa, basada en datos actuales del mercado, no valido para tramites legales.
    
@@ -678,7 +697,7 @@ INSTRUCCIONES DE EXTRACCIÓN:
    - Usa **doble asterisco** para negritas en los valores
    - El resultado debe ser un STRING de texto natural
 
-3. "yield_zona": Busca la frase exacta "Yield promedio mercado: X.XX%" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.5%", devuelve 0.005).
+3. "yield_zona": Busca la frase exacta "**Yield promedio mercado: X.XX%**" en el texto. Extrae SOLO el número como decimal (ej: si dice "0.5%", devuelve 0.005).
 
 4. "valor_venta_directa": Busca "**Valor total = $XXX.XXX.XXX**".
    Extrae el número ENTERO (elimina puntos y $).
@@ -791,7 +810,15 @@ Devuelve SOLO JSON válido.
                 };
 
                 const yieldDefault = 0.005;
-                const yieldExtracted = sanitizeFloat(extractedData.yield_zona);
+                let yieldExtracted = sanitizeFloat(extractedData.yield_zona);
+
+                // SEGURIDAD: Si el yield extraído es > 0.1 (10% mensual), es probable que la IA 
+                // haya devuelto el porcentaje (0.45) en lugar del decimal (0.0045).
+                if (yieldExtracted && yieldExtracted > 0.1) {
+                    console.log(`⚠️ [YIELD GUARD] Yield detectado como porcentaje (${yieldExtracted}), convirtiendo a decimal...`);
+                    yieldExtracted = yieldExtracted / 100;
+                }
+
                 const yieldFinal = yieldExtracted || yieldDefault;
                 console.log(`Yield usado: ${(yieldFinal * 100).toFixed(2)}% mensual (${yieldExtracted ? 'extraído de mercado' : 'fallback'})`);
                 const yieldFuente = yieldExtracted ? 'mercado' : 'fallback';
@@ -1231,9 +1258,6 @@ Devuelve SOLO JSON válido.
                     const badges = Array.isArray(c.fuente_validacion) ? c.fuente_validacion : [c.fuente_validacion];
                     return badges.includes('zona_extendida');
                 }).length;
-                // totalPromedioMunicipal deprecated
-
-                const totalZonasAlternas = totalZonasSimilares; // Simplificado
 
                 console.log(`Clasificación: ${totalVerificados} verificados, ${totalZonasSimilares} zonas similares, ${totalEstimaciones} estimaciones`);
 
@@ -1246,29 +1270,44 @@ Devuelve SOLO JSON válido.
                 const promedioCalidad = total > 0 ? puntosConfianza / total : 0;
                 console.log(`Promedio calidad: ${promedioCalidad.toFixed(2)} (max: 3.0)`);
 
-                // Penalización por dispersión
-                let dispersionAlta = false;
-                let cvDispersion = 0;
+                // --- CÁLCULO DE DISPERSIÓN (Coeficiente de Variación) ---
                 const preciosM2Validos = comparablesParaTabla.map(c => c.precio_m2).filter(v => typeof v === 'number' && v > 0);
+                let cvDispersion = 0;
+                let dispersionNivel = 'bajo';
+                let dispersionNarrativa = '';
 
                 if (preciosM2Validos.length >= 2) {
-                    const max = Math.max(...preciosM2Validos);
-                    const min = Math.min(...preciosM2Validos);
-                    cvDispersion = (max - min) / ((max + min) / 2);
-                    dispersionAlta = cvDispersion > 0.8;
-                    console.log(`Dispersión CV: ${(cvDispersion * 100).toFixed(1)}% ${dispersionAlta ? '(ALTA)' : '(normal)'}`);
+                    const mean = calculateMean(preciosM2Validos);
+                    const stdDev = calculateStdDev(preciosM2Validos, mean);
+                    cvDispersion = mean > 0 ? stdDev / mean : 0;
+
+                    if (cvDispersion > 0.30) {
+                        dispersionNivel = 'muy_alto';
+                        dispersionNarrativa = 'Existe una alta variabilidad en los precios de los comparables analizados, lo que indica un mercado poco homogéneo. El valor estimado se basa en la mediana para reducir el impacto de valores atípicos y debe utilizarse con cautela.';
+                    } else if (cvDispersion > 0.20) {
+                        dispersionNivel = 'alto';
+                        dispersionNarrativa = 'Los precios de los comparables presentan una dispersión elevada, reflejando un mercado heterogéneo. El valor estimado debe interpretarse como una referencia técnica orientativa.';
+                    } else if (cvDispersion > 0.10) {
+                        dispersionNivel = 'medio';
+                        dispersionNarrativa = 'Se observa una dispersión moderada en los precios de los comparables, lo cual es habitual en mercados residenciales activos. El valor estimado se considera representativo.';
+                    } else {
+                        dispersionNivel = 'bajo';
+                        dispersionNarrativa = 'Se observa una dispersión baja, indicando un mercado altamente homogéneo y valores consistentes entre comparables.';
+                    }
+                    console.log(`[DISPERSIÓN] CV: ${(cvDispersion * 100).toFixed(1)}% | Nivel: ${dispersionNivel}`);
                 }
 
-                const factorDispersion = dispersionAlta ? 0.7 : 1.0;
+                const esDispersionAlta = (dispersionNivel === 'alto' || dispersionNivel === 'muy_alto');
+                const factorDispersion = esDispersionAlta ? 0.7 : 1.0;
                 const puntuacionFinal = promedioCalidad * factorDispersion;
                 console.log(`Puntuación final: ${puntuacionFinal.toFixed(2)}`);
 
-                // Criterios de nivel
+                // --- DETERMINACIÓN DE NIVEL DE CONFIANZA ---
                 let nivelConfianzaCalc = 'Bajo';
 
-                if (puntuacionFinal >= 2.2 && total >= 8 && !dispersionAlta) {
+                if (puntuacionFinal >= 2.2 && total >= 8 && !esDispersionAlta) {
                     nivelConfianzaCalc = 'Alto';
-                } else if (puntuacionFinal >= 1.8 && total >= 6) {
+                } else if (puntuacionFinal >= 1.8 && total >= 6 && !esDispersionAlta) {
                     nivelConfianzaCalc = 'Medio';
                 } else if (puntuacionFinal >= 1.3 && total >= 5) {
                     nivelConfianzaCalc = 'Medio';
@@ -1276,18 +1315,13 @@ Devuelve SOLO JSON válido.
                     nivelConfianzaCalc = 'Bajo';
                 }
 
-                // Casos especiales
-                if (!dispersionAlta && total >= 6 && puntuacionFinal >= 1.8) {
-                    nivelConfianzaCalc = 'Medio';
+                // Ajustes por datos hiperlocales
+                if (!esDispersionAlta && totalVerificados >= 5 && total >= 6 && puntuacionFinal >= 1.8) {
+                    nivelConfianzaCalc = 'Alto';
+                    console.log('↑ Ajuste: Medio → Alto (datos hiperlocales de alta calidad)');
                 }
 
-                if (totalVerificados >= 5 && totalZonasSimilares === 0 && total >= 6) {
-                    if (nivelConfianzaCalc === 'Medio' && !dispersionAlta) {
-                        nivelConfianzaCalc = 'Alto';
-                        console.log('↑ Ajuste propiedades: Medio → Alto (datos hiperlocales)');
-                    }
-                }
-
+                // Penalizaciones por origen de datos
                 if (totalEstimaciones > total * 0.5) {
                     if (nivelConfianzaCalc === 'Alto') {
                         nivelConfianzaCalc = 'Medio';
@@ -1296,6 +1330,15 @@ Devuelve SOLO JSON válido.
                         nivelConfianzaCalc = 'Bajo';
                         console.log('↓ Penalización: Medio → Bajo (mayoría estimaciones)');
                     }
+                }
+
+                // SECURITY CAP: Auto-regulación final por dispersión crítica
+                if (dispersionNivel === 'muy_alto') {
+                    nivelConfianzaCalc = 'Bajo';
+                    console.log('↓ CAP SEGURIDAD: Solidez forzada a Bajo (Dispersión crítica)');
+                } else if (dispersionNivel === 'alto' && nivelConfianzaCalc === 'Alto') {
+                    nivelConfianzaCalc = 'Medio';
+                    console.log('↓ CAP SEGURIDAD: Solidez limitada a Medio (Dispersión alta)');
                 }
 
                 console.log(`✓ Nivel de confianza final: ${nivelConfianzaCalc}`);
@@ -1317,10 +1360,11 @@ Devuelve SOLO JSON válido.
                         return badges.includes('zona_similar');
                     }).length,
                     total_zona_extendida: totalEstimaciones,
-                    total_zonas_alternativas: totalZonasAlternas,
+                    total_zonas_alternativas: totalZonasSimilares,
                     puntuacion_calidad: parseFloat(promedioCalidad.toFixed(2)),
                     puntuacion_final: parseFloat(puntuacionFinal.toFixed(2)),
-                    dispersion_alta: dispersionAlta,
+                    dispersion_nivel: dispersionNivel,
+                    dispersion_narrativa: dispersionNarrativa,
                     cv_dispersion: parseFloat(cvDispersion.toFixed(3)),
                     zonas_alternativas_positivas: totalZonasSimilares > 0
                 };

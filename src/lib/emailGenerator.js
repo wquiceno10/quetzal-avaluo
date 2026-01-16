@@ -75,6 +75,16 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
     </head>
     <body>
       <div class="container">
+        <!-- CTA BUTTON - ACCESO RÁPIDO -->
+        <div style="background-color: #C9C19D; padding: 18px 20px; text-align: center;">
+          <a href="https://avaluos.quetzalhabitats.com/resultados/${data.id}" 
+             style="background: #2C3D37; color: white; padding: 14px 35px; 
+                    border-radius: 30px; text-decoration: none; font-weight: bold;
+                    font-size: 15px; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+            📊 Ver Tu Avalúo Completo
+          </a>
+        </div>
+
         <!-- HERO HEADER -->
         <div class="hero">
            <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -140,11 +150,11 @@ export const generateAvaluoEmailHtml = ({ data, codigoAvaluo, valorEstimadoFinal
           <!-- RESUMEN MERCADO -->
           <div class="section-title">Resumen del Mercado</div>
            <p style="font-size: 13px; text-align: justify; color: #555; line-height: 1.5; margin-bottom: 15px;">
-              ${comparablesData.resumen_busqueda || 'Análisis basado en la oferta actual del mercado.'}
+              ${(comparablesData.resumen_busqueda || 'Análisis basado en la oferta actual del mercado.').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}
            </p>
            
            <div style="background-color: #FFFDF5; border: 1px solid #E6E0C7; padding: 15px; border-radius: 8px; font-size: 12px; color: #555;">
-              <strong>💡 Tip:</strong> Descarga el reporte PDF completo desde la plataforma para ver gráficas detalladas y el análisis técnico completo.
+              <strong>💡 Tip:</strong> Descarga el reporte PDF completo desde la plataforma para ver el análisis técnico completo.
            </div>
           
           <!-- CTA DESCARGA PDF -->

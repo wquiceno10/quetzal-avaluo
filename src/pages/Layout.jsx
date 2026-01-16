@@ -14,9 +14,10 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     console.log('Layout useEffect - página:', currentPageName);
 
-    // Permitir AccesoClientes siempre
-    if (currentPageName === 'AccesoClientes') {
-      console.log('Permitido AccesoClientes, saltando auth');
+    // Permitir AccesoClientes y AvaluoDetalle siempre (enlaces públicos)
+    const publicPages = ['AccesoClientes', 'AvaluoDetalle'];
+    if (publicPages.includes(currentPageName)) {
+      console.log(`Permitido ${currentPageName}, saltando auth`);
       setCheckingAuth(false);
       return;
     }

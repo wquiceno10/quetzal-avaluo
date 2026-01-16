@@ -51,6 +51,38 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
         day: 'numeric'
       });
 
+      // --- Lógica de Costos de Venta ---
+      const calcularCostosVenta = (valor) => {
+        if (!valor || valor <= 0) return null;
+        const retencion = valor * 0.01;
+        const notariales = valor * 0.0027;
+        const comisionMedia = valor * 0.03;
+        const ivaComision = comisionMedia * 0.19;
+        const comisionTotal = comisionMedia + ivaComision;
+        const totalGastosVendedor = retencion + notariales + comisionTotal;
+        const netoVendedor = valor - totalGastosVendedor;
+        const registroComprador = valor * 0.0167;
+        const notarialesComprador = valor * 0.0027;
+        const totalGastosComprador = registroComprador + notarialesComprador;
+
+        return {
+          seller: {
+            retencion,
+            notariales,
+            comision: comisionTotal,
+            netoRecibir: netoVendedor,
+            totalGastos: totalGastosVendedor
+          },
+          buyer: {
+            registro: registroComprador,
+            notariales: notarialesComprador,
+            totalGastos: totalGastosComprador
+          }
+        };
+      };
+
+      const costosVenta = calcularCostosVenta(valorEstimadoFinal);
+
       // Formateadores
       const formatCurrency = (val) =>
         val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
@@ -68,7 +100,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
         // zona_extendida -> warning (Naranja/Amarillo)
 
         if (val === 'coincidencia') return 'success';
-        if (val === 'verificado') return 'success';
+        // if (val === 'verificado') return 'success'; // removed
         if (val === 'zona_similar') return 'info';
         if (val === 'zona_extendida') return 'warning';
 
@@ -78,7 +110,7 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
       const getFuenteLabel = (validation) => {
         const val = (validation || '').toLowerCase();
         if (val === 'coincidencia') return '✓ Coincidencia';
-        if (val === 'verificado') return '✓ Verificado';
+        // if (val === 'verificado') return '✓ Verificado'; // removed
         if (val === 'zona_similar') return '→ Zona Similar';
         if (val === 'zona_extendida') return '≈ Zona Extendida';
 
@@ -143,12 +175,12 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
             .grid-2 {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin-top: 20px;
+              gap: 15px;
+              margin-top: 12px;
             }
             .box {
               background: #F8F6EF;
-              padding: 16px;
+              padding: 12px 16px;
               border-radius: 12px;
               border: 1px solid #e6e0c7;
               page-break-inside: avoid;
@@ -158,10 +190,10 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               background: #F9FAF9;
               border: 1px solid #E0E5E2;
               border-radius: 12px;
-              padding: 20px;
-              margin: 25px 0;
-              page-break-inside: avoid;
-              break-inside: avoid;
+              padding: 16px 20px;
+              margin: 30px 0;
+              page-break-before: auto;
+              break-before: auto;
             }
             .info-grid {
               display: grid;
@@ -231,13 +263,15 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%);
               color: white;
               border-radius: 16px;
-              padding: 32px;
-              margin-bottom: 30px;
+              padding: 24px 32px;
+              margin-top: 10px;
+              margin-bottom: 20px;
               position: relative;
               overflow: hidden;
               box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-              page-break-inside: avoid;
-              break-inside: avoid;
+              /* REMOVIDO: evita forzar todo el hero a la siguiente página */
+              page-break-inside: auto;
+              break-inside: auto;
             }
             .hero-decoration {
               position: absolute;
@@ -295,48 +329,46 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               text-align: left;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
-              /* Doble columna - igual que en la página web */
+              /* Doble columna balanceada */
               column-count: 2;
               column-gap: 30px;
+              column-fill: balance;
             }
-             .analysis-content h4 {
-              /* NO column-span para que fluya continuamente en columnas */
+             .analysis-content h3, .analysis-content h4 {
               margin: 16px 0 8px 0;
               font-size: 14px;
               color: #2C3D37;
               font-weight: 700;
               font-family: 'Outfit', sans-serif;
               break-inside: avoid;
+              break-after: avoid;
               page-break-inside: avoid;
             }
              .analysis-content li {
               margin-left: 0;
-              margin-bottom: 12px;
+              margin-bottom: 8px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
-              font-size: 14px;
-              line-height: 1.3;
+              font-size: 13px;
+              line-height: 1.4;
               break-inside: avoid;
               page-break-inside: avoid;
             }
-            .analysis-content ol {
+            .analysis-content ol, .analysis-content ul {
               margin: 8px 0;
               padding-left: 12px;
-              margin-left: 0;
-            }
-            .analysis-content ol li {
-              break-inside: avoid;
-              page-break-inside: avoid;
-              margin-bottom: 15px;
-              line-height: 1.3;
+              display: block;
+              break-inside: auto;
+              page-break-inside: auto;
             }
             .analysis-content p {
               margin-bottom: 12px;
               color: #4F5B55;
               font-family: 'Raleway', sans-serif;
-              font-size: 14px;
+              font-size: 13px;
               break-inside: avoid;
               page-break-inside: avoid;
+              text-align: justify;
             }
             .hero-badge {
               background: rgba(201, 193, 157, 0.9);
@@ -420,17 +452,26 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
                 margin: 15mm 15mm;
                 size: letter;
               }
-              body {
+              html, body {
+                height: auto !important;
+                overflow: visible !important;
+                page-break-inside: auto !important;
+                break-inside: auto !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 color-adjust: exact !important;
                 padding: 0 !important;
+                margin: 0 !important;
               }
 
-              h1, h2, h3, h4, h5, h6 {
-                page-break-after: avoid;
-                break-after: avoid;
+              /* Reset global para evitar saltos forzados por huérfanas/viudas */
+              * {
+                orphans: 2 !important;
+                widows: 2 !important;
               }
+
+              /* Permitir saltos de página después de títulos para evitar grandes espacios vacíos */
+              /* Removido break-after: avoid que causaba problemas de paginación */
 
               .hero-header {
                 background: linear-gradient(135deg, #2C3D37 0%, #1a2620 100%) !important;
@@ -446,7 +487,9 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
                 -webkit-print-color-adjust: exact !important;
               }
               .info-section {
-                page-break-inside: avoid;
+                /* Permitir que se divida entre páginas */
+                page-break-inside: auto;
+                break-inside: auto;
               }
               table {
                 page-break-inside: auto;
@@ -459,6 +502,22 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
                 page-break-inside: avoid;
                 break-inside: avoid;
               }
+                /* Print layout: two columns balanced */
+                @media print {
+                  .analysis-content {
+                    display: block !important;
+                    column-count: 2 !important;
+                    column-gap: 30px !important;
+                    column-fill: balance !important;
+                    page-break-inside: auto !important;
+                    break-inside: auto !important;
+                    width: 100% !important;
+                  }
+                  .analysis-content h3, .analysis-content h4, .analysis-content p, .analysis-content li {
+                    break-inside: avoid !important;
+                    page-break-inside: avoid !important;
+                  }
+                }
             }
             
             /* Analysis Styles */
@@ -486,20 +545,15 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               font-family: 'Raleway', sans-serif;
               font-size: 14px;
               text-align: left;
-              break-inside: avoid;
-              page-break-inside: avoid;
+              break-inside: auto;
+              page-break-inside: auto;
             }
             /* Calculation sections (after h5 subsections) use left-align */
             .analysis-content h5 ~ p {
               text-align: left;
             }
             
-            /* Two-column layout for analysis content */
-            .analysis-content {
-              column-count: 2;
-              column-gap: 30px;
-              column-fill: auto; /* Cambio de balance a auto para evitar espacios vacíos */
-            }
+
             
             /* TABLAS: Contener dentro de su columna */
             .analysis-content table {
@@ -546,6 +600,102 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
             .hero-value-block {
               margin-top: auto;
             }
+            .costs-section {
+              margin: 25px 0;
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+            .costs-card {
+              background: #F8F6EF;
+              border: 1px solid #C9C19D;
+              border-radius: 12px;
+              overflow: hidden;
+            }
+            .costs-header {
+              background: #F0F2F1;
+              border-bottom: 1px solid #E0E5E2;
+              padding: 8px 16px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .costs-title {
+              font-size: 14px;
+              font-weight: 600;
+              margin: 0;
+              color: #2C3D37;
+            }
+            .costs-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 32px;
+              padding: 16px 24px;
+              position: relative;
+            }
+            .buyer-column {
+              position: relative;
+              padding-left: 16px;
+              border-left: 1px solid #E0E5E2;
+            }
+            .costs-column-title {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin-bottom: 16px;
+              padding-bottom: 8px;
+              border-bottom: 1px solid rgba(201, 193, 157, 0.3);
+            }
+            .badge-role {
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 9px;
+              font-weight: 700;
+              color: white;
+              text-transform: uppercase;
+            }
+            .badge-seller { background: #8C9A90; }
+            .badge-buyer { background: #2C3D37; }
+            .role-label { font-size: 13px; font-weight: 500; color: #4F5B55; }
+            
+            .cost-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 8px;
+              font-size: 12px;
+              color: #4F5B55;
+            }
+            .cost-value { font-weight: 600; }
+            
+            .net-box {
+              margin-top: 14px;
+              padding-top: 10px;
+              border-top: 1px solid rgba(201, 193, 157, 0.5);
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .net-label { font-size: 13px; font-weight: 600; color: #2C3D37; }
+            .net-amount { font-size: 18px; font-weight: 700; color: #2C3D37; font-family: 'Outfit', sans-serif; }
+            .buyer-total { font-size: 16px; font-weight: 700; color: #4F5B55; font-family: 'Outfit', sans-serif; }
+            
+            .costs-footer {
+              padding: 12px 24px;
+              border-top: 1px dashed #E0E5E2;
+            }
+            .costs-footer-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 40px;
+            }
+            .other-costs-title {
+              font-size: 10px;
+              font-weight: 700;
+              text-transform: uppercase;
+              color: #2C4A3E;
+              margin-bottom: 4px;
+            }
+            .other-costs-text { font-size: 9px; color: #4F5B55; line-height: 1.4; }
+            .legal-disclaimer { font-size: 8.5px; color: #7A8C85; font-style: italic; line-height: 1.3; text-align: right; display: flex; align-items: center; }
           </style>
         </head>
 
@@ -675,6 +825,84 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
               ` : ''}
             </div>
 
+            <!-- SECCIÓN DE COSTOS DE VENTA -->
+            ${costosVenta ? `
+            <div class="costs-section">
+              <div class="costs-card">
+                <div class="costs-header">
+                  <span style="font-size: 16px;">💰</span>
+                  <h4 class="costs-title">¿Cuánto recibes al vender? (Estimado)</h4>
+                </div>
+                
+                <div class="costs-grid">
+                  <!-- VENDEDOR -->
+                  <div>
+                    <div class="costs-column-title">
+                      <span class="badge-role badge-seller">Vendedor</span>
+                      <span class="role-label">Gastos de venta</span>
+                    </div>
+                    
+                    <div class="cost-row">
+                      <span>Retención en la fuente (1%):</span>
+                      <span class="cost-value">${formatCurrency(costosVenta.seller.retencion)}</span>
+                    </div>
+                    <div class="cost-row">
+                      <span>Gastos Notariales (~0.27%):</span>
+                      <span class="cost-value">${formatCurrency(costosVenta.seller.notariales)}</span>
+                    </div>
+                    <div class="cost-row">
+                      <span>Comisión (3% + IVA):</span>
+                      <span class="cost-value">${formatCurrency(costosVenta.seller.comision)}</span>
+                    </div>
+                    
+                    <div class="net-box">
+                      <span class="net-label">Neto estimado a recibir:</span>
+                      <span class="net-amount">${formatCurrency(costosVenta.seller.netoRecibir)}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- COMPRADOR -->
+                  <div class="buyer-column">
+                    <div class="costs-column-title">
+                      <span class="badge-role badge-buyer">Comprador</span>
+                      <span class="role-label">Gastos de compra</span>
+                    </div>
+                    
+                    <div class="cost-row">
+                      <span>Beneficencia + Registro (~1.67%):</span>
+                      <span class="cost-value">${formatCurrency(costosVenta.buyer.registro)}</span>
+                    </div>
+                    <div class="cost-row">
+                      <span>Gastos Notariales (~0.27%):</span>
+                      <span class="cost-value">${formatCurrency(costosVenta.buyer.notariales)}</span>
+                    </div>
+                    
+                    <div class="net-box">
+                      <span class="net-label">Total gastos adicionales:</span>
+                      <span class="buyer-total">${formatCurrency(costosVenta.buyer.totalGastos)}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="costs-footer">
+                  <div class="costs-footer-grid">
+                    <div>
+                      <p class="other-costs-title">Otros gastos que podrían aplicar (no incluidos):</p>
+                      <p class="other-costs-text">
+                        Impuesto de ganancia ocasional (15% al 39%) | Estudio de títulos (0.12%) | Avalúo bancario (0.1%) | Cancelación de hipoteca (~0.5%) | Certificados adicionales (~$120.000)
+                      </p>
+                    </div>
+                    <div class="legal-disclaimer">
+                      * Los valores mostrados son estimaciones orientativas basadas en prácticas habituales del mercado colombiano. 
+                      La Retención en la Fuente es del 1% (Art. 398 E.T.). Los gastos de registro y notariales son aproximados y pueden variar según el municipio y la notaría. 
+                      No constituye asesoría legal, notarial ni tributaria.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            ` : ''}
+
             <div class="info-section">
               <h3 style="margin-top: 0; color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Información Detallada</h3>
               <div class="info-grid">
@@ -776,11 +1004,32 @@ const BotonPDF = forwardRef(({ formData, confianzaInfo, className, size }, ref) 
             </div>
             ` : ''}
 
+            <!-- AVISO DE DISPERSIÓN (PDF) -->
+            ${comparablesData.nivel_confianza_detalle?.dispersion_nivel && comparablesData.nivel_confianza_detalle.dispersion_nivel !== 'bajo' ? `
+            <div style="background: ${comparablesData.nivel_confianza_detalle.dispersion_nivel === 'muy_alto' ? '#fef2f2' : comparablesData.nivel_confianza_detalle.dispersion_nivel === 'alto' ? '#fffbeb' : '#eff6ff'}; 
+                        border: 1px solid ${comparablesData.nivel_confianza_detalle.dispersion_nivel === 'muy_alto' ? '#fecaca' : comparablesData.nivel_confianza_detalle.dispersion_nivel === 'alto' ? '#fef3c7' : '#bfdbfe'};
+                        border-radius: 8px; 
+                        padding: 12px 16px; 
+                        margin: 15px 0;
+                        page-break-inside: avoid;
+                        break-inside: avoid;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <span style="font-size: 14px;">${comparablesData.nivel_confianza_detalle.dispersion_nivel === 'muy_alto' ? '⚠️' : comparablesData.nivel_confianza_detalle.dispersion_nivel === 'alto' ? '⚠️' : 'ℹ️'}</span>
+                <strong style="font-size: 12px; color: ${comparablesData.nivel_confianza_detalle.dispersion_nivel === 'muy_alto' ? '#991b1b' : comparablesData.nivel_confianza_detalle.dispersion_nivel === 'alto' ? '#92400e' : '#1e40af'};">
+                  ${comparablesData.nivel_confianza_detalle.dispersion_nivel === 'muy_alto' ? 'Dispersión Muy Alta' : comparablesData.nivel_confianza_detalle.dispersion_nivel === 'alto' ? 'Dispersión Alta' : 'Dispersión Media'}
+                </strong>
+              </div>
+              <p style="margin: 0; font-size: 10px; line-height: 1.4; color: ${comparablesData.nivel_confianza_detalle.dispersion_nivel === 'muy_alto' ? '#7f1d1d' : comparablesData.nivel_confianza_detalle.dispersion_nivel === 'alto' ? '#78350f' : '#1e3a8a'}; opacity: 0.9;">
+                ${comparablesData.nivel_confianza_detalle.dispersion_narrativa}
+              </p>
+            </div>
+            ` : ''}
+
             <!-- ANÁLISIS DETALLADO DEL MODELO -->
             ${comparablesData.perplexity_full_text ? `
             <div class="analysis-section">
               <h3 style="color: #2C3D37; border-bottom: 2px solid #C9C19D; padding-bottom: 8px;">Análisis Detallado del Modelo</h3>
-              <div class="analysis-content">
+              <div class="analysis-content" style="column-count: 2; -webkit-column-count: 2; -moz-column-count: 2; column-gap: 30px;">
                 ${procesarTextoParaPDF(comparablesData.perplexity_full_text)}
               </div>
             </div>

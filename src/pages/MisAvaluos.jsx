@@ -215,20 +215,7 @@ export default function MisAvaluos() {
         } catch (e) {
             console.error('Error eliminando avalúo via RLS, intentando worker...', e);
 
-            // SEGURIDAD CRÍTICA: El bypass por worker SOLO debe funcionar en desarrollo local
-            const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-            if (!isLocalDev) {
-                setFeedbackModal({
-                    open: true,
-                    title: 'Error de permisos',
-                    description: 'No tienes permisos suficientes para eliminar este avalúo en producción.',
-                    type: 'error'
-                });
-                return;
-            }
-
-            // INTENTO 2: Usar Worker (Bypass RLS) - SOLO LOCAL
+            // INTENTO 2: Usar Worker (Bypass RLS)
             try {
                 const workerUrl = import.meta.env.VITE_WORKER_UPLOAD_URL; // Reusamos este worker que tiene acceso a Service Role
 

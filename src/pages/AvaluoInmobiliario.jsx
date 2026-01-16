@@ -72,6 +72,7 @@ export default function AvaluoInmobiliario() {
 
           if (user) {
             setCurrentUser(user);
+            setAvaluoData(prev => ({ ...prev, email: user.email }));
             const { count } = await supabase
               .from('avaluos')
               .select('*', { count: 'exact', head: true })
@@ -230,7 +231,7 @@ export default function AvaluoInmobiliario() {
   };
 
   const handleReset = () => {
-    setAvaluoData(initialState);
+    setAvaluoData({ ...initialState, email: currentUser?.email || '' });
     setCurrentStep(1);
   };
 
@@ -267,6 +268,12 @@ export default function AvaluoInmobiliario() {
         <div className="bg-yellow-100 border-b border-yellow-300 py-2 mt-4">
           <div className="max-w-5xl mx-auto px-4 flex items-center justify-center gap-2 flex-wrap">
             <span className="text-yellow-800 text-sm font-medium mr-2">🛠️ Dev:</span>
+            <a
+              href="/accesoclientes"
+              className="px-3 py-1 text-sm rounded bg-purple-500 text-white hover:bg-purple-600"
+            >
+              Login
+            </a>
             {[1, 2, 3, 4, 5].map((step) => (
               <button
                 key={step}

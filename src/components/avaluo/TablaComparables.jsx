@@ -106,48 +106,36 @@ export default function TablaComparables({ comparables, esLote = false }) {
                             ? item.fuente_validacion
                             : [item.fuente_validacion];
 
-                          return badges.map((badge, idx) => {
-                            if (badge === 'verificado') {
+                          return badges
+                            .filter(badge => badge && badge !== 'verificado')
+                            .map((badge, idx) => {
+                              if (badge === 'coincidencia') {
+                                return (
+                                  <Badge key={idx} variant="outline" className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0.5 ml-1">
+                                    ✓ Coincidencia
+                                  </Badge>
+                                );
+                              }
+                              if (badge === 'zona_similar') {
+                                return (
+                                  <Badge key={idx} variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5 ml-1">
+                                    → Zona Similar
+                                  </Badge>
+                                );
+                              }
+                              if (badge === 'zona_extendida') {
+                                return (
+                                  <Badge key={idx} variant="outline" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-2 py-0.5 ml-1">
+                                    ≈ Zona Extendida
+                                  </Badge>
+                                );
+                              }
                               return (
-                                <Badge key={idx} variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0.5">
-                                  ✓ Verificado
+                                <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-600 border-gray-200 text-[10px] px-2 py-0.5 ml-1">
+                                  {toTitleCase(badge?.replace(/_/g, ' ') || 'Fuente Externa')}
                                 </Badge>
                               );
-                            }
-                            if (badge === 'coincidencia') {
-                              return (
-                                <Badge key={idx} variant="outline" className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0.5">
-                                  ✓ Coincidencia
-                                </Badge>
-                              );
-                            }
-                            if (badge === 'verificado') {
-                              return (
-                                <Badge key={idx} variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0.5">
-                                  ✓ Portal Verificado
-                                </Badge>
-                              );
-                            }
-                            if (badge === 'zona_similar') {
-                              return (
-                                <Badge key={idx} variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">
-                                  → Zona Similar
-                                </Badge>
-                              );
-                            }
-                            if (badge === 'zona_extendida') {
-                              return (
-                                <Badge key={idx} variant="outline" className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-2 py-0.5">
-                                  ≈ Zona Extendida
-                                </Badge>
-                              );
-                            }
-                            return (
-                              <Badge key={idx} variant="outline" className="bg-gray-100 text-gray-600 border-gray-200 text-[10px] px-2 py-0.5">
-                                {toTitleCase(badge?.replace(/_/g, ' ') || 'Fuente Externa')}
-                              </Badge>
-                            );
-                          });
+                            });
                         })()}
                       </div>
                     )}
@@ -171,7 +159,7 @@ export default function TablaComparables({ comparables, esLote = false }) {
                       // Fallbacks si no hay nota de Perplexity
                       if (!formattedNote) {
                         if (fuente_validacion === 'coincidencia') formattedNote = 'Ubicación exacta validada.';
-                        else if (fuente_validacion === 'verificado') formattedNote = null; // Verificado no tiene nota
+
                         else if (fuente_validacion === 'zona_extendida') formattedNote = 'Similitud socioeconómica en otra zona.';
                         else if (fuente_validacion === 'zona_similar') formattedNote = 'Ubicación cercana con mercado comparable.';
                       }
@@ -297,12 +285,6 @@ export default function TablaComparables({ comparables, esLote = false }) {
       <div className="px-4 pt-3 pb-2 border-t border-[#E0E5E2] bg-[#FAFBFA]">
         <p className="text-xs font-medium text-[#4F5B55] mb-2">Convenciones:</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-gray-600">
-          <span className="flex items-center gap-1">
-            <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0">
-              ✓ Verificado
-            </Badge>
-            <span>URL activa del portal</span>
-          </span>
           <span className="flex items-center gap-1">
             <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0">
               ✓ Coincidencia
