@@ -158,9 +158,9 @@ function generateAvaluoEmailHtml({ data, valorEstimadoFinal, rangoMin, rangoMax,
       </style>
     </head>
     <body>
-      <div class="container">
+      <div class="container" style="border-radius: 10px 10px 0 0;">
         <!-- CTA BUTTON - ACCESO RÁPIDO -->
-        <div style="background-color: #C9C19D; padding: 18px 20px; text-align: center;">
+        <div style="background-color: #e9e6da; padding: 18px 20px; text-align: center; border-radius: 10px 10px 0 0;">
           <a href="https://avaluos.quetzalhabitats.com/resultados/${data.id}" 
              style="background: #2C3D37; color: white; padding: 14px 35px; 
                     border-radius: 30px; text-decoration: none; font-weight: bold;
