@@ -443,25 +443,6 @@ export default function Step3Results({ formData, onUpdate, onNext, onBack, onRes
         </div>
     );
 
-    // --- ENVÍO AUTOMÁTICO DE CORREO ---
-    useEffect(() => {
-        const emailRecipient = formData.email || formData.contacto_email;
-        const emailSentKey = `email_sent_${formData.id || 'current'}`;
-        const alreadySent = sessionStorage.getItem(emailSentKey);
-
-        console.log("📧 [Check Email Auto-Send]:", {
-            id: formData.id,
-            recipient: emailRecipient,
-            alreadySent
-        });
-
-        if (!alreadySent && formData.id && emailRecipient) {
-            console.log("📧 Iniciando envío automático de reporte...");
-            sendEmailMutation.mutate();
-            sessionStorage.setItem(emailSentKey, 'true');
-        }
-    }, [formData.id, formData.email, formData.contacto_email]);
-
     if (!formData) return renderErrorState('Datos del formulario no disponibles', onBack);
 
     const data = formData.comparables_data || formData;

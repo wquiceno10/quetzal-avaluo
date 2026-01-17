@@ -21,6 +21,96 @@ function calculateStdDev(values, mean) {
     return Math.sqrt(avgSquareDiff);
 }
 
+// --- HELPER: Email HTML Generator (Simplified for Worker) ---
+function generateSimpleEmailHtml(data) {
+    const formatCurrency = (val) => val ? '$ ' + Math.round(val).toLocaleString('es-CO') : '—';
+    const toTitleCase = (str) => {
+        if (!str) return '';
+        const smallWords = ['y', 'de', 'en', 'a', 'o', 'la', 'el', 'del', 'un', 'una', 'para', 'por', 'con', 'sin'];
+        return str.toLowerCase().split(' ').map((word, index) => {
+            if (index === 0 || !smallWords.includes(word)) {
+                return word.charAt(0).toUpperCase() + word.slice(1);
+            }
+            return word;
+        }).join(' ');
+    };
+
+    const valorFinal = data.valor_final || data.valor_estimado_venta_directa || 0;
+    const rangoMin = data.rango_valor_min || 0;
+    const rangoMax = data.rango_valor_max || 0;
+    const totalComparables = data.total_comparables || 0;
+    const codigoAvaluo = data.codigo_avaluo || 'N/A';
+    const avaluoId = data.id || '';
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; line-height: 1.6; background-color: #f4f4f4; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; overflow: hidden; font-size: 14px; }
+    .hero { background-color: #2C3D37; color: white; padding: 30px 25px; border-radius: 0 0 15px 15px; }
+    .hero-value { font-size: 36px; font-weight: bold; line-height: 1; margin: 15px 0 5px 0; }
+    .hero-details { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 15px; margin-top: 25px; }
+    .content { padding: 30px 25px; }
+    .cta-button { background-color: #C9C19D; text-align: center; padding: 18px 20px; }
+    .btn { background: #2C3D37; color: white; padding: 14px 35px; border-radius: 30px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block; }
+    .footer-dark { background-color: #2C3D37; padding: 30px 20px; text-align: center; color: #8FA396; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="cta-button">
+      <a href="https://avaluos.quetzalhabitats.com/resultados/${avaluoId}" class="btn">📊 Ver Tu Avalúo Completo</a>
+    </div>
+    
+    <div class="hero">
+      <div style="font-size:24px; font-weight:bold;">🏠 Valor Comercial</div>
+      <div style="font-size:12px; opacity:0.8; margin-top:4px;">Estimación de Inteligencia Inmobiliaria</div>
+      
+      <div class="hero-value">${formatCurrency(valorFinal)}</div>
+      <div style="font-size:12px; opacity:0.8;">COP (Pesos Colombianos)</div>
+      
+      <div class="hero-details">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="color:#D3DDD6; font-size:12px; padding-bottom:8px;">Rango Sugerido</td>
+            <td align="right" style="color:white; font-weight:bold; font-size:12px; padding-bottom:8px;">${formatCurrency(rangoMin)} - ${formatCurrency(rangoMax)}</td>
+          </tr>
+          <tr>
+            <td style="color:#D3DDD6; font-size:12px;">Muestra de Mercado</td>
+            <td align="right" style="color:white; font-weight:bold; font-size:12px;">${totalComparables} inmuebles</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+    
+    <div class="content">
+      <p>Hola,</p>
+      <p>Tu reporte de avalúo para <strong>${toTitleCase(data.tipo_inmueble || 'Inmueble')}</strong> en <strong>${toTitleCase(data.barrio || data.municipio || 'Colombia')}</strong> está listo.</p>
+      
+      <div style="background: #FFF8E1; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px 16px; margin: 20px 0;">
+        <p style="margin: 0; font-size: 12px; color: #92400e;">
+          <strong>Nota importante:</strong> Este reporte es una estimación de mercado de carácter orientativo, por tanto, no tiene validez para trámites legales, h ipotecarios o transaccionales.
+        </p>
+      </div>
+      
+      <div style="background-color: #F0F2F1; padding: 25px; text-align: center; border-radius: 10px; margin-top: 30px;">
+        <div style="font-size: 16px; font-weight: bold; color: #2C3D37; margin-bottom: 10px;">¿Necesitas vender este inmueble?</div>
+        <div style="font-size: 13px; color: #4F5B55; margin-bottom: 20px;">En Quetzal Hábitats conectamos tu propiedad con los clientes adecuados.</div>
+        <a href="https://wa.me/573186383809" style="background-color: #2C3D37; color: white; text-decoration: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; font-size: 14px;">Contactar Asesor</a>
+      </div>
+    </div>
+
+    <div class="footer-dark">
+      <img src="https://assets.zyrosite.com/YNqM51Nez6URyK5d/quetzal_4-Yan0WNJQLLHKrEom.png" alt="Quetzal" style="height: 40px; margin-bottom: 15px;">
+      <p style="color: #8FA396; margin: 5px 0;">© 2025 Quetzal Hábitats - Todos los derechos reservados</p>
+      <p style="color: #5A6D66; margin: 5px 0;">Código: ${codigoAvaluo}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 // --- HELPER: Clean LaTeX Commands from Text ---
 function cleanLatexCommands(text) {
     if (!text) return '';
@@ -1447,6 +1537,59 @@ Devuelve SOLO JSON válido.
                 // Guardar resultado exitoso
                 jobs.set(jobId, { status: 'completed', result: resultado });
                 console.log(`✅ Job ${jobId} completado exitosamente`);
+
+                // ========================================================================
+                // ✉️ ENVÍO AUTOMÁTICO DE CORREO
+                // ========================================================================
+                try {
+                    console.log('📧 [Auto-Email] Iniciando envío automático...');
+                    console.log('📧 [Auto-Email] formData completo:', JSON.stringify(formData, null, 2));
+
+                    const emailRecipient = formData.email || formData.contacto_email;
+
+                    console.log('📧 [Auto-Email] formData.email:', formData.email);
+                    console.log('📧 [Auto-Email] formData.contacto_email:', formData.contacto_email);
+                    console.log('📧 [Auto-Email] Email seleccionado:', emailRecipient);
+
+                    if (!emailRecipient) {
+                        console.log('📧 [Auto-Email] ⏭️ Sin destinatario, omitiendo envío');
+                    } else {
+                        const WORKER_EMAIL_URL = env.WORKER_EMAIL_URL || 'https://avaluos-api-email.quetzalhabitats.workers.dev';
+
+                        // Generar subject
+                        const subject = `Reporte de Avalúo: ${formData.tipo_inmueble || 'Inmueble'} en ${formData.barrio || formData.municipio || 'Colombia'}`;
+
+                        // Generar HTML del correo (versión simplificada inline)
+                        const htmlBody = generateSimpleEmailHtml({
+                            ...formData,
+                            ...resultado,
+                            codigo_avaluo: formData.codigo_avaluo || body.codigo_avaluo || `QZ-${Date.now()}`,
+                            id: body.id || formData.id
+                        });
+
+                        // Llamar al worker de email
+                        const emailResponse = await fetch(`${WORKER_EMAIL_URL}/send-email`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                to: emailRecipient,
+                                subject: subject,
+                                htmlBody: htmlBody
+                            })
+                        });
+
+                        if (emailResponse.ok) {
+                            console.log(`📧 [Auto-Email] ✅ Correo enviado exitosamente a ${emailRecipient}`);
+                        } else {
+                            const errorText = await emailResponse.text();
+                            console.warn(`📧 [Auto-Email] ⚠️ Error enviando correo: ${errorText}`);
+                        }
+                    }
+                } catch (emailError) {
+                    // NO fallar el job si el email falla
+                    console.error('📧 [Auto-Email] ❌ Error (no crítico):', emailError.message);
+                }
+                // ========================================================================
 
             } catch (calcError) {
                 console.error('❌ Error en lógica de negocio:', calcError);
