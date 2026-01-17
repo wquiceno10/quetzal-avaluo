@@ -3,6 +3,7 @@
     "build": "echo \"No build needed for Cloudflare Workers\""
   },
   "dependencies": {
+    "@mendable/firecrawl-js": "^4.11.1",
     "@supabase/supabase-js": "^2.89.0",
     "zod": "^4.3.5"
   }
