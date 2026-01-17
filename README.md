@@ -1,165 +1,101 @@
 # Quetzal Avalúo - Sistema de Avalúo Comercial Inmobiliario
 
-Aplicación web independiente para avalúos comerciales de propiedades inmobiliarias usando IA.
+Aplicación web profesional para avalúos comerciales de propiedades inmobiliarias usando Inteligencia Artificial.
 
-## 🏗️ Tecnologías
+## 🏗️ Arquitectura y Tecnologías (V16)
 
 - **Frontend**: React + Vite + TailwindCSS + shadcn/ui
-- **Backend**: Netlify Functions (Serverless)
-- **Autenticación**: Supabase Auth (Magic Links)
-- **Email**: Resend
-- **IA**: 
-  - Perplexity (análisis de mercado inmobiliario en texto)
-  - DeepSeek v3 (extracción estructurada JSON)
-
-## 🔑 Variables de Entorno (Netlify)
-
-Configura las siguientes variables de entorno en Netlify Dashboard:
-
-```bash
-PERPLEXITY_API_KEY=tu_api_key_de_perplexity
-DEEPSEEK_API_KEY=tu_api_key_de_deepseek
-RESEND_API_KEY=tu_api_key_de_resend
-SUPABASE_URL=tu_url_de_supabase
-SUPABASE_ANON_KEY=tu_anon_key_de_supabase
-```
-
-## 📊 Configuración de Supabase
-
-Para guardar los avalúos, crea una tabla `avaluos` en tu proyecto de Supabase:
-
-```sql
-CREATE TABLE avaluos (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  codigo_avaluo TEXT UNIQUE NOT NULL,
-  nombre_contacto TEXT,
-  email TEXT,
-  whatsapp TEXT,
-  tipo_inmueble TEXT,
-  barrio TEXT,
-  municipio TEXT,
-  departamento TEXT,
-  area_construida NUMERIC,
-  habitaciones INTEGER,
-  banos INTEGER,
-  comparables_data JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Opcional: Índices para búsquedas rápidas
-CREATE INDEX idx_avaluos_codigo ON avaluos(codigo_avaluo);
-CREATE INDEX idx_avaluos_email ON avaluos(email);
-CREATE INDEX idx_avaluos_created_at ON avaluos(created_at DESC);
-```
-
-## 💻 Desarrollo Local
-
-```bash
-# Instalar dependencias
-npm install
-
-# Iniciar servidor de desarrollo (solo frontend)
-npm run dev
-
-# Iniciar con Netlify Functions (recomendado para testing completo)
-netlify dev
-```
-
-El servidor de desarrollo estará disponible en:
-- Frontend: `http://localhost:8888` (con netlify dev)
-- Frontend: `http://localhost:5173` (solo con npm run dev)
-- Functions: `http://localhost:8888/.netlify/functions/`
-
-## 🚀 Deploy en Netlify
-
-### Primera vez:
-
-1. Conecta tu repositorio Git a Netlify
-2. Configuración de build:
-   - **Build command**: `npm run build`
-   - **Publish directory**: `dist`
-   - **Functions directory**: `netlify/functions`
-
-3. Agrega las variables de entorno en Netlify Dashboard
-
-4. Deploy!
-
-### Actualizaciones:
-
-```bash
-# Commit y push a tu repositorio
-git add .
-git commit -m "Descripción de cambios"
-git push origin main
-
-# Netlify desplegará automáticamente
-```
-
-O deploy manual:
-
-```bash
-# Build local
-npm run build
-
-# Deploy
-netlify deploy --prod
-```
+  - Hosting: Cloudflare Pages
+- **Backend**: Cloudflare Workers (Microservicios)
+  - `avaluos-api-analysis`: Motor principal de análisis
+  - `avaluos-api-email`: Servicio de emails transaccionales
+  - `avaluos-api-upload`: Gestión de subida de archivos
+- **Búsqueda y Datos**: Firecrawl (Búsqueda y extracción estructurada)
+- **Inteligencia Artificial**: OpenAI GPT-4o (Analista Inmobiliario)
+- **Base de Datos y Auth**: Supabase
 
 ## 📁 Estructura del Proyecto
 
 ```
 quetzal-avaluo/
-├── netlify/
-│   └── functions/           # Netlify Functions (backend serverless)
-│       ├── perplexityAnalysis.js   # Análisis con Perplexity + DeepSeek
-│       ├── sendReportEmail.js      # Envío de emails con Resend
-│       └── supabaseAuth.js         # Autenticación con Supabase
+├── cloudflare/                  # Backend 100% Serverless
+│   ├── avaluos-api-analysis/    # WORKER PRINCIPAL: Firecrawl + Análisis
+│   ├── avaluos-api-email/       # WORKER: Envío de emails (Resend)
+│   └── avaluos-api-upload/      # WORKER: Subida a R2/Storage
 ├── src/
-│   ├── api/
-│   │   └── client.js        # Cliente API personalizado
-│   ├── components/
-│   │   ├── avaluo/          # Componentes del flujo de avalúo
-│   │   └── ui/              # Componentes UI de shadcn
-│   ├── pages/               # Páginas de la aplicación
-│   └── utils/               # Utilidades
-├── netlify.toml             # Configuración de Netlify
-└── package.json
+│   ├── components/              # Componentes React
+│   ├── pages/                   # Rutas de la App
+│   └── lib/                     # Utilidades compartidas (Email Generator, etc)
+├── docs/                        # Documentación
+│   └── changelog/               # Historial de actualizaciones
+└── README.md
 ```
 
-## 🔄 Flujo de la Aplicación
+## 🔐 Configuración de Entorno (Cloudflare)
 
-1. **Autenticación** (`/AccesoClientes`): Magic link por email vía Supabase
-2. **Paso 1** - Formulario: Usuario ingresa datos del inmueble
-3. **Paso 2** - Análisis: 
-   - Perplexity busca comparables en el mercado
-   - DeepSeek extrae datos estructurados
-4. **Paso 3** - Resultados: Muestra valor estimado y comparables
-5. **Paso 4** - Contacto: Envía reporte por email y guarda en Supabase
+Configura los siguientes **Secrets** en tus Workers via `wrangler secret put` o Dashboard:
 
-## 🛠️ Scripts Disponibles
+### `avaluos-api-analysis`
+```bash
+FIRECRAWL_API_KEY=fc-tus_credenciales...    # Búsqueda
+OPENAI_API_KEY=sk-tus_credenciales...       # Análisis
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+WORKER_EMAIL_URL=https://avaluos-api-email.quetzalhabitats.workers.dev
+```
+
+### `avaluos-api-email`
+```bash
+RESEND_API_KEY=re_tus_credenciales...
+```
+
+## 🔄 Flujo de Análisis V2 (Firecrawl)
+
+1. **Input**: Usuario ingresa datos en `Step1Form`.
+2. **Search**: El worker invoca a **Firecrawl** con un prompt geo-localizado inteligente:
+   - *"Prioriza el barrio X o conjunto Y, pero incluye zonas aledañas..."*
+3. **Extraction**: Firecrawl extrae datos estructurados (Precio, Área, Ubicación) directamente del HTML.
+4. **Analysis**: OpenAI analiza los comparables, aplica normalización y calcula el valor de mercado.
+5. **Auto-Email**: Al finalizar, el worker genera el reporte HTML (idéntico a la web) y lo envía automáticamente al usuario.
+
+## 💻 Desarrollo Local
+
+Para correr todo el sistema localmente, necesitas 4 terminales:
 
 ```bash
-npm run dev          # Desarrollo con Vite
-npm run build        # Build para producción
-npm run preview      # Preview del build
-npm run lint         # Linter ESLint
-netlify dev          # Desarrollo con Functions locales
-netlify deploy       # Deploy a Netlify
+# 1. Frontend
+npm run dev
+
+# 2. Worker Análisis
+npm run worker:analysis
+
+# 3. Worker Email
+npm run worker:email
+
+# 4. Worker Upload (opcional)
+npm run worker:upload
 ```
 
-## 📝 Notas Importantes
+> **Nota:** En desarrollo, el sistema usa `DEV_EMAIL` (definido en `.dev.vars`) como fallback para enviar correos de prueba.
 
-- **Modo Desarrollo**: La autenticación se desactiva automáticamente en `localhost` para facilitar el desarrollo
-- **Producción**: Requiere autenticación completa con Supabase
-- **Email Redirect**: Configurado para `https://avaluos.quetzalhabitats.com`
-- **Persistencia**: Los avalúos se guardan en tabla `avaluos` de Supabase
+## 🚀 Deploy
 
-## 🆘 Soporte
+El despliegue se maneja separadamente para Frontend y Workers:
 
-Para consultas técnicas o soporte:
-- Email: contacto@quetzalhabitats.com
-- WhatsApp: +57 318 638 3809
+**Frontend (Pages):**
+```bash
+git push origin main  # Dispara GitHub Actions
+```
+
+**Workers:**
+```bash
+cd cloudflare/avaluos-api-analysis
+npx wrangler deploy
+```
+
+## 📝 Changelog
+Consulta `docs/changelog/` para ver el historial detallado de actualizaciones y mejoras por versión.
 
 ---
 
-© 2025 Quetzal Hábitats - Sistema de Avalúo Comercial Inmobiliario
+© 2026 Quetzal Hábitats - Sistema de Avalúo Comercial Inmobiliario
