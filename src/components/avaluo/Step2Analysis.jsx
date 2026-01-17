@@ -228,7 +228,8 @@ export default function Step2Analysis({ formData, onUpdate, onNext, onBack }) {
               ¡Estamos trabajando en tu avalúo!
             </DialogTitle>
             <DialogDescription className="text-center text-[#4a5d54] mt-3 text-base leading-relaxed">
-              No te preocupes si cambias de ventana o abres otra app. <strong className="text-[#2C3D37] text-base font-semibold">Te avisaremos por correo cuando tu reporte esté listo.</strong>
+              No tienes que esperar aquí.<br />
+              <strong className="text-[#2C3D37] text-base font-semibold">Te enviaremos el reporte a tu correo.</strong>
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center pt-4">

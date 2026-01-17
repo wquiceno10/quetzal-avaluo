@@ -125,7 +125,6 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
 
   const isLote = localData.tipo_inmueble === 'lote';
 
-  const isRemodelacionValid = localData.estado_inmueble !== 'remodelado' || localData.tipo_remodelacion;
 
   const isValid = (() => {
     // Campos comunes
@@ -153,7 +152,6 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
         if (!localData.numeropisos) return false;
       }
 
-      if (!isRemodelacionValid) return false;
 
       if (localData.contexto_zona === 'conjunto_cerrado') {
         if (!localData.nombre_conjunto || localData.nombre_conjunto.trim().length < 3) return false;
@@ -473,29 +471,6 @@ export default function Step1Form({ formData, onUpdate, onNext }) {
                   </SelectContent>
                 </Select>
               </div>
-
-              {localData.estado_inmueble === 'remodelado' && (
-                <>
-                  <div className="space-y-2">
-                    <Label className="text-[#2C3D37] font-medium">Tipo de Remodelación *</Label>
-                    <Select value={localData.tipo_remodelacion || ''} onValueChange={(value) => {
-                      const updated = { ...localData, tipo_remodelacion: value, descripcion_mejoras: '', valor_remodelacion: '' };
-                      setLocalData(updated);
-                      onUpdate(updated);
-                    }}>
-                      <SelectTrigger className="border-[#B0BDB4] focus:border-[#2C3D37]">
-                        <SelectValue placeholder="Selecciona" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ligera">Reforma Ligera</SelectItem>
-                        <SelectItem value="moderada">Reforma Moderada</SelectItem>
-                        <SelectItem value="amplia">Remodelación Amplia</SelectItem>
-                        <SelectItem value="premium">Remodelación Superior</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
             </div>
           )}
 

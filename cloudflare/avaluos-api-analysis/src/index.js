@@ -6,7 +6,8 @@
  * - Extracción JSON: OpenAI gpt-4o-mini
  * - Base: V13 (Dynamic Area Filters, Confidence V2, IQR Filter)
  */
-
+import { z } from 'zod';
+import Firecrawl from '@mendable/firecrawl-js';
 
 // --- HELPER: Statistical Calculations ---
 function calculateMean(values) {
@@ -243,10 +244,8 @@ Si se mencionan remodelaciones, acabados, vistas, problemas o condiciones especi
 **FORMATO DE SALIDA OBLIGATORIO**
 ═══════════════════════════════════════════════════════════
 
-## 0. **PRESENTACION DE COMPARABLES**
+## **PRESENTACION DE COMPARABLES**
    Presenta aqui el listado de comparables.
-
-   **SELECCIÓN DE COMPARABLES PARA CÁLCULO:**
    - Lista todos los comparables que cumplan con los filtros de calidad.
    - NUNCA incluyas comparables sin precio o área.
    - NUNCA incluyas comparables duplicados. Si tienen mismo precio, area, barrio, entonces son el mismo comparable. Así tengan diferente URL.
@@ -311,18 +310,18 @@ Describe brevemente la propiedad objetivo, menciona cuantos comparables hay en l
    Explica cada ajuste aplicado, cómo se usó y por qué.
    Presenta cada ajuste en líneas separadas para facilitar la lectura.
    Nunca apliques ajustes sin justificación explícita basada en evidencia de mercado.
-   Al final de la seccion debes verificar que hayas completado "## JUSTIFICACION DE AJUSTES - OBLIGATORIO"
+   Al final de la seccion debes verificar que hayas completado la explicación orientativa de los ajustes en uno o dos párrafos:
 
 
    ### FORMATO OBLIGATORIO DE PRESENTACIÓN (EJEMPLO):
 
    **Ajuste por ubicación:** +X% (zona de alta demanda según comparables directos).
-   **Ajuste por estado:** -X% (requiere inversión estimada entre $X.XXX.XXX y $X.XXX.XXX; se aplicó un valor intermedio).
+   **Ajuste por estado:** -X% (requiere inversión).
    **Ajuste por antigüedad:** -X% (ajuste base según referencia de mercado / Camacol, escalado según remodelación).
-   **Factor total de ajustes:** 0.85 (equivalente a -15%).
-   **Precio/m² ajustado (venta):** $3.545.455 × 0.85 = $3.013.637.
-   **Valor total ajustado:** $3.013.637/m² × 60 m² = $180.818.220.
-   **Yield ajustado:** $200.003.400 × 0.85 = $170.003.400.
+   **Factor total de ajustes:** X.XX% (equivalente a X%).
+   **Precio/m² ajustado (venta):** $X.XXX.XXX × X.XX% = $X.XXX.XXX.
+   **Valor total ajustado:** $X.XXX.XXX/m² × X.XX m² = $X.XXX.XXX.
+   **Yield ajustado:** $X.XXX.XXX × X.XX% = $X.XXX.XXX.
 
 ---
 
@@ -344,16 +343,8 @@ Describe brevemente la propiedad objetivo, menciona cuantos comparables hay en l
    ### REGLA DE AJUSTE POR ANTIGÜEDAD SEGÚN REMODELACIÓN (OBLIGATORIA)
 
    El ajuste por antigüedad mide la depreciación cronológica.
-   El ajuste por estado mide la condición funcional.
+   El ajuste por estado mide la condición funcional. Si está remodelado no se aplica ajuste por antigüedad.
    Ambos **NO deben penalizar el mismo factor dos veces**.
-
-   El ajuste por antigüedad debe escalarse según el tipo de remodelación indicado por el usuario, de la siguiente forma:
-
-   - Remodelación superior → NO aplicar ajuste por antigüedad (0%).
-   - Remodelación amplia → aplicar solo el 25% del ajuste base por antigüedad.
-   - Reforma moderada → aplicar el 50% del ajuste base por antigüedad.
-   - Reforma ligera → aplicar el 75% del ajuste base por antigüedad.
-   - Sin remodelación → aplicar el 100% del ajuste base por antigüedad.
 
    Explica siempre cómo se combinan ambos ajustes y evita castigos dobles.
 
@@ -410,8 +401,6 @@ Describe brevemente la propiedad objetivo, menciona cuantos comparables hay en l
    Evita expresiones como “Yield ajustado (-X%)” sin fórmula ni explicación.
 
 ---
-
-   **JUSTIFICACION DE AJUSTES - OBLIGATORIO** NO USES ESTE COMO TITULO. ESCRIBE EL PARRAFO INMEDIATAMENTE DESPUES DE LOS AJUSTES APLICADOS.
 
    Explica de forma orientativa en uno o dos párrafos:
    - Por qué y cómo se aplicaron los ajustes.
@@ -538,11 +527,11 @@ export default {
             const { formData } = body;
             if (!formData) throw new Error('formData es requerido');
 
-            const YOU_API_KEY = env.YOU_API_KEY ? env.YOU_API_KEY.trim() : null;
             const OPENAI_API_KEY = env.OPENAI_API_KEY ? env.OPENAI_API_KEY.trim() : null;
+            const firecrawl = new Firecrawl({ apiKey: env.FIRECRAWL_API_KEY ? env.FIRECRAWL_API_KEY.trim() : null });
 
-            if (!YOU_API_KEY || !OPENAI_API_KEY) {
-                jobs.set(jobId, { status: 'failed', error: 'API keys no configuradas (YOU_API_KEY, OPENAI_API_KEY)' });
+            if (!env.FIRECRAWL_API_KEY || !OPENAI_API_KEY) {
+                jobs.set(jobId, { status: 'failed', error: 'API keys no configuradas (FIRECRAWL_API_KEY, OPENAI_API_KEY)' });
                 return;
             }
 
@@ -573,58 +562,84 @@ export default {
                 formData.estrato ? `Estrato: ${formData.estrato}` : ''
             ].filter(Boolean).join(', ');
 
-            console.log('Buscando en You.com:', agentInput);
+            console.log('Buscando con Firecrawl:', agentInput);
 
             let responseText = '';
             t_search_start = Date.now();
+            // --- 1. BUSCAR COMPARABLES CON FIRECRAWL ---
+            // Calcular rangos de área extendidos (±30%)
+            const rangoExtendidoMin = Math.round(area * 0.7);
+            const rangoExtendidoMax = Math.round(area * 1.3);
             try {
-                // Restauramos los headers que sabemos que funcionan para evitar bloqueos del servidor
-                const agentResponse = await fetch('https://api.you.com/v1/agents/runs', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${YOU_API_KEY}`,
-                        'Content-Type': 'application/json',
-                        'Accept': '*/*',
-                        'User-Agent': 'curl/8.0.0'
-                    },
-                    body: JSON.stringify({
-                        agent: '6e5e2bdf-384b-4c75-aff8-4dc54bc4bf0d',
-                        input: agentInput,
-                        stream: false
-                    })
-                    // ❌ REMOVED: signal -> Para evitar que el proceso de fondo se aborte si el cliente desconecta el POST
+                console.log('🔎 [Firecrawl] Iniciando búsqueda de comparables...');
+                // Prompt flexible usando los datos del formulario
+                const zonaRef = formData.nombre_conjunto || formData.barrio || formData.municipio;
+                const firecrawlPrompt = `Busca entre 8 y 12 listados de ${tipoInmueble}s en ${formData.municipio}, ${formData.departamento}. Prioriza propiedades en ${formData.barrio}${formData.nombre_conjunto ? ` o en el conjunto ${formData.nombre_conjunto}` : ''}, pero busca también en barrios cercanos. Prioriza propiedades de aproximadamente ${area}m2. Incluye 50% ventas y 50% arriendos. Filtra precios atípicos y prioriza anuncios de los últimos 30 días (máximo 6 meses). Extrae: tipo de propiedad, transacción, área exacta, precio en COP, habitaciones, baños, barrio, nombre del conjunto (si aplica), portal de origen, URL y etiquetas de proximidad (coincidencia, zona_similar, zona_extendida). Si el número de habitaciones o baños no está disponible, usa null. Excluir duplicados (misma área, precio y ciudad) y listados de OLX, Nestoria, waa2, Trovit o FazWaz. IMPORTANTE: Solo busca ${tipoInmueble}s, no incluyas ningún otro tipo de propiedad.`;
+
+                const firecrawlResponse = await firecrawl.agent({
+                    prompt: firecrawlPrompt,
+                    schema: z.object({
+                        listings: z.array(z.object({
+                            transaction_type: z.string().describe("Type of transaction (e.g., venta, arriendo)"),
+                            transaction_type_citation: z.string().describe("Source URL for transaction_type").optional(),
+                            area_m2: z.number().describe("Exact area in square meters"),
+                            area_m2_citation: z.string().describe("Source URL for area_m2").optional(),
+                            price_cop: z.number().describe("Price in Colombian pesos"),
+                            price_cop_citation: z.string().describe("Source URL for price_cop").optional(),
+                            habitaciones: z.number().nullable().describe("Number of bedrooms").optional(),
+                            banos: z.number().nullable().describe("Number of bathrooms").optional(),
+                            neighborhood: z.string().describe("Neighborhood of the property"),
+                            neighborhood_citation: z.string().describe("Source URL for neighborhood").optional(),
+                            complex_name: z.string().describe("Name of the residential complex").optional(),
+                            complex_name_citation: z.string().describe("Source URL for complex_name").optional(),
+                            source_portal: z.string().describe("Origin portal of the listing"),
+                            source_portal_citation: z.string().describe("Source URL for source_portal").optional(),
+                            url: z.string().describe("URL of the listing"),
+                            url_citation: z.string().describe("Source URL for url").optional(),
+                            proximity_tags: z.array(z.object({
+                                value: z.string().describe("Proximity tag value"),
+                                value_citation: z.string().describe("Source URL for this value").optional()
+                            })).describe("Tags indicating proximity").optional()
+                        })).describe("List of verified house listings")
+                    }),
+                    model: "spark-1-mini"
                 });
+                console.log('🔎 [Firecrawl] Respuesta recibida');
+                // Debug: mostrar respuesta cruda para diagnóstico
+                console.log('🔎 [Firecrawl] Respuesta cruda:', JSON.stringify(firecrawlResponse, null, 2).substring(0, 500));
 
-                console.log('Status Agente:', agentResponse.status);
-
-                if (agentResponse.ok) {
-                    const agentData = await agentResponse.json();
-
-                    responseText = "";
-                    if (agentData.output && Array.isArray(agentData.output)) {
-                        for (const item of agentData.output) {
-                            if (item.type === 'message.answer' && item.text) responseText += item.text + "\n";
-                        }
-                    }
-
-                    if (!responseText) responseText = agentData.response || agentData.content || '';
-
-                    console.log('--- RESPUESTA AGENTE ---');
-                    console.log(responseText);
-                    console.log('--- FIN RESPUESTA AGENTE ---');
-
-                    console.log('Respuesta Agente recibida');
-                } else {
-                    const errorText = await agentResponse.text();
-                    console.error('Error Agente:', agentResponse.status, errorText);
-                    jobs.set(jobId, { status: 'failed', error: `Error Agente You.com (${agentResponse.status})`, details: errorText });
-                    return; // ❌ ABORTAR flujo si el Agente falla
+                // Firecrawl puede devolver { items: [...] }, { data: [...] }, o { listings: [...] }
+                // Extraemos los listings del campo correcto
+                let listings = [];
+                if (firecrawlResponse.items && Array.isArray(firecrawlResponse.items)) {
+                    listings = firecrawlResponse.items;
+                } else if (firecrawlResponse.data && Array.isArray(firecrawlResponse.data)) {
+                    listings = firecrawlResponse.data;
+                } else if (firecrawlResponse.listings && Array.isArray(firecrawlResponse.listings)) {
+                    listings = firecrawlResponse.listings;
+                } else if (typeof firecrawlResponse === 'object') {
+                    // Fallback: objeto con claves numéricas
+                    listings = Object.keys(firecrawlResponse)
+                        .filter(key => !isNaN(key))
+                        .sort((a, b) => parseInt(a) - parseInt(b))
+                        .map(key => firecrawlResponse[key]);
                 }
-                t_search_end = Date.now();
+
+                const listingsCount = listings.length;
+                console.log(`🔎 [Firecrawl] Total listings: ${listingsCount}`);
+
+                // Enviamos el JSON directamente al Analista (GPT-4o puede leerlo sin problema)
+                // Esto es más robusto ya que los nombres de campos varían
+                if (listings.length > 0) {
+                    responseText = JSON.stringify(listings, null, 2);
+                    console.log('🔎 [Firecrawl] Comparables enviados como JSON');
+                } else {
+                    console.warn('⚠️ [Firecrawl] No se encontraron comparables.');
+                    responseText = "No se encontraron comparables en la web.";
+                }
             } catch (err) {
-                t_search_end = Date.now();
-                console.error('Error conexión Agente:', err.message);
-                jobs.set(jobId, { status: 'failed', error: 'Error de conexión con el Agente', details: err.message });
+                console.error('Error Firecrawl:', err);
+                jobs.set(jobId, { status: 'failed', error: 'Error Firecrawl', details: err.message });
                 return;
             }
 
@@ -1545,10 +1560,12 @@ Devuelve SOLO JSON válido.
                     console.log('📧 [Auto-Email] Iniciando envío automático...');
                     console.log('📧 [Auto-Email] formData completo:', JSON.stringify(formData, null, 2));
 
-                    const emailRecipient = formData.email || formData.contacto_email;
+                    // Usar email del formData o fallback a DEV_EMAIL (para desarrollo)
+                    const emailRecipient = formData.email || formData.contacto_email || env.DEV_EMAIL;
 
                     console.log('📧 [Auto-Email] formData.email:', formData.email);
                     console.log('📧 [Auto-Email] formData.contacto_email:', formData.contacto_email);
+                    console.log('📧 [Auto-Email] DEV_EMAIL fallback:', env.DEV_EMAIL);
                     console.log('📧 [Auto-Email] Email seleccionado:', emailRecipient);
 
                     if (!emailRecipient) {
