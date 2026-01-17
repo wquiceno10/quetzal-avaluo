@@ -328,20 +328,7 @@ function cleanLatexCommands(text) {
     return cleanedText.trim();
 }
 
-// --- HELPER: Mapear estado_inmueble a etiqueta legible ---
-function mapearEstado(estado) {
-    const mapa = {
-        'nuevo': 'Nuevo',
-        'remodelado': 'Remodelado',
-        'buen_estado': 'Buen Estado',
-        'requiere_reformas_ligeras': 'Requiere Reformas Ligeras',
-        'requiere_reformas_moderadas': 'Requiere Reformas Moderadas',
-        'requiere_reformas_amplias': 'Requiere Reformas Amplias',
-        'requiere_reformas_superiores': 'Requiere Reformas Superiores',
-        'obra_gris': 'Obra Gris'
-    };
-    return mapa[estado] || (estado ? estado.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'No especificado');
-}
+
 
 // --- GLOBAL STATE: Jobs en memoria para polling ---
 const jobs = new Map();
